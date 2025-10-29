@@ -31,7 +31,7 @@ function FormMembro({ onSucesso }) {
     setCarregando(false);
     
     if (resultado.success) {
-      setSucesso(`✅ Membro ${nome} cadastrado com sucesso!`);
+      setSucesso(`Membro ${nome} cadastrado com sucesso!`);
       
       setNome('');
       setTelefone('');
@@ -47,19 +47,31 @@ function FormMembro({ onSucesso }) {
 
   return (
     <div style={{
-      backgroundColor: 'white',
-      padding: '30px',
+      backgroundColor: '#ffffff',
       borderRadius: '12px',
-      boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+      padding: '24px',
+      boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+      border: '1px solid #e8eaed'
     }}>
-      <h2 style={{ color: '#2c3e50', marginBottom: '20px' }}>
-        👤 Cadastrar Novo Membro
+      <h2 style={{
+        fontSize: '1.125rem',
+        fontWeight: '500',
+        color: '#202124',
+        marginBottom: '20px'
+      }}>
+        Cadastrar Novo Membro
       </h2>
       
       <form onSubmit={handleSubmit}>
         <div style={{ marginBottom: '20px' }}>
-          <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-            📝 Nome Completo *
+          <label style={{
+            display: 'block',
+            marginBottom: '8px',
+            fontSize: '0.875rem',
+            fontWeight: '500',
+            color: '#5f6368'
+          }}>
+            Nome Completo *
           </label>
           <input
             type="text"
@@ -68,18 +80,29 @@ function FormMembro({ onSucesso }) {
             placeholder="Ex: João da Silva"
             style={{
               width: '100%',
-              padding: '12px',
-              border: '2px solid #e0e0e0',
-              borderRadius: '8px',
-              fontSize: '1rem'
+              padding: '10px 12px',
+              border: '1px solid #dadce0',
+              borderRadius: '6px',
+              fontSize: '0.9375rem',
+              color: '#202124',
+              transition: 'border-color 0.2s ease',
+              outline: 'none'
             }}
+            onFocus={(e) => e.target.style.borderColor = '#1a73e8'}
+            onBlur={(e) => e.target.style.borderColor = '#dadce0'}
             required
           />
         </div>
 
         <div style={{ marginBottom: '20px' }}>
-          <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-            📱 Telefone (opcional)
+          <label style={{
+            display: 'block',
+            marginBottom: '8px',
+            fontSize: '0.875rem',
+            fontWeight: '500',
+            color: '#5f6368'
+          }}>
+            Telefone (opcional)
           </label>
           <input
             type="tel"
@@ -88,17 +111,28 @@ function FormMembro({ onSucesso }) {
             placeholder="(11) 99999-9999"
             style={{
               width: '100%',
-              padding: '12px',
-              border: '2px solid #e0e0e0',
-              borderRadius: '8px',
-              fontSize: '1rem'
+              padding: '10px 12px',
+              border: '1px solid #dadce0',
+              borderRadius: '6px',
+              fontSize: '0.9375rem',
+              color: '#202124',
+              transition: 'border-color 0.2s ease',
+              outline: 'none'
             }}
+            onFocus={(e) => e.target.style.borderColor = '#1a73e8'}
+            onBlur={(e) => e.target.style.borderColor = '#dadce0'}
           />
         </div>
 
         <div style={{ marginBottom: '20px' }}>
-          <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-            📧 Email (opcional)
+          <label style={{
+            display: 'block',
+            marginBottom: '8px',
+            fontSize: '0.875rem',
+            fontWeight: '500',
+            color: '#5f6368'
+          }}>
+            Email (opcional)
           </label>
           <input
             type="email"
@@ -107,35 +141,44 @@ function FormMembro({ onSucesso }) {
             placeholder="joao@email.com"
             style={{
               width: '100%',
-              padding: '12px',
-              border: '2px solid #e0e0e0',
-              borderRadius: '8px',
-              fontSize: '1rem'
+              padding: '10px 12px',
+              border: '1px solid #dadce0',
+              borderRadius: '6px',
+              fontSize: '0.9375rem',
+              color: '#202124',
+              transition: 'border-color 0.2s ease',
+              outline: 'none'
             }}
+            onFocus={(e) => e.target.style.borderColor = '#1a73e8'}
+            onBlur={(e) => e.target.style.borderColor = '#dadce0'}
           />
         </div>
 
         {erro && (
           <div style={{
-            backgroundColor: '#ffebee',
-            color: '#c62828',
+            backgroundColor: '#fce8e6',
+            color: '#c5221f',
             padding: '12px',
-            borderRadius: '8px',
-            marginBottom: '20px'
+            borderRadius: '6px',
+            marginBottom: '20px',
+            fontSize: '0.875rem',
+            border: '1px solid #f5c6cb'
           }}>
-            ❌ {erro}
+            {erro}
           </div>
         )}
         
         {sucesso && (
           <div style={{
-            backgroundColor: '#e8f5e9',
-            color: '#2e7d32',
+            backgroundColor: '#e6f4ea',
+            color: '#137333',
             padding: '12px',
-            borderRadius: '8px',
-            marginBottom: '20px'
+            borderRadius: '6px',
+            marginBottom: '20px',
+            fontSize: '0.875rem',
+            border: '1px solid #c6e1c6'
           }}>
-            {sucesso}
+            ✓ {sucesso}
           </div>
         )}
 
@@ -144,17 +187,24 @@ function FormMembro({ onSucesso }) {
           disabled={carregando}
           style={{
             width: '100%',
-            padding: '14px',
-            backgroundColor: carregando ? '#ccc' : '#2196F3',
-            color: 'white',
+            padding: '12px',
+            backgroundColor: carregando ? '#dadce0' : '#1a73e8',
+            color: '#ffffff',
             border: 'none',
-            borderRadius: '8px',
-            fontSize: '1rem',
-            fontWeight: '600',
-            cursor: carregando ? 'not-allowed' : 'pointer'
+            borderRadius: '6px',
+            fontSize: '0.9375rem',
+            fontWeight: '500',
+            cursor: carregando ? 'not-allowed' : 'pointer',
+            transition: 'background-color 0.2s ease'
+          }}
+          onMouseEnter={(e) => {
+            if (!carregando) e.currentTarget.style.backgroundColor = '#1765cc';
+          }}
+          onMouseLeave={(e) => {
+            if (!carregando) e.currentTarget.style.backgroundColor = '#1a73e8';
           }}
         >
-          {carregando ? '⏳ Cadastrando...' : '💾 Cadastrar Membro'}
+          {carregando ? 'Cadastrando...' : 'Cadastrar Membro'}
         </button>
       </form>
     </div>

@@ -27,7 +27,6 @@ function FormEntrada({ onSucesso }) {
     const resultado = await buscarMembros();
     if (resultado.success) {
       setMembros(resultado.membros);
-      console.log('👥 Membros carregados:', resultado.membros.length, resultado.membros);
     }
   };
 
@@ -87,7 +86,7 @@ function FormEntrada({ onSucesso }) {
                        tipo === 'oferta' ? 'Oferta' :
                        tipo === 'santa_ceia' ? 'Oferta Santa Ceia' : 'Entrada';
       
-      setSucesso(`✅ ${tipoNome} de ${formatarMoeda(valorNum)} lançado com sucesso!`);
+      setSucesso(`${tipoNome} de ${formatarMoeda(valorNum)} lançado com sucesso!`);
       
       setValor('');
       setDescricao('');
@@ -104,60 +103,151 @@ function FormEntrada({ onSucesso }) {
 
   return (
     <div style={{
-      backgroundColor: 'white',
-      padding: '30px',
+      backgroundColor: '#ffffff',
       borderRadius: '12px',
-      boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+      padding: '24px',
+      boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+      border: '1px solid #e8eaed'
     }}>
-      <h2 style={{ color: '#2c3e50', marginBottom: '20px' }}>
-        💰 Nova Entrada
+      <h2 style={{
+        fontSize: '1.125rem',
+        fontWeight: '500',
+        color: '#202124',
+        marginBottom: '20px'
+      }}>
+        Nova Entrada
       </h2>
       
       <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: '20px' }}>
-          <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-            📋 Tipo de Entrada *
-          </label>
-          <select
-            value={tipo}
-            onChange={(e) => setTipo(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '12px',
-              border: '2px solid #e0e0e0',
-              borderRadius: '8px',
-              fontSize: '1rem'
-            }}
-          >
-            <option value="dizimo">💰 Dízimo (60% Central / 40% Local)</option>
-            <option value="oferta">🎁 Oferta Comum (60% Central / 40% Local)</option>
-            <option value="santa_ceia">🍞 Oferta Santa Ceia (100% Missões)</option>
-            <option value="cantina">🍔 Cantina (100% Local)</option>
-            <option value="promocao">🎉 Promoção/Evento (100% Local)</option>
-            <option value="outros">📦 Outros (100% Local)</option>
-          </select>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+          gap: '20px',
+          marginBottom: '20px'
+        }}>
+          {/* Tipo */}
+          <div>
+            <label style={{
+              display: 'block',
+              marginBottom: '8px',
+              fontSize: '0.875rem',
+              fontWeight: '500',
+              color: '#5f6368'
+            }}>
+              Tipo de Entrada *
+            </label>
+            <select
+              value={tipo}
+              onChange={(e) => setTipo(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                border: '1px solid #dadce0',
+                borderRadius: '6px',
+                fontSize: '0.9375rem',
+                color: '#202124',
+                backgroundColor: '#ffffff',
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              <option value="dizimo">Dízimo</option>
+              <option value="oferta">Oferta Comum</option>
+              <option value="santa_ceia">Santa Ceia</option>
+              <option value="cantina">Cantina</option>
+              <option value="promocao">Promoção/Evento</option>
+              <option value="outros">Outros</option>
+            </select>
+          </div>
+
+          {/* Data */}
+          <div>
+            <label style={{
+              display: 'block',
+              marginBottom: '8px',
+              fontSize: '0.875rem',
+              fontWeight: '500',
+              color: '#5f6368'
+            }}>
+              Data *
+            </label>
+            <input
+              type="date"
+              value={data}
+              onChange={(e) => setData(e.target.value)}
+              max={hoje}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                border: '1px solid #dadce0',
+                borderRadius: '6px',
+                fontSize: '0.9375rem',
+                color: '#202124',
+                outline: 'none'
+              }}
+              required
+            />
+          </div>
+
+          {/* Valor */}
+          <div>
+            <label style={{
+              display: 'block',
+              marginBottom: '8px',
+              fontSize: '0.875rem',
+              fontWeight: '500',
+              color: '#5f6368'
+            }}>
+              Valor (R$) *
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              min="0.01"
+              value={valor}
+              onChange={(e) => setValor(e.target.value)}
+              placeholder="0,00"
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                border: '1px solid #dadce0',
+                borderRadius: '6px',
+                fontSize: '0.9375rem',
+                color: '#202124',
+                outline: 'none'
+              }}
+              onFocus={(e) => e.target.style.borderColor = '#1a73e8'}
+              onBlur={(e) => e.target.style.borderColor = '#dadce0'}
+              required
+            />
+          </div>
         </div>
 
+        {/* Membro (se for dízimo) */}
         {tipo === 'dizimo' && (
-          <div style={{ 
-            marginBottom: '20px',
-            backgroundColor: '#e3f2fd',
-            padding: '15px',
-            borderRadius: '8px',
-            border: '2px solid #2196f3'
-          }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-              👤 Membro Dizimista *
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{
+              display: 'block',
+              marginBottom: '8px',
+              fontSize: '0.875rem',
+              fontWeight: '500',
+              color: '#5f6368'
+            }}>
+              Membro Dizimista *
             </label>
             <select
               value={membroId}
               onChange={(e) => setMembroId(e.target.value)}
               style={{
                 width: '100%',
-                padding: '12px',
-                border: '2px solid #2196f3',
-                borderRadius: '8px',
-                fontSize: '1rem'
+                padding: '10px 12px',
+                border: '1px solid #dadce0',
+                borderRadius: '6px',
+                fontSize: '0.9375rem',
+                color: '#202124',
+                backgroundColor: '#ffffff',
+                outline: 'none',
+                cursor: 'pointer'
               }}
               required={tipo === 'dizimo'}
             >
@@ -171,171 +261,192 @@ function FormEntrada({ onSucesso }) {
             
             {membros.length === 0 && (
               <p style={{ 
-                marginTop: '10px', 
-                fontSize: '0.9rem', 
-                color: '#f57c00',
-                fontWeight: '500'
+                marginTop: '8px', 
+                fontSize: '0.8125rem', 
+                color: '#ea4335'
               }}>
-                ⚠️ Nenhum membro cadastrado. Cadastre membros primeiro!
+                Nenhum membro cadastrado. Cadastre membros primeiro!
               </p>
             )}
           </div>
         )}
 
-        <div style={{ marginBottom: '20px' }}>
-          <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-            📅 Data *
-          </label>
-          <input
-            type="date"
-            value={data}
-            onChange={(e) => setData(e.target.value)}
-            max={hoje}
-            style={{
-              width: '100%',
-              padding: '12px',
-              border: '2px solid #e0e0e0',
-              borderRadius: '8px',
-              fontSize: '1rem'
-            }}
-            required
-          />
-        </div>
-
-        <div style={{ marginBottom: '20px' }}>
-          <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-            💵 Valor (R$) *
-          </label>
-          <input
-            type="number"
-            step="0.01"
-            min="0.01"
-            value={valor}
-            onChange={(e) => setValor(e.target.value)}
-            placeholder="1000.00"
-            style={{
-              width: '100%',
-              padding: '12px',
-              border: '2px solid #e0e0e0',
-              borderRadius: '8px',
-              fontSize: '1rem'
-            }}
-            required
-          />
-        </div>
-
+        {/* Preview do Rateio */}
         {valorNum > 0 && (
           <div style={{
-            backgroundColor: tipo === 'santa_ceia' ? '#f3e5f5' : 
-                           (tipo === 'dizimo' || tipo === 'oferta') ? '#e3f2fd' : '#e8f5e9',
-            padding: '15px',
+            backgroundColor: '#f8f9fa',
+            padding: '16px',
             borderRadius: '8px',
-            marginBottom: '20px'
+            marginBottom: '20px',
+            border: '1px solid #e8eaed'
           }}>
-            <strong>📊 Rateio Automático:</strong>
-            <div style={{ marginTop: '10px' }}>
+            <div style={{
+              fontSize: '0.875rem',
+              fontWeight: '500',
+              color: '#5f6368',
+              marginBottom: '12px'
+            }}>
+              Distribuição Automática:
+            </div>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+              gap: '12px'
+            }}>
               {rateioPreview.central > 0 && (
-                <div>🏛️ Central (60%): <strong>{formatarMoeda(rateioPreview.central)}</strong></div>
+                <div style={{ fontSize: '0.875rem' }}>
+                  <span style={{ color: '#5f6368' }}>Central:</span>{' '}
+                  <strong style={{ color: '#202124' }}>{formatarMoeda(rateioPreview.central)}</strong>
+                </div>
               )}
               {rateioPreview.local > 0 && (
-                <div>🏠 Local ({tipo === 'dizimo' || tipo === 'oferta' ? '40%' : '100%'}): <strong>{formatarMoeda(rateioPreview.local)}</strong></div>
+                <div style={{ fontSize: '0.875rem' }}>
+                  <span style={{ color: '#5f6368' }}>Local:</span>{' '}
+                  <strong style={{ color: '#202124' }}>{formatarMoeda(rateioPreview.local)}</strong>
+                </div>
               )}
               {rateioPreview.missoes > 0 && (
-                <div>✝️ Missões (100%): <strong>{formatarMoeda(rateioPreview.missoes)}</strong></div>
+                <div style={{ fontSize: '0.875rem' }}>
+                  <span style={{ color: '#5f6368' }}>Missões:</span>{' '}
+                  <strong style={{ color: '#202124' }}>{formatarMoeda(rateioPreview.missoes)}</strong>
+                </div>
               )}
             </div>
           </div>
         )}
 
+        {/* Forma de Recebimento */}
         <div style={{ marginBottom: '20px' }}>
-          <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-            💳 Forma de Recebimento *
+          <label style={{
+            display: 'block',
+            marginBottom: '8px',
+            fontSize: '0.875rem',
+            fontWeight: '500',
+            color: '#5f6368'
+          }}>
+            Forma de Recebimento *
           </label>
-          <div style={{ display: 'flex', gap: '15px' }}>
-            <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '16px' }}>
+            <label style={{
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              fontSize: '0.875rem',
+              color: '#5f6368'
+            }}>
               <input
                 type="radio"
                 value="pix"
                 checked={formaRecebimento === 'pix'}
                 onChange={(e) => setFormaRecebimento(e.target.value)}
-                style={{ marginRight: '8px' }}
+                style={{ marginRight: '6px' }}
               />
-              📱 PIX / Transferência
+              PIX/Transferência
             </label>
-            <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+            <label style={{
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              fontSize: '0.875rem',
+              color: '#5f6368'
+            }}>
               <input
                 type="radio"
                 value="dinheiro"
                 checked={formaRecebimento === 'dinheiro'}
                 onChange={(e) => setFormaRecebimento(e.target.value)}
-                style={{ marginRight: '8px' }}
+                style={{ marginRight: '6px' }}
               />
-              💵 Dinheiro
+              Dinheiro
             </label>
           </div>
         </div>
 
+        {/* Descrição */}
         <div style={{ marginBottom: '20px' }}>
-          <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-            📝 Descrição (opcional)
+          <label style={{
+            display: 'block',
+            marginBottom: '8px',
+            fontSize: '0.875rem',
+            fontWeight: '500',
+            color: '#5f6368'
+          }}>
+            Descrição (opcional)
           </label>
           <textarea
             value={descricao}
             onChange={(e) => setDescricao(e.target.value)}
             placeholder="Ex: Dízimo referente ao mês de Janeiro"
-            rows="3"
+            rows="2"
             style={{
               width: '100%',
-              padding: '12px',
-              border: '2px solid #e0e0e0',
-              borderRadius: '8px',
-              fontSize: '1rem',
+              padding: '10px 12px',
+              border: '1px solid #dadce0',
+              borderRadius: '6px',
+              fontSize: '0.9375rem',
+              color: '#202124',
               fontFamily: 'inherit',
-              resize: 'vertical'
+              resize: 'vertical',
+              outline: 'none'
             }}
+            onFocus={(e) => e.target.style.borderColor = '#1a73e8'}
+            onBlur={(e) => e.target.style.borderColor = '#dadce0'}
           />
         </div>
 
+        {/* Mensagens */}
         {erro && (
           <div style={{
-            backgroundColor: '#ffebee',
-            color: '#c62828',
+            backgroundColor: '#fce8e6',
+            color: '#c5221f',
             padding: '12px',
-            borderRadius: '8px',
-            marginBottom: '20px'
+            borderRadius: '6px',
+            marginBottom: '20px',
+            fontSize: '0.875rem',
+            border: '1px solid #f5c6cb'
           }}>
-            ❌ {erro}
+            {erro}
           </div>
         )}
         
         {sucesso && (
           <div style={{
-            backgroundColor: '#e8f5e9',
-            color: '#2e7d32',
+            backgroundColor: '#e6f4ea',
+            color: '#137333',
             padding: '12px',
-            borderRadius: '8px',
-            marginBottom: '20px'
+            borderRadius: '6px',
+            marginBottom: '20px',
+            fontSize: '0.875rem',
+            border: '1px solid #c6e1c6'
           }}>
-            {sucesso}
+            ✓ {sucesso}
           </div>
         )}
 
+        {/* Botão */}
         <button
           type="submit"
           disabled={carregando}
           style={{
             width: '100%',
-            padding: '14px',
-            backgroundColor: carregando ? '#ccc' : '#4CAF50',
-            color: 'white',
+            padding: '12px',
+            backgroundColor: carregando ? '#dadce0' : '#1a73e8',
+            color: '#ffffff',
             border: 'none',
-            borderRadius: '8px',
-            fontSize: '1rem',
-            fontWeight: '600',
-            cursor: carregando ? 'not-allowed' : 'pointer'
+            borderRadius: '6px',
+            fontSize: '0.9375rem',
+            fontWeight: '500',
+            cursor: carregando ? 'not-allowed' : 'pointer',
+            transition: 'background-color 0.2s ease'
+          }}
+          onMouseEnter={(e) => {
+            if (!carregando) e.currentTarget.style.backgroundColor = '#1765cc';
+          }}
+          onMouseLeave={(e) => {
+            if (!carregando) e.currentTarget.style.backgroundColor = '#1a73e8';
           }}
         >
-          {carregando ? '⏳ Salvando...' : '💾 Salvar Entrada'}
+          {carregando ? 'Salvando...' : 'Salvar Entrada'}
         </button>
       </form>
     </div>

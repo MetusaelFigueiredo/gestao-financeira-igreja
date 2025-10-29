@@ -3,11 +3,12 @@ import Login from './pages/Login';
 import Entradas from './pages/Entradas';
 import Membros from './pages/Membros';
 import { logout, observarAutenticacao } from './services/auth';
+import Dashboard from './pages/Dashboard';
 
 function App() {
   const [usuario, setUsuario] = useState(null);
   const [carregando, setCarregando] = useState(true);
-  const [paginaAtual, setPaginaAtual] = useState('home');
+  const [paginaAtual, setPaginaAtual] = useState('dashboard');
 
   useEffect(() => {
     const unsubscribe = observarAutenticacao((user) => {
@@ -42,162 +43,166 @@ function App() {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
       <header style={{
-        backgroundColor: 'white',
-        borderBottom: '2px solid #e0e0e0',
-        padding: '15px 20px',
-        marginBottom: '20px',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+  backgroundColor: '#ffffff',
+  borderBottom: '1px solid #e8eaed',
+  padding: '16px 24px',
+  marginBottom: '0',
+  boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+  position: 'sticky',
+  top: 0,
+  zIndex: 100
+}}>
+  <div style={{
+    maxWidth: '1400px',
+    margin: '0 auto',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: '16px'
+  }}>
+    <h1 style={{
+      fontSize: '1.25rem',
+      fontWeight: '600',
+      color: '#202124',
+      margin: 0,
+      letterSpacing: '-0.3px'
+    }}>
+      Gestão Financeira
+    </h1>
+    
+    <nav style={{
+      display: 'flex',
+      gap: '8px',
+      alignItems: 'center',
+      flexWrap: 'wrap'
+    }}>
+      <button
+        onClick={() => setPaginaAtual('dashboard')}
+        style={{
+          padding: '8px 16px',
+          backgroundColor: paginaAtual === 'dashboard' ? '#1a73e8' : 'transparent',
+          color: paginaAtual === 'dashboard' ? '#ffffff' : '#5f6368',
+          border: 'none',
+          borderRadius: '6px',
+          cursor: 'pointer',
+          fontWeight: '500',
+          fontSize: '0.875rem',
+          transition: 'all 0.2s ease'
+        }}
+        onMouseEnter={(e) => {
+          if (paginaAtual !== 'dashboard') {
+            e.currentTarget.style.backgroundColor = '#f1f3f4';
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (paginaAtual !== 'dashboard') {
+            e.currentTarget.style.backgroundColor = 'transparent';
+          }
+        }}
+      >
+        Dashboard
+      </button>
+      
+      <button
+        onClick={() => setPaginaAtual('membros')}
+        style={{
+          padding: '8px 16px',
+          backgroundColor: paginaAtual === 'membros' ? '#1a73e8' : 'transparent',
+          color: paginaAtual === 'membros' ? '#ffffff' : '#5f6368',
+          border: 'none',
+          borderRadius: '6px',
+          cursor: 'pointer',
+          fontWeight: '500',
+          fontSize: '0.875rem',
+          transition: 'all 0.2s ease'
+        }}
+        onMouseEnter={(e) => {
+          if (paginaAtual !== 'membros') {
+            e.currentTarget.style.backgroundColor = '#f1f3f4';
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (paginaAtual !== 'membros') {
+            e.currentTarget.style.backgroundColor = 'transparent';
+          }
+        }}
+      >
+        Membros
+      </button>
+      
+      <button
+        onClick={() => setPaginaAtual('entradas')}
+        style={{
+          padding: '8px 16px',
+          backgroundColor: paginaAtual === 'entradas' ? '#1a73e8' : 'transparent',
+          color: paginaAtual === 'entradas' ? '#ffffff' : '#5f6368',
+          border: 'none',
+          borderRadius: '6px',
+          cursor: 'pointer',
+          fontWeight: '500',
+          fontSize: '0.875rem',
+          transition: 'all 0.2s ease'
+        }}
+        onMouseEnter={(e) => {
+          if (paginaAtual !== 'entradas') {
+            e.currentTarget.style.backgroundColor = '#f1f3f4';
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (paginaAtual !== 'entradas') {
+            e.currentTarget.style.backgroundColor = 'transparent';
+          }
+        }}
+      >
+        Entradas
+      </button>
+      
+      <div style={{
+        width: '1px',
+        height: '24px',
+        backgroundColor: '#e8eaed',
+        margin: '0 8px'
+      }} />
+      
+      <span style={{
+        color: '#5f6368',
+        fontSize: '0.875rem',
+        padding: '0 8px'
       }}>
-        <div style={{
-          maxWidth: '1400px',
-          margin: '0 auto',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '15px'
-        }}>
-          <h1 style={{ fontSize: '1.5rem', color: '#2c3e50', margin: 0 }}>
-            🏦 Gestão Financeira - Igreja
-          </h1>
-          
-          <nav style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <button
-              onClick={() => setPaginaAtual('home')}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: paginaAtual === 'home' ? '#4CAF50' : 'transparent',
-                color: paginaAtual === 'home' ? 'white' : '#2c3e50',
-                border: '2px solid #4CAF50',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontWeight: '500',
-                fontSize: '0.9rem'
-              }}
-            >
-              🏠 Início
-            </button>
-            
-            <button
-              onClick={() => setPaginaAtual('membros')}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: paginaAtual === 'membros' ? '#4CAF50' : 'transparent',
-                color: paginaAtual === 'membros' ? 'white' : '#2c3e50',
-                border: '2px solid #4CAF50',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontWeight: '500',
-                fontSize: '0.9rem'
-              }}
-            >
-              👥 Membros
-            </button>
-            
-            <button
-              onClick={() => setPaginaAtual('entradas')}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: paginaAtual === 'entradas' ? '#4CAF50' : 'transparent',
-                color: paginaAtual === 'entradas' ? 'white' : '#2c3e50',
-                border: '2px solid #4CAF50',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontWeight: '500',
-                fontSize: '0.9rem'
-              }}
-            >
-              💰 Entradas
-            </button>
-            
-            <span style={{ color: '#7f8c8d', fontSize: '0.9rem', marginLeft: '10px' }}>
-              👤 {usuario.email}
-            </span>
-            
-            <button
-              onClick={handleLogout}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: '#f44336',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '0.9rem'
-              }}
-            >
-              🚪 Sair
-            </button>
-          </nav>
-        </div>
-      </header>
+        {usuario.email}
+      </span>
+      
+      <button
+        onClick={handleLogout}
+        style={{
+          padding: '8px 16px',
+          backgroundColor: 'transparent',
+          color: '#ea4335',
+          border: '1px solid #ea4335',
+          borderRadius: '6px',
+          cursor: 'pointer',
+          fontSize: '0.875rem',
+          fontWeight: '500',
+          transition: 'all 0.2s ease'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.backgroundColor = '#ea4335';
+          e.currentTarget.style.color = '#ffffff';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.backgroundColor = 'transparent';
+          e.currentTarget.style.color = '#ea4335';
+        }}
+      >
+        Sair
+      </button>
+    </nav>
+  </div>
+</header>
 
       <main>
-        {paginaAtual === 'home' && (
-          <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
-            <section style={{
-              backgroundColor: 'white',
-              padding: '30px',
-              borderRadius: '12px',
-              marginBottom: '30px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-            }}>
-              <h2 style={{ color: '#2e7d32', marginBottom: '15px' }}>
-                ✅ Sistema Funcionando!
-              </h2>
-              <p style={{ fontSize: '1.1rem', lineHeight: '1.6', color: '#424242' }}>
-                Sistema de autenticação e entradas completo! <br/>
-                - Cadastre <strong>👥 Membros</strong><br/>
-                - Lance <strong>💰 Entradas</strong> (dízimos, ofertas, etc.)
-              </p>
-            </section>
-
-            <h2 style={{ fontSize: '1.5rem', marginBottom: '20px' }}>📊 Regras de Rateio</h2>
-            <div style={{ 
-              display: 'grid', 
-              gap: '20px',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))'
-            }}>
-              <div style={{
-                backgroundColor: 'white',
-                padding: '20px',
-                borderRadius: '12px',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-              }}>
-                <h3 style={{ color: '#1976d2', marginBottom: '10px' }}>💰 Dízimos e Ofertas</h3>
-                <div style={{ fontSize: '0.9rem', lineHeight: '1.8' }}>
-                  <div>🏛️ Central: <strong>60%</strong></div>
-                  <div>🏠 Local: <strong>40%</strong></div>
-                </div>
-              </div>
-
-              <div style={{
-                backgroundColor: 'white',
-                padding: '20px',
-                borderRadius: '12px',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-              }}>
-                <h3 style={{ color: '#7b1fa2', marginBottom: '10px' }}>🍞 Santa Ceia</h3>
-                <div style={{ fontSize: '0.9rem', lineHeight: '1.8' }}>
-                  <div>✝️ Missões: <strong>100%</strong></div>
-                </div>
-              </div>
-
-              <div style={{
-                backgroundColor: 'white',
-                padding: '20px',
-                borderRadius: '12px',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-              }}>
-                <h3 style={{ color: '#388e3c', marginBottom: '10px' }}>🍔 Cantina/Promoções</h3>
-                <div style={{ fontSize: '0.9rem', lineHeight: '1.8' }}>
-                  <div>🏠 Local: <strong>100%</strong></div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-        
+        {paginaAtual === 'dashboard' && <Dashboard />}
         {paginaAtual === 'membros' && <Membros />}
         {paginaAtual === 'entradas' && <Entradas />}
       </main>

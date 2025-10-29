@@ -22,65 +22,136 @@ function Membros() {
   };
 
   return (
-    <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '20px' }}>
-      <h1 style={{ fontSize: '2rem', color: '#2c3e50', marginBottom: '30px' }}>
-        👥 Gerenciar Membros
-      </h1>
+    <div style={{
+      maxWidth: '1400px',
+      margin: '0 auto',
+      padding: '32px 24px'
+    }}>
+      {/* Cabeçalho */}
+      <div style={{ marginBottom: '32px' }}>
+        <h1 style={{
+          fontSize: '1.875rem',
+          fontWeight: '600',
+          color: '#202124',
+          marginBottom: '8px',
+          letterSpacing: '-0.5px'
+        }}>
+          Membros
+        </h1>
+        <p style={{
+          fontSize: '0.875rem',
+          color: '#5f6368'
+        }}>
+          Gerencie o cadastro de membros da igreja
+        </p>
+      </div>
       
-      <div style={{ 
-        display: 'grid', 
-        gap: '30px',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))'
-      }}>
+      {/* Formulário de Cadastro */}
+      <div style={{ marginBottom: '32px' }}>
         <FormMembro onSucesso={carregarMembros} />
       </div>
       
-      <div style={{ marginTop: '30px' }}>
+      {/* Lista de Membros */}
+      <div style={{
+        backgroundColor: '#ffffff',
+        borderRadius: '12px',
+        padding: '24px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+        border: '1px solid #e8eaed'
+      }}>
         <div style={{
-          backgroundColor: 'white',
-          padding: '30px',
-          borderRadius: '12px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '20px'
         }}>
-          <h2 style={{ color: '#2c3e50', marginBottom: '20px' }}>
-            📋 Membros Cadastrados ({membros.length})
+          <h2 style={{
+            fontSize: '1.125rem',
+            fontWeight: '500',
+            color: '#202124',
+            margin: 0
+          }}>
+            Membros Cadastrados
           </h2>
-          
-          {carregando ? (
-            <p>⏳ Carregando...</p>
-          ) : membros.length === 0 ? (
-            <p style={{ color: '#7f8c8d' }}>Nenhum membro cadastrado ainda.</p>
-          ) : (
-            <div style={{ 
-              display: 'grid', 
-              gap: '15px',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))'
-            }}>
-              {membros.map(membro => (
-                <div key={membro.id} style={{
-                  padding: '15px',
-                  backgroundColor: '#f5f5f5',
-                  borderRadius: '8px',
-                  borderLeft: '4px solid #2196F3'
-                }}>
-                  <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>
-                    👤 {membro.nome}
-                  </div>
-                  {membro.telefone && (
-                    <div style={{ fontSize: '0.9rem', color: '#666' }}>
-                      📱 {membro.telefone}
-                    </div>
-                  )}
-                  {membro.email && (
-                    <div style={{ fontSize: '0.9rem', color: '#666' }}>
-                      📧 {membro.email}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
+          <span style={{
+            fontSize: '0.875rem',
+            color: '#5f6368',
+            backgroundColor: '#f1f3f4',
+            padding: '4px 12px',
+            borderRadius: '12px',
+            fontWeight: '500'
+          }}>
+            {membros.length} {membros.length === 1 ? 'membro' : 'membros'}
+          </span>
         </div>
+        
+        {carregando ? (
+          <div style={{
+            textAlign: 'center',
+            padding: '40px',
+            color: '#5f6368'
+          }}>
+            Carregando membros...
+          </div>
+        ) : membros.length === 0 ? (
+          <div style={{
+            textAlign: 'center',
+            padding: '40px',
+            color: '#5f6368'
+          }}>
+            Nenhum membro cadastrado ainda.
+          </div>
+        ) : (
+          <div style={{ 
+            display: 'grid', 
+            gap: '12px',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))'
+          }}>
+            {membros.map(membro => (
+              <div key={membro.id} style={{
+                padding: '16px',
+                backgroundColor: '#f8f9fa',
+                borderRadius: '8px',
+                border: '1px solid #e8eaed',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#ffffff';
+                e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#f8f9fa';
+                e.currentTarget.style.boxShadow = 'none';
+              }}>
+                <div style={{
+                  fontWeight: '500',
+                  marginBottom: '8px',
+                  color: '#202124',
+                  fontSize: '0.9375rem'
+                }}>
+                  {membro.nome}
+                </div>
+                {membro.telefone && (
+                  <div style={{
+                    fontSize: '0.8125rem',
+                    color: '#5f6368',
+                    marginBottom: '4px'
+                  }}>
+                    📱 {membro.telefone}
+                  </div>
+                )}
+                {membro.email && (
+                  <div style={{
+                    fontSize: '0.8125rem',
+                    color: '#5f6368'
+                  }}>
+                    📧 {membro.email}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

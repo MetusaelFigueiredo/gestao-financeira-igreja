@@ -4,6 +4,7 @@ import Entradas from './pages/Entradas';
 import Membros from './pages/Membros';
 import { logout, observarAutenticacao } from './services/auth';
 import Dashboard from './pages/Dashboard';
+import Despesas from './pages/Despesas';
 
 function App() {
   const [usuario, setUsuario] = useState(null);
@@ -158,6 +159,33 @@ function App() {
         Entradas
       </button>
       
+        <button
+  onClick={() => setPaginaAtual('despesas')}
+  style={{
+    padding: '8px 16px',
+    backgroundColor: paginaAtual === 'despesas' ? '#1a73e8' : 'transparent',
+    color: paginaAtual === 'despesas' ? '#ffffff' : '#5f6368',
+    border: 'none',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    fontWeight: '500',
+    fontSize: '0.875rem',
+    transition: 'all 0.2s ease'
+  }}
+  onMouseEnter={(e) => {
+    if (paginaAtual !== 'despesas') {
+      e.currentTarget.style.backgroundColor = '#f1f3f4';
+    }
+  }}
+  onMouseLeave={(e) => {
+    if (paginaAtual !== 'despesas') {
+      e.currentTarget.style.backgroundColor = 'transparent';
+    }
+  }}
+>
+  Despesas
+</button>
+
       <div style={{
         width: '1px',
         height: '24px',
@@ -173,6 +201,7 @@ function App() {
         {usuario.email}
       </span>
       
+
       <button
         onClick={handleLogout}
         style={{
@@ -205,6 +234,7 @@ function App() {
         {paginaAtual === 'dashboard' && <Dashboard />}
         {paginaAtual === 'membros' && <Membros />}
         {paginaAtual === 'entradas' && <Entradas />}
+        {paginaAtual === 'despesas' && <Despesas usuarioEmail={usuario.email} />}    
       </main>
     </div>
   );

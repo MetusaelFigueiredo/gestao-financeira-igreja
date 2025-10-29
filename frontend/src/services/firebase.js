@@ -1,24 +1,19 @@
-// Importações do Firebase
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 
-// Configuração do Firebase (pega do arquivo .env)
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID
+  apiKey: "AIzaSyDR0gXHBys8cPMsUu43ECOGt8jaOs5xYkI",
+  authDomain: "gestao-financeira-igreja.firebaseapp.com",
+  projectId: "gestao-financeira-igreja",
+  storageBucket: "gestao-financeira-igreja.firebasestorage.app",
+  messagingSenderId: "389509997147",
+  appId: "1:389509997147:web:8c745a64fcdab324d6957e"
 };
 
-// Inicializa o Firebase
 const app = initializeApp(firebaseConfig);
 
-// Inicializa serviços
 export const auth = getAuth(app);
 export const db = getFirestore(app);
-
-// Exporta o app (caso precise)
-export default app;
+export const storage = getStorage(app);

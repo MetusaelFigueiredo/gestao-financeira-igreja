@@ -83,10 +83,10 @@ function Despesas({ usuarioEmail }) {
   };
 
   // Filtrar próximos vencimentos (próximos 7 dias, não pagos)
-  const proximosVencimentos = despesas
-    .filter(d => d.status === 'a_pagar' || d.status === 'vencido')
-    .sort((a, b) => a.dataVencimento - b.dataVencimento)
-    .slice(0, 5);
+ const proximosVencimentos = despesas
+  .filter(d => d.status === 'Pendente' || d.status === 'Vencida')
+  .sort((a, b) => new Date(a.vencimento) - new Date(b.vencimento))
+  .slice(0, 5);
 
   const mesNome = new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
 
@@ -413,7 +413,7 @@ function Despesas({ usuarioEmail }) {
                     fontSize: '0.8125rem',
                     color: '#5f6368'
                   }}>
-                    Vence em: {despesa.dataVencimento.toLocaleDateString('pt-BR')}
+                    Vence em: {new Date(despesa.vencimento).toLocaleDateString('pt-BR')}
                   </div>
                 </div>
                 
@@ -539,7 +539,7 @@ function Despesas({ usuarioEmail }) {
                       flexWrap: 'wrap'
                     }}>
                       <span>
-                        📅 Venc: {despesa.dataVencimento.toLocaleDateString('pt-BR')}
+                        📅 Venc: {new Date(despesa.vencimento).toLocaleDateString('pt-BR')}
                       </span>
                       <span>
                         {obterIconeFormaPagamento(despesa.formaPagamento)} {despesa.formaPagamento.replace('_', ' ')}

@@ -6,152 +6,117 @@ import {
   getDocs,
   doc,
   updateDoc,
+  deleteDoc,
   where,
   Timestamp 
 } from 'firebase/firestore';
-import { db } from './firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { db, storage } from './firebase';
+import imageCompression from 'browser-image-compression';
 
 /**
  * Categorias de despesas disponíveis
  */
 export const categoriasDespesas = {
-  'utilidades': {
-    nome: '💡 Utilidades',
-    subcategorias: ['Luz', 'Água', 'Internet', 'Telefone']
-  },
-  'pessoal': {
-    nome: '👷 Pessoal',
-    subcategorias: ['Zelador(a)', 'INSS']
-  },
-  'material': {
-    nome: '📚 Material',
-    subcategorias: ['Papel', 'Material de Escritório']
-  },
-  'cantina': {
-    nome: '🍔 Cantina',
-    subcategorias: ['Gás', 'Estoque', 'Equipamentos']
-  },
-  'transporte': {
-    nome: '🚗 Transporte',
-    subcategorias: ['Combustível', 'Manutenção Veículo']
-  },
-  'outros': {
-    nome: '📦 Outros',
-    subcategorias: ['Outros']
+  'Utilidades': ['Luz', 'Água', 'Internet', 'Telefone'],
+  'Salários': ['Zelador(a)', 'INSS', 'Pastor', 'Secretária'],
+  'Material': ['Papel', 'Material de Escritório', 'Limpeza'],
+  'Manutenção': ['Reparos', 'Conservação', 'Pintura'],
+  'Eventos': ['Cultos Especiais', 'Conferências', 'Eventos'],
+  'Outros': ['Diversos']
+};
+
+/**
+ * Upload de comprovante com compressão
+ */
+export const uploadComprovante = async (file, despesaId) => {
+  try {
+    // Verificar se o arquivo existe
+    if (!file) {
+      console.warn('⚠️ Nenhum arquivo fornecido para upload');
+      return null;
+    }
+
+    let fileToUpload = file;
+
+    // Comprimir imagem se for uma imagem
+    if (file.type && file.type.startsWith('image/')) {
+      const options = {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1920,
+        useWebWorker: true
+      };
+      
+      fileToUpload = await imageCompression(file, options);
+      console.log('✅ Imagem comprimida:', {
+        original: (file.size / 1024).toFixed(2) + ' KB',
+        comprimida: (fileToUpload.size / 1024).toFixed(2) + ' KB'
+      });
+    }
+
+    // Upload para o Firebase Storage
+    const timestamp = Date.now();
+    const fileName = `${despesaId}_${timestamp}_${file.name}`;
+    const storageRef = ref(storage, `comprovantes/${fileName}`);
+    
+    await uploadBytes(storageRef, fileToUpload);
+    const url = await getDownloadURL(storageRef);
+    
+    console.log('✅ Upload concluído:', url);
+    return url;
+    
+  } catch (error) {
+    console.error('❌ Erro no upload:', error);
+    throw error;
   }
 };
 
 /**
  * Adiciona uma nova despesa
  */
-export const adicionarDespesa = async (dados) => {
+export const adicionarDespesa = async (despesaData) => {
   try {
-    const despesasRef = collection(db, 'despesas');
-    
-    const documento = {
-      descricao: dados.descricao,
-      valor: parseFloat(dados.valor),
-      dataVencimento: Timestamp.fromDate(new Date(dados.dataVencimento)),
-      categoria: dados.categoria,
-      subcategoria: dados.subcategoria,
-      
-      status: 'a_pagar',
-      dataPagamento: null,
-      formaPagamento: dados.formaPagamento,
-      
-      conta: 'local', // Sempre local conforme definido
-      
-      parcelado: dados.parcelado || false,
-      numeroParcelas: dados.numeroParcelas || 0,
-      parcelaAtual: dados.parcelaAtual || 0,
-      despesaPaiId: dados.despesaPaiId || null,
-      
-      comprovante: dados.comprovante || null,
-      
-      fornecedor: dados.fornecedor || '',
-      numeroDocumento: dados.numeroDocumento || '',
-      observacoes: dados.observacoes || '',
-      
-      recorrente: dados.recorrente || false,
-      frequencia: dados.frequencia || null,
-      
-      criadoEm: Timestamp.now(),
-      atualizadoEm: Timestamp.now(),
-      criadoPor: dados.criadoPor || ''
+    console.log('📝 Dados recebidos:', despesaData);
+
+    const dadosParaSalvar = {
+      descricao: despesaData.descricao,
+      valor: parseFloat(despesaData.valor),
+      vencimento: Timestamp.fromDate(new Date(despesaData.vencimento)),
+      categoria: despesaData.categoria || 'Outros',
+      formaPagamento: despesaData.formaPagamento || 'Dinheiro',
+      status: despesaData.status || 'Pendente',
+      observacoes: despesaData.observacoes || '',
+      parcelado: despesaData.parcelado || false,
+      numeroParcelas: despesaData.parcelado ? parseInt(despesaData.numeroParcelas) : 1,
+      comprovanteURL: null,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now()
     };
+
+    console.log('💾 Salvando no Firestore:', dadosParaSalvar);
+
+    const docRef = await addDoc(collection(db, 'despesas'), dadosParaSalvar);
+    console.log('✅ Despesa salva com ID:', docRef.id);
+
+    // Upload de comprovante se existir
+    if (despesaData.comprovante && despesaData.comprovante instanceof File) {
+      console.log('📎 Fazendo upload do comprovante...');
+      const comprovanteURL = await uploadComprovante(despesaData.comprovante, docRef.id);
+      
+      if (comprovanteURL) {
+        await updateDoc(doc(db, 'despesas', docRef.id), {
+          comprovanteURL,
+          updatedAt: Timestamp.now()
+        });
+        console.log('✅ Comprovante anexado!');
+      }
+    }
+
+    return docRef.id;
     
-    const docRef = await addDoc(despesasRef, documento);
-    
-    console.log('✅ Despesa adicionada:', docRef.id);
-    return { success: true, id: docRef.id };
   } catch (error) {
     console.error('❌ Erro ao adicionar despesa:', error);
-    return { success: false, error: error.message };
-  }
-};
-
-/**
- * Adiciona despesa parcelada (cria o pai e todas as parcelas)
- */
-export const adicionarDespesaParcelada = async (dados) => {
-  try {
-    // 1. Criar despesa principal (PAI)
-    const despesaPai = {
-      ...dados,
-      parcelado: true,
-      numeroParcelas: dados.numeroParcelas,
-      parcelaAtual: 0,
-      status: 'parcialmente_pago',
-      observacoes: `${dados.observacoes} - Parcelado em ${dados.numeroParcelas}x`
-    };
-    
-    const resultadoPai = await adicionarDespesa(despesaPai);
-    
-    if (!resultadoPai.success) {
-      return resultadoPai;
-    }
-    
-    const despesaPaiId = resultadoPai.id;
-    const valorParcela = parseFloat(dados.valor) / parseInt(dados.numeroParcelas);
-    const dataBase = new Date(dados.dataVencimento);
-    
-    // 2. Criar todas as parcelas
-    const parcelas = [];
-    
-    for (let i = 1; i <= dados.numeroParcelas; i++) {
-      const dataVencimentoParcela = new Date(dataBase);
-      dataVencimentoParcela.setMonth(dataBase.getMonth() + (i - 1));
-      
-      const parcela = {
-        descricao: `${dados.descricao} - Parcela ${i}/${dados.numeroParcelas}`,
-        valor: valorParcela,
-        dataVencimento: dataVencimentoParcela.toISOString().split('T')[0],
-        categoria: dados.categoria,
-        subcategoria: dados.subcategoria,
-        formaPagamento: dados.formaPagamento,
-        parcelado: true,
-        numeroParcelas: dados.numeroParcelas,
-        parcelaAtual: i,
-        despesaPaiId: despesaPaiId,
-        fornecedor: dados.fornecedor,
-        observacoes: `Parcela ${i} de ${dados.numeroParcelas}`,
-        criadoPor: dados.criadoPor
-      };
-      
-      const resultadoParcela = await adicionarDespesa(parcela);
-      parcelas.push(resultadoParcela);
-    }
-    
-    console.log('✅ Despesa parcelada criada com sucesso!');
-    return { 
-      success: true, 
-      despesaPaiId, 
-      parcelas: parcelas.length 
-    };
-    
-  } catch (error) {
-    console.error('❌ Erro ao criar despesa parcelada:', error);
-    return { success: false, error: error.message };
+    throw error;
   }
 };
 
@@ -160,25 +125,30 @@ export const adicionarDespesaParcelada = async (dados) => {
  */
 export const buscarDespesas = async () => {
   try {
-    const despesasRef = collection(db, 'despesas');
-    const q = query(despesasRef, orderBy('dataVencimento', 'desc'));
+    const q = query(
+      collection(db, 'despesas'),
+      orderBy('vencimento', 'desc')
+    );
+    
     const snapshot = await getDocs(q);
     
-    const despesas = [];
-    snapshot.forEach((doc) => {
-      const data = doc.data();
-      despesas.push({
-        id: doc.id,
+    const despesas = snapshot.docs.map(docSnap => {
+      const data = docSnap.data();
+      return {
+        id: docSnap.id,
         ...data,
-        dataVencimento: data.dataVencimento.toDate(),
-        dataPagamento: data.dataPagamento ? data.dataPagamento.toDate() : null
-      });
+        vencimento: data.vencimento?.toDate().toISOString().split('T')[0],
+        createdAt: data.createdAt?.toDate(),
+        updatedAt: data.updatedAt?.toDate()
+      };
     });
     
-    return { success: true, despesas };
+    console.log('✅ Despesas carregadas:', despesas.length);
+    return despesas;
+    
   } catch (error) {
     console.error('❌ Erro ao buscar despesas:', error);
-    return { success: false, error: error.message };
+    throw error;
   }
 };
 
@@ -191,88 +161,121 @@ export const buscarDespesasMesAtual = async () => {
     const primeiroDiaMes = new Date(agora.getFullYear(), agora.getMonth(), 1);
     const ultimoDiaMes = new Date(agora.getFullYear(), agora.getMonth() + 1, 0);
     
-    const despesasRef = collection(db, 'despesas');
     const q = query(
-      despesasRef,
-      where('dataVencimento', '>=', Timestamp.fromDate(primeiroDiaMes)),
-      where('dataVencimento', '<=', Timestamp.fromDate(ultimoDiaMes)),
-      orderBy('dataVencimento', 'asc')
+      collection(db, 'despesas'),
+      where('vencimento', '>=', Timestamp.fromDate(primeiroDiaMes)),
+      where('vencimento', '<=', Timestamp.fromDate(ultimoDiaMes)),
+      orderBy('vencimento', 'asc')
     );
     
     const snapshot = await getDocs(q);
     
-    const despesas = [];
-    snapshot.forEach((doc) => {
-      const data = doc.data();
-      despesas.push({
-        id: doc.id,
+    const despesas = snapshot.docs.map(docSnap => {
+      const data = docSnap.data();
+      return {
+        id: docSnap.id,
         ...data,
-        dataVencimento: data.dataVencimento.toDate(),
-        dataPagamento: data.dataPagamento ? data.dataPagamento.toDate() : null
-      });
+        vencimento: data.vencimento?.toDate().toISOString().split('T')[0],
+        createdAt: data.createdAt?.toDate(),
+        updatedAt: data.updatedAt?.toDate()
+      };
     });
     
-    return { success: true, despesas };
+    console.log('✅ Despesas do mês carregadas:', despesas.length);
+    return despesas;
+    
   } catch (error) {
     console.error('❌ Erro ao buscar despesas do mês:', error);
-    return { success: false, error: error.message };
+    throw error;
   }
 };
 
 /**
- * Marca despesa como paga
+ * Atualizar despesa
  */
-export const marcarComoPago = async (despesaId, formaPagamento) => {
+export const atualizarDespesa = async (id, dados) => {
   try {
-    const despesaRef = doc(db, 'despesas', despesaId);
+    const dadosAtualizados = {
+      ...dados,
+      updatedAt: Timestamp.now()
+    };
+
+    if (dados.vencimento && typeof dados.vencimento === 'string') {
+      dadosAtualizados.vencimento = Timestamp.fromDate(new Date(dados.vencimento));
+    }
+
+    await updateDoc(doc(db, 'despesas', id), dadosAtualizados);
+    console.log('✅ Despesa atualizada:', id);
     
-    await updateDoc(despesaRef, {
-      status: 'pago',
-      dataPagamento: Timestamp.now(),
-      formaPagamento: formaPagamento,
-      atualizadoEm: Timestamp.now()
-    });
-    
-    console.log('✅ Despesa marcada como paga');
-    return { success: true };
   } catch (error) {
-    console.error('❌ Erro ao marcar como pago:', error);
-    return { success: false, error: error.message };
+    console.error('❌ Erro ao atualizar despesa:', error);
+    throw error;
   }
 };
 
 /**
- * Atualiza status de despesas vencidas
+ * Deletar despesa
+ */
+export const deletarDespesa = async (id) => {
+  try {
+    await deleteDoc(doc(db, 'despesas', id));
+    console.log('✅ Despesa deletada:', id);
+    
+  } catch (error) {
+    console.error('❌ Erro ao deletar despesa:', error);
+    throw error;
+  }
+};
+
+/**
+ * Atualizar status da despesa
+ */
+export const atualizarStatusDespesa = async (id, novoStatus) => {
+  try {
+    await updateDoc(doc(db, 'despesas', id), {
+      status: novoStatus,
+      updatedAt: Timestamp.now()
+    });
+    console.log('✅ Status atualizado:', id, novoStatus);
+    
+  } catch (error) {
+    console.error('❌ Erro ao atualizar status:', error);
+    throw error;
+  }
+};
+
+/**
+ * Atualizar status de despesas vencidas automaticamente
  */
 export const atualizarStatusVencidas = async () => {
   try {
-    const resultado = await buscarDespesas();
-    
-    if (!resultado.success) {
-      return resultado;
-    }
-    
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
+    const hojeTimestamp = Timestamp.fromDate(hoje);
+
+    const q = query(
+      collection(db, 'despesas'),
+      where('status', '==', 'Pendente'),
+      where('vencimento', '<', hojeTimestamp)
+    );
     
-    const despesasVencidas = resultado.despesas.filter(d => {
-      return d.status === 'a_pagar' && d.dataVencimento < hoje;
-    });
+    const snapshot = await getDocs(q);
     
-    for (const despesa of despesasVencidas) {
-      const despesaRef = doc(db, 'despesas', despesa.id);
-      await updateDoc(despesaRef, {
-        status: 'vencido',
-        atualizadoEm: Timestamp.now()
-      });
-    }
+    const atualizacoes = snapshot.docs.map(docSnapshot => 
+      updateDoc(doc(db, 'despesas', docSnapshot.id), {
+        status: 'Vencida',
+        updatedAt: Timestamp.now()
+      })
+    );
     
-    console.log(`✅ ${despesasVencidas.length} despesa(s) marcada(s) como vencida(s)`);
-    return { success: true, atualizadas: despesasVencidas.length };
+    await Promise.all(atualizacoes);
+    
+    console.log(`✅ ${atualizacoes.length} despesa(s) marcada(s) como vencida(s)`);
+    return atualizacoes.length;
     
   } catch (error) {
     console.error('❌ Erro ao atualizar despesas vencidas:', error);
-    return { success: false, error: error.message };
+    throw error;
   }
 };
 
@@ -281,13 +284,7 @@ export const atualizarStatusVencidas = async () => {
  */
 export const calcularResumoDespesas = async () => {
   try {
-    const resultado = await buscarDespesasMesAtual();
-    
-    if (!resultado.success) {
-      return resultado;
-    }
-    
-    const despesas = resultado.despesas;
+    const despesas = await buscarDespesasMesAtual();
     
     const resumo = {
       total: 0,
@@ -303,22 +300,44 @@ export const calcularResumoDespesas = async () => {
     despesas.forEach(d => {
       resumo.total += d.valor;
       
-      if (d.status === 'pago') {
+      if (d.status === 'Paga') {
         resumo.pagas += d.valor;
         resumo.quantidadePagas++;
-      } else if (d.status === 'vencido') {
+      } else if (d.status === 'Vencida') {
         resumo.vencidas += d.valor;
         resumo.quantidadeVencidas++;
-      } else if (d.status === 'a_pagar') {
+      } else if (d.status === 'Pendente') {
         resumo.pendentes += d.valor;
         resumo.quantidadePendentes++;
       }
     });
     
-    return { success: true, resumo };
+    return resumo;
     
   } catch (error) {
     console.error('❌ Erro ao calcular resumo:', error);
+    throw error;
+  }
+};
+
+/**
+ * Marca despesa como paga
+ */
+export const marcarComoPago = async (despesaId, formaPagamento) => {
+  try {
+    const despesaRef = doc(db, 'despesas', despesaId);
+    
+    await updateDoc(despesaRef, {
+      status: 'Paga',
+      dataPagamento: Timestamp.now(),
+      formaPagamento: formaPagamento,
+      updatedAt: Timestamp.now()
+    });
+    
+    console.log('✅ Despesa marcada como paga');
+    return { success: true };
+  } catch (error) {
+    console.error('❌ Erro ao marcar como pago:', error);
     return { success: false, error: error.message };
   }
 };

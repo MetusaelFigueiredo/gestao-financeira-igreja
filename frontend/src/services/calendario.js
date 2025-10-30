@@ -57,12 +57,12 @@ export const exportarParaCalendario = (despesa) => {
     const valorNum = parseFloat(despesa.valor);
     const valorFormatado = (!isNaN(valorNum) && valorNum >= 0) 
       ? valorNum.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-      : '0,00';
+      : 'Valor não informado';
     
-    // Sanitizar ID para UID (apenas caracteres alfanuméricos e hífens)
+    // Sanitizar ID para UID (permite alfanuméricos, hífens e underscores para compatibilidade com Firestore)
     const idSeguro = (despesa.id && typeof despesa.id === 'string')
-      ? despesa.id.replace(/[^a-zA-Z0-9-]/g, '')
-      : `despesa-${Date.now()}`;
+      ? despesa.id.replace(/[^a-zA-Z0-9-_]/g, '')
+      : `despesa-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
     // Criar descrição com informações da despesa
     const descricao = `Valor: R$ ${valorFormatado}\\n` +

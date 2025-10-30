@@ -52,9 +52,20 @@ export const exportarParaCalendario = (despesa) => {
     const categoriaSegura = escaparTextoICS(despesa.categoria) || 'Sem categoria';
     const formaPagamentoSegura = escaparTextoICS(despesa.formaPagamento) || 'Não informado';
     const observacoesSegura = despesa.observacoes ? escaparTextoICS(despesa.observacoes) : '';
+    
+    // Validar e formatar valor
+    const valorNum = parseFloat(despesa.valor);
+    const valorFormatado = (!isNaN(valorNum) && valorNum >= 0) 
+      ? valorNum.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      : '0,00';
+    
+    // Sanitizar ID para UID (apenas caracteres alfanuméricos e hífens)
+    const idSeguro = (despesa.id && typeof despesa.id === 'string')
+      ? despesa.id.replace(/[^a-zA-Z0-9-]/g, '')
+      : `despesa-${Date.now()}`;
 
     // Criar descrição com informações da despesa
-    const descricao = `Valor: R$ ${despesa.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\\n` +
+    const descricao = `Valor: R$ ${valorFormatado}\\n` +
                      `Categoria: ${categoriaSegura}\\n` +
                      `Forma de Pagamento: ${formaPagamentoSegura}\\n` +
                      (observacoesSegura ? `Observações: ${observacoesSegura}` : '');
@@ -67,7 +78,7 @@ export const exportarParaCalendario = (despesa) => {
       'CALSCALE:GREGORIAN',
       'METHOD:PUBLISH',
       'BEGIN:VEVENT',
-      `UID:${despesa.id}@gestao-financeira-igreja`,
+      `UID:${idSeguro}@gestao-financeira-igreja`,
       `DTSTAMP:${dtstamp}`,
       `DTSTART;VALUE=DATE:${dtstart}`,
       `DTEND;VALUE=DATE:${dtstart}`,

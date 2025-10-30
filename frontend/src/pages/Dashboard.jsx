@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { buscarResumoFinanceiro, buscarDespesasPendentes, buscarMetaMissoes } from '../services/dashboard';
+import { buscarResumoFinanceiro, buscarDespesasPendentes, buscarMetaMissoes, atualizarMetaMissoes } from '../services/dashboard';
 import { marcarComoPago } from '../services/despesas';
 import { formatarMoeda } from '../utils/formatacao';
 
@@ -8,6 +8,8 @@ function Dashboard() {
   const [despesas, setDespesas] = useState(null);
   const [missoes, setMissoes] = useState(null);
   const [carregando, setCarregando] = useState(true);
+  const [modoEdicaoMeta, setModoEdicaoMeta] = useState(false);
+  const [novaMeta, setNovaMeta] = useState('');
 
   useEffect(() => {
     carregarDados();
@@ -32,6 +34,7 @@ function Dashboard() {
     
     if (resultadoMissoes.success) {
       setMissoes(resultadoMissoes.missoes);
+      setNovaMeta(resultadoMissoes.missoes.meta);
     }
     
     setCarregando(false);
@@ -46,9 +49,26 @@ function Dashboard() {
     
     if (resultado.success) {
       alert('✅ Despesa marcada como paga!');
-      carregarDados(); // Recarrega o dashboard
+      carregarDados();
     } else {
       alert('❌ Erro ao marcar despesa como paga: ' + resultado.error);
+    }
+  };
+
+  const handleSalvarNovaMeta = async () => {
+    if (!novaMeta || novaMeta <= 0) {
+      alert('❌ Meta inválida!');
+      return;
+    }
+
+    const resultado = await atualizarMetaMissoes(novaMeta);
+    
+    if (resultado.success) {
+      alert('✅ Meta atualizada com sucesso!');
+      setModoEdicaoMeta(false);
+      carregarDados();
+    } else {
+      alert('❌ Erro ao atualizar meta: ' + resultado.error);
     }
   };
 
@@ -91,7 +111,6 @@ function Dashboard() {
     );
   }
 
-  // Se ainda não carregou os dados, não renderiza nada
   if (!resumo || !despesas || !missoes) {
     return null;
   }
@@ -247,7 +266,7 @@ function Dashboard() {
         </div>
       </div>
 
-      {/* SEÇÃO 2: Detalhamento de Entradas (5 cards) */}
+      {/* SEÇÃO 2: Detalhamento de Entradas (3 cards - SEM PIX E DINHEIRO SEPARADOS) */}
       <div style={{
         backgroundColor: '#ffffff',
         borderRadius: '16px',
@@ -266,10 +285,10 @@ function Dashboard() {
         </h2>
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
           gap: '16px'
         }}>
-          {/* Para Central */}
+          {/* Para Central COM cards PIX/Dinheiro DENTRO */}
           <div style={{
             backgroundColor: '#e8f0fe',
             borderRadius: '10px',
@@ -287,20 +306,52 @@ function Dashboard() {
             <div style={{
               fontSize: '1.5rem',
               fontWeight: '700',
-              color: '#1a73e8'
+              color: '#1a73e8',
+              marginBottom: '12px'
             }}>
               {formatarMoeda(resumo.totalCentral)}
             </div>
             <div style={{
               fontSize: '0.75rem',
               color: '#5f6368',
-              marginTop: '4px'
+              marginBottom: '12px'
             }}>
               60% dízimos/ofertas
             </div>
+
+            {/* Cards menores PIX/Dinheiro DENTRO */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '8px',
+              marginTop: '12px'
+            }}>
+              <div style={{
+                backgroundColor: 'rgba(255,255,255,0.7)',
+                borderRadius: '6px',
+                padding: '8px',
+                textAlign: 'center'
+              }}>
+                <div style={{ fontSize: '0.7rem', color: '#5f6368', marginBottom: '4px' }}>💳 PIX</div>
+                <div style={{ fontSize: '0.9rem', fontWeight: '600', color: '#1a73e8' }}>
+                  {formatarMoeda(resumo.totalPixCentral)}
+                </div>
+              </div>
+              <div style={{
+                backgroundColor: 'rgba(255,255,255,0.7)',
+                borderRadius: '6px',
+                padding: '8px',
+                textAlign: 'center'
+              }}>
+                <div style={{ fontSize: '0.7rem', color: '#5f6368', marginBottom: '4px' }}>💵 Dinheiro</div>
+                <div style={{ fontSize: '0.9rem', fontWeight: '600', color: '#1a73e8' }}>
+                  {formatarMoeda(resumo.totalDinheiroCentral)}
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Fica Local */}
+          {/* Fica Local COM cards PIX/Dinheiro DENTRO */}
           <div style={{
             backgroundColor: '#e6f4ea',
             borderRadius: '10px',
@@ -318,16 +369,48 @@ function Dashboard() {
             <div style={{
               fontSize: '1.5rem',
               fontWeight: '700',
-              color: '#34a853'
+              color: '#34a853',
+              marginBottom: '12px'
             }}>
               {formatarMoeda(resumo.totalLocal)}
             </div>
             <div style={{
               fontSize: '0.75rem',
               color: '#5f6368',
-              marginTop: '4px'
+              marginBottom: '12px'
             }}>
               40% dízimos + outros
+            </div>
+
+            {/* Cards menores PIX/Dinheiro DENTRO */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '8px',
+              marginTop: '12px'
+            }}>
+              <div style={{
+                backgroundColor: 'rgba(255,255,255,0.7)',
+                borderRadius: '6px',
+                padding: '8px',
+                textAlign: 'center'
+              }}>
+                <div style={{ fontSize: '0.7rem', color: '#5f6368', marginBottom: '4px' }}>💳 PIX</div>
+                <div style={{ fontSize: '0.9rem', fontWeight: '600', color: '#34a853' }}>
+                  {formatarMoeda(resumo.totalPixLocal)}
+                </div>
+              </div>
+              <div style={{
+                backgroundColor: 'rgba(255,255,255,0.7)',
+                borderRadius: '6px',
+                padding: '8px',
+                textAlign: 'center'
+              }}>
+                <div style={{ fontSize: '0.7rem', color: '#5f6368', marginBottom: '4px' }}>💵 Dinheiro</div>
+                <div style={{ fontSize: '0.9rem', fontWeight: '600', color: '#34a853' }}>
+                  {formatarMoeda(resumo.totalDinheiroLocal)}
+                </div>
+              </div>
             </div>
           </div>
 
@@ -361,72 +444,10 @@ function Dashboard() {
               100% santa ceia
             </div>
           </div>
-
-          {/* PIX */}
-          <div style={{
-            backgroundColor: '#f1f3f4',
-            borderRadius: '10px',
-            padding: '20px',
-            border: '2px solid #5f6368'
-          }}>
-            <div style={{
-              fontSize: '0.875rem',
-              color: '#5f6368',
-              fontWeight: '600',
-              marginBottom: '8px'
-            }}>
-              💳 PIX
-            </div>
-            <div style={{
-              fontSize: '1.5rem',
-              fontWeight: '700',
-              color: '#202124'
-            }}>
-              {formatarMoeda(resumo.totalPix)}
-            </div>
-            <div style={{
-              fontSize: '0.75rem',
-              color: '#5f6368',
-              marginTop: '4px'
-            }}>
-              {resumo.percentualPix}% do total local
-            </div>
-          </div>
-
-          {/* Dinheiro */}
-          <div style={{
-            backgroundColor: '#f1f3f4',
-            borderRadius: '10px',
-            padding: '20px',
-            border: '2px solid #5f6368'
-          }}>
-            <div style={{
-              fontSize: '0.875rem',
-              color: '#5f6368',
-              fontWeight: '600',
-              marginBottom: '8px'
-            }}>
-              💵 DINHEIRO
-            </div>
-            <div style={{
-              fontSize: '1.5rem',
-              fontWeight: '700',
-              color: '#202124'
-            }}>
-              {formatarMoeda(resumo.totalDinheiro)}
-            </div>
-            <div style={{
-              fontSize: '0.75rem',
-              color: '#5f6368',
-              marginTop: '4px'
-            }}>
-              {resumo.percentualDinheiro}% do total local
-            </div>
-          </div>
         </div>
       </div>
 
-      {/* SEÇÃO 3: Meta de Missões */}
+      {/* SEÇÃO 3: Meta de Missões COM EDIÇÃO */}
       <div style={{
         backgroundColor: '#ffffff',
         borderRadius: '16px',
@@ -435,14 +456,84 @@ function Dashboard() {
         boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
         border: '2px solid #fbbc04'
       }}>
-        <h2 style={{
-          fontSize: '1.25rem',
-          fontWeight: '700',
-          color: '#202124',
-          marginBottom: '16px'
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '16px',
+          flexWrap: 'wrap',
+          gap: '12px'
         }}>
-          🎯 META DE MISSÕES - {mesNome.toUpperCase()}
-        </h2>
+          <h2 style={{
+            fontSize: '1.25rem',
+            fontWeight: '700',
+            color: '#202124',
+            margin: 0
+          }}>
+            🎯 META DE MISSÕES - {mesNome.toUpperCase()}
+          </h2>
+          <button
+            onClick={() => setModoEdicaoMeta(!modoEdicaoMeta)}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: modoEdicaoMeta ? '#ea4335' : '#1a73e8',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '6px',
+              fontSize: '0.875rem',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'background-color 0.3s'
+            }}
+          >
+            {modoEdicaoMeta ? '✖️ Cancelar' : '✏️ Editar Meta'}
+          </button>
+        </div>
+
+        {modoEdicaoMeta && (
+          <div style={{
+            backgroundColor: '#f1f3f4',
+            borderRadius: '8px',
+            padding: '16px',
+            marginBottom: '16px',
+            display: 'flex',
+            gap: '12px',
+            alignItems: 'center',
+            flexWrap: 'wrap'
+          }}>
+            <label style={{ fontSize: '0.875rem', fontWeight: '600', color: '#202124' }}>
+              Nova Meta (R$):
+            </label>
+            <input
+              type="number"
+              value={novaMeta}
+              onChange={(e) => setNovaMeta(e.target.value)}
+              style={{
+                padding: '8px 12px',
+                fontSize: '1rem',
+                border: '2px solid #e8eaed',
+                borderRadius: '6px',
+                width: '150px'
+              }}
+            />
+            <button
+              onClick={handleSalvarNovaMeta}
+              style={{
+                padding: '8px 20px',
+                backgroundColor: '#34a853',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '0.875rem',
+                fontWeight: '600',
+                cursor: 'pointer'
+              }}
+            >
+              💾 Salvar
+            </button>
+          </div>
+        )}
+
         <div style={{
           display: 'grid',
           gridTemplateColumns: '1fr 1fr 1fr',
@@ -529,7 +620,7 @@ function Dashboard() {
         </div>
       </div>
 
-      {/* SEÇÃO 4: Despesas Pendentes */}
+      {/* SEÇÃO 4: Despesas Pendentes COM SALDO APÓS PAGAR */}
       <div style={{
         backgroundColor: '#ffffff',
         borderRadius: '16px',
@@ -801,7 +892,7 @@ function Dashboard() {
           </div>
         )}
 
-        {/* Totais e Alerta */}
+        {/* Totais e SALDO APÓS PAGAR */}
         <div style={{
           backgroundColor: '#f1f3f4',
           borderRadius: '12px',
@@ -812,12 +903,49 @@ function Dashboard() {
             fontSize: '1.125rem',
             fontWeight: '700',
             color: '#202124',
-            marginBottom: '12px'
+            marginBottom: '8px'
           }}>
             💰 TOTAL A PAGAR: {formatarMoeda(despesas.totais.geral)}
           </div>
           
-          {resumo.totalLocal < despesas.totais.geral && (
+          <div style={{
+            fontSize: '1rem',
+            fontWeight: '600',
+            color: '#5f6368',
+            marginBottom: '12px'
+          }}>
+            💵 SALDO DISPONÍVEL: {formatarMoeda(resumo.totalLocal)}
+          </div>
+
+          <div style={{
+            height: '2px',
+            backgroundColor: '#e8eaed',
+            margin: '12px 0'
+          }} />
+          
+          {resumo.totalLocal >= despesas.totais.geral ? (
+            <div style={{
+              backgroundColor: '#e6f4ea',
+              borderRadius: '8px',
+              padding: '16px',
+              border: '2px solid #34a853'
+            }}>
+              <div style={{
+                fontSize: '1.125rem',
+                fontWeight: '700',
+                color: '#137333',
+                marginBottom: '4px'
+              }}>
+                ✅ SALDO APÓS PAGAR: {formatarMoeda(resumo.totalLocal - despesas.totais.geral)}
+              </div>
+              <div style={{
+                fontSize: '0.875rem',
+                color: '#5f6368'
+              }}>
+                Saldo suficiente para cobrir todas as despesas pendentes
+              </div>
+            </div>
+          ) : (
             <div style={{
               backgroundColor: '#fce8e6',
               borderRadius: '8px',
@@ -825,18 +953,18 @@ function Dashboard() {
               border: '2px solid #ea4335'
             }}>
               <div style={{
-                fontSize: '1rem',
+                fontSize: '1.125rem',
                 fontWeight: '700',
                 color: '#c5221f',
-                marginBottom: '8px'
+                marginBottom: '4px'
               }}>
-                ⚠️ ATENÇÃO: Saldo disponível não cobre todas as contas!
+                ⚠️ FALTAM: {formatarMoeda(despesas.totais.geral - resumo.totalLocal)}
               </div>
               <div style={{
                 fontSize: '0.875rem',
                 color: '#5f6368'
               }}>
-                Faltam: {formatarMoeda(despesas.totais.geral - resumo.totalLocal)}
+                Saldo insuficiente para cobrir todas as despesas pendentes
               </div>
             </div>
           )}
@@ -847,7 +975,8 @@ function Dashboard() {
               borderRadius: '8px',
               padding: '16px',
               border: '2px solid #34a853',
-              textAlign: 'center'
+              textAlign: 'center',
+              marginTop: '12px'
             }}>
               <div style={{
                 fontSize: '1rem',

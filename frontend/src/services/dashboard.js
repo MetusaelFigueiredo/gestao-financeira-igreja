@@ -1,8 +1,48 @@
 import { buscarEntradas } from './entradas';
 import { buscarDespesas } from './despesas';
+import { db } from './firebase';
+import { doc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
 
 // Configuração da meta de missões (pode ser alterada conforme necessário)
 const META_MISSOES = 5000;
+
+/**
+ * Busca a meta de missões configurada no Firestore
+ */
+export const buscarMetaMissoesConfig = async () => {
+  try {
+    const configRef = doc(db, 'configuracoes', 'config-geral');
+    const configDoc = await getDoc(configRef);
+    
+    if (configDoc.exists() && configDoc.data().metaMissoes) {
+      return configDoc.data().metaMissoes;
+    }
+    
+    return META_MISSOES; // valor padrão
+  } catch (error) {
+    console.error('Erro ao buscar meta de missões:', error);
+    return META_MISSOES;
+  }
+};
+
+/**
+ * Atualiza a meta de missões no Firestore
+ */
+export const atualizarMetaMissoes = async (novaMeta) => {
+  try {
+    const configRef = doc(db, 'configuracoes', 'config-geral');
+    
+    await setDoc(configRef, {
+      metaMissoes: parseFloat(novaMeta),
+      atualizadoEm: Timestamp.now()
+    }, { merge: true });
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Erro ao atualizar meta de missões:', error);
+    return { success: false, error: error.message };
+  }
+};
 
 /**
  * Calcula os saldos totais de todas as contas separando por forma de recebimento
@@ -184,8 +224,10 @@ export const buscarResumoFinanceiro = async () => {
     let totalCentral = 0;
     let totalLocal = 0;
     let totalMissoes = 0;
-    let totalPixLocal = 0; // PIX apenas das entradas locais
-    let totalDinheiroLocal = 0; // Dinheiro apenas das entradas locais
+    let totalPixLocal = 0;
+    let totalDinheiroLocal = 0;
+    let totalPixCentral = 0;
+    let totalDinheiroCentral = 0;
 
     // Calcula rateios e formas de pagamento
     entradasMesAtual.forEach(entrada => {
@@ -197,7 +239,16 @@ export const buscarResumoFinanceiro = async () => {
         totalLocal += entrada.rateio.local || 0;
         totalMissoes += entrada.rateio.missoes || 0;
 
-        // PIX e Dinheiro APENAS das entradas que ficam local (rateio.local > 0)
+        // PIX e Dinheiro para CENTRAL
+        if (entrada.rateio.central > 0) {
+          if (formaRecebimento === 'pix') {
+            totalPixCentral += entrada.rateio.central;
+          } else if (formaRecebimento === 'dinheiro') {
+            totalDinheiroCentral += entrada.rateio.central;
+          }
+        }
+
+        // PIX e Dinheiro para LOCAL
         if (entrada.rateio.local > 0) {
           if (formaRecebimento === 'pix') {
             totalPixLocal += entrada.rateio.local;
@@ -219,13 +270,18 @@ export const buscarResumoFinanceiro = async () => {
 
     const totalDespesasPagas = despesasPagasMes.reduce((sum, d) => sum + d.valor, 0);
 
-    // Calcula saldo do mês
+    // Calcula saldo do mês (APENAS LOCAL - DESPESAS)
     const saldoMes = totalLocal - totalDespesasPagas;
 
-    // Calcula percentuais de PIX e Dinheiro
+    // Calcula percentuais de PIX e Dinheiro LOCAL
     const totalLocalRecebido = totalPixLocal + totalDinheiroLocal;
-    const percentualPix = totalLocalRecebido > 0 ? (totalPixLocal / totalLocalRecebido) * 100 : 0;
-    const percentualDinheiro = totalLocalRecebido > 0 ? (totalDinheiroLocal / totalLocalRecebido) * 100 : 0;
+    const percentualPixLocal = totalLocalRecebido > 0 ? (totalPixLocal / totalLocalRecebido) * 100 : 0;
+    const percentualDinheiroLocal = totalLocalRecebido > 0 ? (totalDinheiroLocal / totalLocalRecebido) * 100 : 0;
+
+    // Calcula percentuais de PIX e Dinheiro CENTRAL
+    const totalCentralRecebido = totalPixCentral + totalDinheiroCentral;
+    const percentualPixCentral = totalCentralRecebido > 0 ? (totalPixCentral / totalCentralRecebido) * 100 : 0;
+    const percentualDinheiroCentral = totalCentralRecebido > 0 ? (totalDinheiroCentral / totalCentralRecebido) * 100 : 0;
 
     return {
       success: true,
@@ -235,8 +291,16 @@ export const buscarResumoFinanceiro = async () => {
         totalMissoes,
         totalPix: totalPixLocal,
         totalDinheiro: totalDinheiroLocal,
-        percentualPix: percentualPix.toFixed(1),
-        percentualDinheiro: percentualDinheiro.toFixed(1),
+        percentualPix: percentualPixLocal.toFixed(1),
+        percentualDinheiro: percentualDinheiroLocal.toFixed(1),
+        totalPixCentral,
+        totalDinheiroCentral,
+        percentualPixCentral: percentualPixCentral.toFixed(1),
+        percentualDinheiroCentral: percentualDinheiroCentral.toFixed(1),
+        totalPixLocal,
+        totalDinheiroLocal,
+        percentualPixLocal: percentualPixLocal.toFixed(1),
+        percentualDinheiroLocal: percentualDinheiroLocal.toFixed(1),
         totalDespesasPagas,
         saldoMes
       }
@@ -319,10 +383,10 @@ export const buscarDespesasPendentes = async () => {
 
 /**
  * Busca e calcula progresso da meta de missões
- * Meta fixa: R$ 5.000,00
  */
 export const buscarMetaMissoes = async () => {
   try {
+    const metaConfig = await buscarMetaMissoesConfig();
     const resultado = await buscarEntradas();
     
     if (!resultado.success) {
@@ -349,14 +413,14 @@ export const buscarMetaMissoes = async () => {
       }
     });
 
-    const progresso = (totalMissoes / META_MISSOES) * 100;
-    const falta = Math.max(0, META_MISSOES - totalMissoes);
+    const progresso = (totalMissoes / metaConfig) * 100;
+    const falta = Math.max(0, metaConfig - totalMissoes);
 
     return {
       success: true,
       missoes: {
         arrecadado: totalMissoes,
-        meta: META_MISSOES,
+        meta: metaConfig,
         progresso: Math.min(100, progresso).toFixed(1),
         falta
       }

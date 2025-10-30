@@ -5,7 +5,8 @@ import {
   buscarDespesasMesAtual,
   calcularResumoDespesas,
   marcarComoPago,
-  atualizarStatusVencidas
+  atualizarStatusVencidas,
+  deletarDespesa
 } from '../services/despesas';
 import { formatarMoeda } from '../utils/formatacao';
 
@@ -14,6 +15,7 @@ function Despesas({ usuarioEmail }) {
   const [resumo, setResumo] = useState(null);
   const [carregando, setCarregando] = useState(true);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const [despesaEditando, setDespesaEditando] = useState(null);
 
   useEffect(() => {
     carregarDados();
@@ -22,71 +24,129 @@ function Despesas({ usuarioEmail }) {
   const carregarDados = async () => {
     setCarregando(true);
     
-    // Atualizar status de vencidas primeiro
-    await atualizarStatusVencidas();
-    
-    const [resultadoDespesas, resultadoResumo] = await Promise.all([
-      buscarDespesasMesAtual(),
-      calcularResumoDespesas()
-    ]);
-    
-    if (resultadoDespesas.success) {
-      setDespesas(resultadoDespesas.despesas);
+    try {
+      // Atualizar status de vencidas primeiro
+      await atualizarStatusVencidas();
+      
+      const [despesasCarregadas, resumoCarregado] = await Promise.all([
+        buscarDespesasMesAtual(),
+        calcularResumoDespesas()
+      ]);
+      
+      console.log('✅ Despesas carregadas:', despesasCarregadas);
+      console.log('✅ Resumo calculado:', resumoCarregado);
+      
+      setDespesas(despesasCarregadas || []);
+      setResumo(resumoCarregado || null);
+      
+    } catch (error) {
+      console.error('❌ Erro ao carregar dados:', error);
+      setDespesas([]);
+      setResumo(null);
+    } finally {
+      setCarregando(false);
     }
-    
-    if (resultadoResumo.success) {
-      setResumo(resultadoResumo.resumo);
-    }
-    
-    setCarregando(false);
   };
 
   const handleMarcarPago = async (despesaId, formaPagamento) => {
     const resultado = await marcarComoPago(despesaId, formaPagamento);
     
     if (resultado.success) {
+      alert('✅ Despesa marcada como paga!');
       carregarDados();
+    } else {
+      alert('❌ Erro ao marcar como paga!');
     }
+  };
+
+  const handleEditarDespesa = (despesa) => {
+    console.log('📝 Editando despesa:', despesa);
+    setDespesaEditando(despesa);
+    setMostrarFormulario(true);
+    // Scroll para o topo
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleExcluirDespesa = async (despesaId, descricao) => {
+    const confirmar = window.confirm(
+      `⚠️ Tem certeza que deseja excluir a despesa:\n\n"${descricao}"?\n\nEsta ação não pode ser desfeita!`
+    );
+
+    if (confirmar) {
+      try {
+        await deletarDespesa(despesaId);
+        alert('✅ Despesa excluída com sucesso!');
+        carregarDados();
+      } catch (error) {
+        console.error('❌ Erro ao excluir despesa:', error);
+        alert('❌ Erro ao excluir despesa: ' + error.message);
+      }
+    }
+  };
+
+  const handleFecharFormulario = () => {
+    setMostrarFormulario(false);
+    setDespesaEditando(null);
+  };
+
+  const handleSucessoFormulario = () => {
+    carregarDados();
+    handleFecharFormulario();
   };
 
   const obterCorStatus = (status) => {
     const cores = {
-      'a_pagar': '#fbbc04',
-      'pago': '#34a853',
-      'vencido': '#ea4335',
-      'cancelado': '#5f6368',
-      'parcialmente_pago': '#1a73e8'
+      'Pendente': '#fbbc04',
+      'Paga': '#34a853',
+      'Vencida': '#ea4335',
+      'Cancelado': '#5f6368'
     };
     return cores[status] || '#5f6368';
   };
 
   const obterTextoStatus = (status) => {
-    const textos = {
-      'a_pagar': 'A Pagar',
-      'pago': 'Pago',
-      'vencido': 'Vencido',
-      'cancelado': 'Cancelado',
-      'parcialmente_pago': 'Parc. Pago'
-    };
-    return textos[status] || status;
+    return status;
   };
 
   const obterIconeFormaPagamento = (forma) => {
     const icones = {
-      'pix': '💳',
-      'dinheiro': '💵',
-      'cartao_credito': '💳',
-      'boleto': '📄',
-      'transferencia': '🏦'
+      'PIX': '💳',
+      'Dinheiro': '💵',
+      'Crédito': '💳',
+      'Débito': '💳',
+      'Boleto': '📄',
+      'Transferência': '🏦'
     };
     return icones[forma] || '💰';
   };
 
+  // Função auxiliar para converter data
+  const converterData = (data) => {
+    if (!data) return null;
+    
+    // Se já é Date
+    if (data instanceof Date) {
+      return data;
+    }
+    
+    // Se é Timestamp do Firebase
+    if (data && typeof data.toDate === 'function') {
+      return data.toDate();
+    }
+    
+    // Se é string
+    if (typeof data === 'string') {
+      return new Date(data);
+    }
+    
+    return null;
+  };
+
   // Filtrar próximos vencimentos (próximos 7 dias, não pagos)
- const proximosVencimentos = despesas
-  .filter(d => d.status === 'Pendente' || d.status === 'Vencida')
-  .sort((a, b) => new Date(a.vencimento) - new Date(b.vencimento))
-  .slice(0, 5);
+  const proximosVencimentos = despesas
+    .filter(d => d.status === 'Pendente' || d.status === 'Vencida')
+    .sort((a, b) => new Date(a.vencimento) - new Date(b.vencimento))
+    .slice(0, 5);
 
   const mesNome = new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
 
@@ -181,7 +241,10 @@ function Despesas({ usuarioEmail }) {
           </div>
           
           <button
-            onClick={() => setMostrarFormulario(!mostrarFormulario)}
+            onClick={() => {
+              setDespesaEditando(null);
+              setMostrarFormulario(!mostrarFormulario);
+            }}
             style={{
               padding: '14px 28px',
               backgroundColor: mostrarFormulario ? '#5f6368' : '#ea4335',
@@ -212,10 +275,9 @@ function Despesas({ usuarioEmail }) {
       {mostrarFormulario && (
         <div style={{ marginBottom: '32px' }}>
           <FormDespesa 
-            onSucesso={() => {
-              carregarDados();
-              setMostrarFormulario(false);
-            }}
+            onSuccess={handleSucessoFormulario}
+            onCancel={handleFecharFormulario}
+            despesaParaEditar={despesaEditando}
             usuarioEmail={usuarioEmail}
           />
         </div>
@@ -396,9 +458,9 @@ function Despesas({ usuarioEmail }) {
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 padding: '16px',
-                backgroundColor: despesa.status === 'vencido' ? '#fce8e6' : '#fef7e0',
+                backgroundColor: despesa.status === 'Vencida' ? '#fce8e6' : '#fef7e0',
                 borderRadius: '8px',
-                border: `2px solid ${despesa.status === 'vencido' ? '#ea4335' : '#fbbc04'}`
+                border: `2px solid ${despesa.status === 'Vencida' ? '#ea4335' : '#fbbc04'}`
               }}>
                 <div style={{ flex: 1 }}>
                   <div style={{
@@ -420,7 +482,7 @@ function Despesas({ usuarioEmail }) {
                 <div style={{
                   fontSize: '1.25rem',
                   fontWeight: '700',
-                  color: despesa.status === 'vencido' ? '#ea4335' : '#fbbc04'
+                  color: despesa.status === 'Vencida' ? '#ea4335' : '#fbbc04'
                 }}>
                   {formatarMoeda(despesa.valor)}
                 </div>
@@ -517,7 +579,7 @@ function Despesas({ usuarioEmail }) {
                           fontWeight: '600',
                           border: '1px solid #1a73e8'
                         }}>
-                          {despesa.parcelaAtual}/{despesa.numeroParcelas}
+                          {despesa.parcelaAtual || 1}/{despesa.numeroParcelas}
                         </div>
                       )}
                     </div>
@@ -542,18 +604,29 @@ function Despesas({ usuarioEmail }) {
                         📅 Venc: {new Date(despesa.vencimento).toLocaleDateString('pt-BR')}
                       </span>
                       <span>
-                        {obterIconeFormaPagamento(despesa.formaPagamento)} {despesa.formaPagamento.replace('_', ' ')}
+                        {obterIconeFormaPagamento(despesa.formaPagamento)} {despesa.formaPagamento}
                       </span>
-                      {despesa.fornecedor && (
+                      {despesa.categoria && (
                         <span>
-                          🏢 {despesa.fornecedor}
+                          🏷️ {despesa.categoria}
                         </span>
                       )}
                     </div>
 
-                    {despesa.comprovante && (
+                    {despesa.observacoes && (
+                      <div style={{
+                        marginTop: '8px',
+                        fontSize: '0.8125rem',
+                        color: '#5f6368',
+                        fontStyle: 'italic'
+                      }}>
+                        📝 {despesa.observacoes}
+                      </div>
+                    )}
+
+                    {despesa.comprovanteURL && (
                       <a
-                        href={despesa.comprovante.url}
+                        href={despesa.comprovanteURL}
                         target="_blank"
                         rel="noopener noreferrer"
                         style={{
@@ -584,37 +657,101 @@ function Despesas({ usuarioEmail }) {
                     <div style={{
                       fontSize: '1.75rem',
                       fontWeight: '700',
-                      color: despesa.status === 'pago' ? '#34a853' : '#202124'
+                      color: despesa.status === 'Paga' ? '#34a853' : '#202124'
                     }}>
                       {formatarMoeda(despesa.valor)}
                     </div>
 
-                    {despesa.status !== 'pago' && despesa.status !== 'cancelado' && (
+                    {/* Botões de Ação */}
+                    <div style={{
+                      display: 'flex',
+                      gap: '8px',
+                      flexWrap: 'wrap',
+                      justifyContent: 'flex-end'
+                    }}>
+                      {despesa.status !== 'Paga' && despesa.status !== 'Cancelado' && (
+                        <button
+                          onClick={() => handleMarcarPago(despesa.id, despesa.formaPagamento)}
+                          style={{
+                            padding: '8px 16px',
+                            backgroundColor: '#34a853',
+                            color: '#ffffff',
+                            border: 'none',
+                            borderRadius: '6px',
+                            fontSize: '0.75rem',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                            transition: 'all 0.2s ease'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = '#2d8e47';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = '#34a853';
+                          }}
+                        >
+                          ✓ Pagar
+                        </button>
+                      )}
+
                       <button
-                        onClick={() => handleMarcarPago(despesa.id, despesa.formaPagamento)}
+                        onClick={() => handleEditarDespesa(despesa)}
                         style={{
-                          padding: '10px 20px',
-                          backgroundColor: '#34a853',
+                          padding: '8px 16px',
+                          backgroundColor: '#1a73e8',
                           color: '#ffffff',
                           border: 'none',
                           borderRadius: '6px',
-                          fontSize: '0.8125rem',
+                          fontSize: '0.75rem',
                           fontWeight: '600',
                           cursor: 'pointer',
-                          whiteSpace: 'nowrap'
+                          whiteSpace: 'nowrap',
+                          transition: 'all 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#1557b0';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = '#1a73e8';
                         }}
                       >
-                        ✓ Marcar como Pago
+                        ✏️ Editar
                       </button>
-                    )}
 
-                    {despesa.status === 'pago' && despesa.dataPagamento && (
+                      <button
+                        onClick={() => handleExcluirDespesa(despesa.id, despesa.descricao)}
+                        style={{
+                          padding: '8px 16px',
+                          backgroundColor: '#ea4335',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '0.75rem',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap',
+                          transition: 'all 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#d33426';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = '#ea4335';
+                        }}
+                      >
+                        🗑️ Excluir
+                      </button>
+                    </div>
+
+                    {/* Data de Pagamento */}
+                    {despesa.status === 'Paga' && despesa.dataPagamento && (
                       <div style={{
                         fontSize: '0.75rem',
                         color: '#34a853',
                         fontWeight: '500'
                       }}>
-                        Pago em: {despesa.dataPagamento.toLocaleDateString('pt-BR')}
+                        Pago em: {converterData(despesa.dataPagamento)?.toLocaleDateString('pt-BR') || 'Data inválida'}
                       </div>
                     )}
                   </div>

@@ -3,7 +3,7 @@ import { adicionarEntrada } from '../services/entradas';
 import { buscarMembros } from '../services/membros';
 import { formatarMoeda, dataParaString } from '../utils/formatacao';
 
-function FormEntrada({ onSucesso }) {
+function FormEntrada({ onSucesso, usuarioEmail }) {
   const hoje = dataParaString(new Date());
   
   const [tipo, setTipo] = useState('dizimo');
@@ -77,7 +77,7 @@ function FormEntrada({ onSucesso }) {
       dadosEntrada.membroNome = membro.nome;
     }
     
-    const resultado = await adicionarEntrada(dadosEntrada);
+    const resultado = await adicionarEntrada(dadosEntrada, usuarioEmail);
     
     setCarregando(false);
     

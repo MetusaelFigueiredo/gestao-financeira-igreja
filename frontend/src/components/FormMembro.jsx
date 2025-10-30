@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { adicionarMembro } from '../services/membros';
 
-function FormMembro({ onSucesso }) {
+function FormMembro({ onSucesso, usuarioEmail }) {
   const [nome, setNome] = useState('');
   const [telefone, setTelefone] = useState('');
   const [email, setEmail] = useState('');
@@ -26,7 +26,7 @@ function FormMembro({ onSucesso }) {
       nome: nome.trim(),
       telefone: telefone.trim(),
       email: email.trim()
-    });
+    }, usuarioEmail);
     
     setCarregando(false);
     

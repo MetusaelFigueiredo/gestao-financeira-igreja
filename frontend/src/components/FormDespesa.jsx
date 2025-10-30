@@ -3,7 +3,7 @@ import { adicionarDespesa, atualizarDespesa } from '../services/despesas';
 import UploadComprovante from './UploadComprovante';
 import '../styles/FormDespesa.css';
 
-const FormDespesa = ({ onSuccess, onCancel, despesaParaEditar }) => {
+const FormDespesa = ({ onSuccess, onCancel, despesaParaEditar, usuarioEmail }) => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     descricao: '',
@@ -96,7 +96,7 @@ const [comprovanteURL, setComprovanteURL] = useState(null);
           numeroParcelas: formData.parcelado ? parseInt(formData.numeroParcelas) : 1
         };
 
-        await atualizarDespesa(despesaParaEditar.id, dadosParaAtualizar, comprovante);
+        await atualizarDespesa(despesaParaEditar.id, dadosParaAtualizar, comprovante, usuarioEmail);
         alert('✅ Despesa atualizada com sucesso!');
       } else {
         // CADASTRANDO
@@ -108,7 +108,7 @@ const [comprovanteURL, setComprovanteURL] = useState(null);
         comprovanteURL: comprovanteURL || null
         };
 
-        await adicionarDespesa(despesaData);
+        await adicionarDespesa(despesaData, usuarioEmail);
         alert('✅ Despesa cadastrada com sucesso!');
       }
       

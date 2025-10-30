@@ -71,7 +71,7 @@ export const uploadComprovante = async (file, despesaId) => {
 /**
  * Adiciona uma nova despesa
  */
-export const adicionarDespesa = async (despesaData) => {
+export const adicionarDespesa = async (despesaData, usuarioEmail) => {
   try {
     console.log('📝 Dados recebidos:', despesaData);
 
@@ -86,6 +86,7 @@ export const adicionarDespesa = async (despesaData) => {
       parcelado: despesaData.parcelado || false,
       numeroParcelas: despesaData.parcelado ? parseInt(despesaData.numeroParcelas) : 1,
       comprovanteURL: despesaData.comprovanteURL || null,
+      criadoPor: usuarioEmail,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now()
     };
@@ -194,7 +195,7 @@ export const buscarDespesasMesAtual = async () => {
 /**
  * Atualizar despesa
  */
-export const atualizarDespesa = async (id, dados, novoComprovante = null) => {
+export const atualizarDespesa = async (id, dados, novoComprovante = null, usuarioEmail) => {
   try {
     console.log('🔄 Atualizando despesa:', id, dados);
 
@@ -207,6 +208,7 @@ export const atualizarDespesa = async (id, dados, novoComprovante = null) => {
       observacoes: dados.observacoes || '',
       parcelado: dados.parcelado || false,
       numeroParcelas: dados.parcelado ? parseInt(dados.numeroParcelas) : 1,
+      editadoPor: usuarioEmail,
       updatedAt: Timestamp.now()
     };
 

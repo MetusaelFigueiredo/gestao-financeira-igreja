@@ -4,14 +4,16 @@ import {
   getDocs,
   query,
   orderBy,
-  Timestamp 
+  Timestamp,
+  doc,
+  updateDoc
 } from 'firebase/firestore';
 import { db } from './firebase';
 
 /**
  * Adiciona um novo membro
  */
-export const adicionarMembro = async (dados) => {
+export const adicionarMembro = async (dados, usuarioEmail) => {
   try {
     const membrosRef = collection(db, 'membros');
     
@@ -20,6 +22,7 @@ export const adicionarMembro = async (dados) => {
       telefone: dados.telefone || '',
       email: dados.email || '',
       ativo: true,
+      criadoPor: usuarioEmail,
       criadoEm: Timestamp.now()
     };
     
@@ -56,6 +59,31 @@ export const buscarMembros = async () => {
     return { success: true, membros };
   } catch (error) {
     console.error('❌ Erro ao buscar membros:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * Atualiza um membro
+ */
+export const atualizarMembro = async (id, dados, usuarioEmail) => {
+  try {
+    const membroRef = doc(db, 'membros', id);
+    
+    const dadosAtualizados = {
+      nome: dados.nome,
+      telefone: dados.telefone || '',
+      email: dados.email || '',
+      editadoPor: usuarioEmail,
+      updatedAt: Timestamp.now()
+    };
+    
+    await updateDoc(membroRef, dadosAtualizados);
+    
+    console.log('✅ Membro atualizado:', id);
+    return { success: true };
+  } catch (error) {
+    console.error('❌ Erro ao atualizar membro:', error);
     return { success: false, error: error.message };
   }
 };

@@ -5,7 +5,9 @@ import {
   orderBy, 
   getDocs,
   where,
-  Timestamp 
+  Timestamp,
+  doc,
+  updateDoc
 } from 'firebase/firestore';
 import { db } from './firebase';
 
@@ -39,7 +41,7 @@ const calcularRateio = (tipo, valor) => {
 /**
  * Adiciona uma nova entrada
  */
-export const adicionarEntrada = async (dados) => {
+export const adicionarEntrada = async (dados, usuarioEmail) => {
   try {
     const entradasRef = collection(db, 'entradas');
     
@@ -59,6 +61,7 @@ export const adicionarEntrada = async (dados) => {
         membroNome: dados.membroNome
       }),
       
+      criadoPor: usuarioEmail,
       criadoEm: Timestamp.now()
     };
     
@@ -122,6 +125,43 @@ export const buscarEntradasPorMembro = async (membroId) => {
     return { success: true, entradas };
   } catch (error) {
     console.error('❌ Erro ao buscar entradas do membro:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * Atualiza uma entrada
+ */
+export const atualizarEntrada = async (id, dados, usuarioEmail) => {
+  try {
+    const entradaRef = doc(db, 'entradas', id);
+    
+    const rateio = calcularRateio(dados.tipo, dados.valor);
+    
+    const dadosAtualizados = {
+      tipo: dados.tipo,
+      descricao: dados.descricao || '',
+      valor: parseFloat(dados.valor),
+      data: Timestamp.fromDate(new Date(dados.data)),
+      formaRecebimento: dados.formaRecebimento,
+      rateio: rateio,
+      
+      // Se for dízimo, guarda o membro
+      ...(dados.tipo === 'dizimo' && dados.membroId && {
+        membroId: dados.membroId,
+        membroNome: dados.membroNome
+      }),
+      
+      editadoPor: usuarioEmail,
+      updatedAt: Timestamp.now()
+    };
+    
+    await updateDoc(entradaRef, dadosAtualizados);
+    
+    console.log('✅ Entrada atualizada:', id);
+    return { success: true };
+  } catch (error) {
+    console.error('❌ Erro ao atualizar entrada:', error);
     return { success: false, error: error.message };
   }
 };

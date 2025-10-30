@@ -31,7 +31,6 @@ export const categoriasDespesas = {
  */
 export const uploadComprovante = async (file, despesaId) => {
   try {
-    // Verificar se o arquivo existe
     if (!file) {
       console.warn('⚠️ Nenhum arquivo fornecido para upload');
       return null;
@@ -39,7 +38,6 @@ export const uploadComprovante = async (file, despesaId) => {
 
     let fileToUpload = file;
 
-    // Comprimir imagem se for uma imagem
     if (file.type && file.type.startsWith('image/')) {
       const options = {
         maxSizeMB: 1,
@@ -54,7 +52,6 @@ export const uploadComprovante = async (file, despesaId) => {
       });
     }
 
-    // Upload para o Firebase Storage
     const timestamp = Date.now();
     const fileName = `${despesaId}_${timestamp}_${file.name}`;
     const storageRef = ref(storage, `comprovantes/${fileName}`);
@@ -98,7 +95,6 @@ export const adicionarDespesa = async (despesaData) => {
     const docRef = await addDoc(collection(db, 'despesas'), dadosParaSalvar);
     console.log('✅ Despesa salva com ID:', docRef.id);
 
-    // Upload de comprovante se existir
     if (despesaData.comprovante && despesaData.comprovante instanceof File) {
       console.log('📎 Fazendo upload do comprovante...');
       const comprovanteURL = await uploadComprovante(despesaData.comprovante, docRef.id);
@@ -139,7 +135,8 @@ export const buscarDespesas = async () => {
         ...data,
         vencimento: data.vencimento?.toDate().toISOString().split('T')[0],
         createdAt: data.createdAt?.toDate(),
-        updatedAt: data.updatedAt?.toDate()
+        updatedAt: data.updatedAt?.toDate(),
+        dataPagamento: data.dataPagamento?.toDate()
       };
     });
     
@@ -177,7 +174,8 @@ export const buscarDespesasMesAtual = async () => {
         ...data,
         vencimento: data.vencimento?.toDate().toISOString().split('T')[0],
         createdAt: data.createdAt?.toDate(),
-        updatedAt: data.updatedAt?.toDate()
+        updatedAt: data.updatedAt?.toDate(),
+        dataPagamento: data.dataPagamento?.toDate()
       };
     });
     
@@ -193,15 +191,33 @@ export const buscarDespesasMesAtual = async () => {
 /**
  * Atualizar despesa
  */
-export const atualizarDespesa = async (id, dados) => {
+export const atualizarDespesa = async (id, dados, novoComprovante = null) => {
   try {
+    console.log('🔄 Atualizando despesa:', id, dados);
+
     const dadosAtualizados = {
-      ...dados,
+      descricao: dados.descricao,
+      valor: parseFloat(dados.valor),
+      categoria: dados.categoria,
+      formaPagamento: dados.formaPagamento,
+      status: dados.status,
+      observacoes: dados.observacoes || '',
+      parcelado: dados.parcelado || false,
+      numeroParcelas: dados.parcelado ? parseInt(dados.numeroParcelas) : 1,
       updatedAt: Timestamp.now()
     };
 
-    if (dados.vencimento && typeof dados.vencimento === 'string') {
+    if (dados.vencimento) {
       dadosAtualizados.vencimento = Timestamp.fromDate(new Date(dados.vencimento));
+    }
+
+    // Upload de novo comprovante se existir
+    if (novoComprovante && novoComprovante instanceof File) {
+      console.log('📎 Fazendo upload de novo comprovante...');
+      const comprovanteURL = await uploadComprovante(novoComprovante, id);
+      if (comprovanteURL) {
+        dadosAtualizados.comprovanteURL = comprovanteURL;
+      }
     }
 
     await updateDoc(doc(db, 'despesas', id), dadosAtualizados);

@@ -1,9 +1,9 @@
-import { useState } from 'react';
-import { adicionarDespesa } from '../services/despesas';
+import { useState, useEffect } from 'react';
+import { adicionarDespesa, atualizarDespesa } from '../services/despesas';
 import UploadComprovante from './UploadComprovante';
 import '../styles/FormDespesa.css';
 
-const FormDespesa = ({ onSuccess, onCancel }) => {
+const FormDespesa = ({ onSuccess, onCancel, despesaParaEditar }) => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     descricao: '',
@@ -17,6 +17,23 @@ const FormDespesa = ({ onSuccess, onCancel }) => {
     numeroParcelas: 1
   });
   const [comprovante, setComprovante] = useState(null);
+
+  useEffect(() => {
+    if (despesaParaEditar) {
+      console.log('📝 Carregando despesa para edição:', despesaParaEditar);
+      setFormData({
+        descricao: despesaParaEditar.descricao || '',
+        valor: despesaParaEditar.valor || '',
+        vencimento: despesaParaEditar.vencimento || '',
+        categoria: despesaParaEditar.categoria || 'Utilidades',
+        formaPagamento: despesaParaEditar.formaPagamento || 'Dinheiro',
+        status: despesaParaEditar.status || 'Pendente',
+        observacoes: despesaParaEditar.observacoes || '',
+        parcelado: despesaParaEditar.parcelado || false,
+        numeroParcelas: despesaParaEditar.numeroParcelas || 1
+      });
+    }
+  }, [despesaParaEditar]);
 
   const categorias = [
     'Utilidades',
@@ -47,7 +64,6 @@ const FormDespesa = ({ onSuccess, onCancel }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Validações
     if (!formData.descricao.trim()) {
       alert('❌ Descrição é obrigatória!');
       return;
@@ -66,16 +82,34 @@ const FormDespesa = ({ onSuccess, onCancel }) => {
     setLoading(true);
 
     try {
-      const despesaData = {
-        ...formData,
-        valor: parseFloat(formData.valor),
-        numeroParcelas: formData.parcelado ? parseInt(formData.numeroParcelas) : 1,
-        comprovante: comprovante || null
-      };
+      if (despesaParaEditar) {
+        // EDITANDO
+        const dadosParaAtualizar = {
+          descricao: formData.descricao,
+          valor: parseFloat(formData.valor),
+          vencimento: formData.vencimento,
+          categoria: formData.categoria,
+          formaPagamento: formData.formaPagamento,
+          status: formData.status,
+          observacoes: formData.observacoes,
+          parcelado: formData.parcelado,
+          numeroParcelas: formData.parcelado ? parseInt(formData.numeroParcelas) : 1
+        };
 
-      await adicionarDespesa(despesaData);
-      
-      alert('✅ Despesa cadastrada com sucesso!');
+        await atualizarDespesa(despesaParaEditar.id, dadosParaAtualizar, comprovante);
+        alert('✅ Despesa atualizada com sucesso!');
+      } else {
+        // CADASTRANDO
+        const despesaData = {
+          ...formData,
+          valor: parseFloat(formData.valor),
+          numeroParcelas: formData.parcelado ? parseInt(formData.numeroParcelas) : 1,
+          comprovante: comprovante || null
+        };
+
+        await adicionarDespesa(despesaData);
+        alert('✅ Despesa cadastrada com sucesso!');
+      }
       
       // Limpar formulário
       setFormData({
@@ -94,8 +128,8 @@ const FormDespesa = ({ onSuccess, onCancel }) => {
       if (onSuccess) onSuccess();
       
     } catch (error) {
-      console.error('Erro ao cadastrar despesa:', error);
-      alert('❌ Erro ao cadastrar despesa: ' + error.message);
+      console.error('Erro ao salvar despesa:', error);
+      alert('❌ Erro ao salvar despesa: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -103,10 +137,9 @@ const FormDespesa = ({ onSuccess, onCancel }) => {
 
   return (
     <form onSubmit={handleSubmit} className="form-despesa">
-      <h2>📝 Nova Despesa</h2>
+      <h2>{despesaParaEditar ? '✏️ Editar Despesa' : '📝 Nova Despesa'}</h2>
 
       <div className="form-grid">
-        {/* Descrição */}
         <div className="form-group full-width">
           <label>Descrição *</label>
           <input
@@ -119,7 +152,6 @@ const FormDespesa = ({ onSuccess, onCancel }) => {
           />
         </div>
 
-        {/* Valor */}
         <div className="form-group">
           <label>Valor (R$) *</label>
           <input
@@ -134,7 +166,6 @@ const FormDespesa = ({ onSuccess, onCancel }) => {
           />
         </div>
 
-        {/* Vencimento */}
         <div className="form-group">
           <label>Vencimento *</label>
           <input
@@ -146,49 +177,33 @@ const FormDespesa = ({ onSuccess, onCancel }) => {
           />
         </div>
 
-        {/* Categoria */}
         <div className="form-group">
           <label>Categoria</label>
-          <select
-            name="categoria"
-            value={formData.categoria}
-            onChange={handleChange}
-          >
+          <select name="categoria" value={formData.categoria} onChange={handleChange}>
             {categorias.map(cat => (
               <option key={cat} value={cat}>{cat}</option>
             ))}
           </select>
         </div>
 
-        {/* Forma de Pagamento */}
         <div className="form-group">
           <label>Forma de Pagamento</label>
-          <select
-            name="formaPagamento"
-            value={formData.formaPagamento}
-            onChange={handleChange}
-          >
+          <select name="formaPagamento" value={formData.formaPagamento} onChange={handleChange}>
             {formasPagamento.map(forma => (
               <option key={forma} value={forma}>{forma}</option>
             ))}
           </select>
         </div>
 
-        {/* Status */}
         <div className="form-group">
           <label>Status</label>
-          <select
-            name="status"
-            value={formData.status}
-            onChange={handleChange}
-          >
+          <select name="status" value={formData.status} onChange={handleChange}>
             <option value="Pendente">⏳ Pendente</option>
             <option value="Paga">✅ Paga</option>
             <option value="Vencida">❌ Vencida</option>
           </select>
         </div>
 
-        {/* Parcelado */}
         <div className="form-group checkbox-group">
           <label>
             <input
@@ -201,7 +216,6 @@ const FormDespesa = ({ onSuccess, onCancel }) => {
           </label>
         </div>
 
-        {/* Número de Parcelas */}
         {formData.parcelado && (
           <div className="form-group">
             <label>Número de Parcelas</label>
@@ -216,7 +230,6 @@ const FormDespesa = ({ onSuccess, onCancel }) => {
           </div>
         )}
 
-        {/* Observações */}
         <div className="form-group full-width">
           <label>Observações</label>
           <textarea
@@ -228,14 +241,12 @@ const FormDespesa = ({ onSuccess, onCancel }) => {
           />
         </div>
 
-        {/* Upload de Comprovante */}
         <div className="form-group full-width">
-          <label>Comprovante</label>
+          <label>Comprovante {despesaParaEditar && '(deixe vazio para manter o atual)'}</label>
           <UploadComprovante onUploadComplete={setComprovante} />
         </div>
       </div>
 
-      {/* Botões */}
       <div className="form-actions">
         <button 
           type="button" 
@@ -250,7 +261,7 @@ const FormDespesa = ({ onSuccess, onCancel }) => {
           className="btn-salvar"
           disabled={loading}
         >
-          {loading ? '⏳ Salvando...' : '💾 Cadastrar Despesa'}
+          {loading ? '⏳ Salvando...' : despesaParaEditar ? '💾 Atualizar Despesa' : '💾 Cadastrar Despesa'}
         </button>
       </div>
     </form>

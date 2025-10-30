@@ -12,10 +12,12 @@ import { formatarMoeda } from '../utils/formatacao';
 
 function Despesas({ usuarioEmail }) {
   const [despesas, setDespesas] = useState([]);
+  const [todasDespesas, setTodasDespesas] = useState([]);
   const [resumo, setResumo] = useState(null);
   const [carregando, setCarregando] = useState(true);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [despesaEditando, setDespesaEditando] = useState(null);
+  const [filtroAtivo, setFiltroAtivo] = useState('mes-atual'); // 'mes-atual', 'futuras', 'todas'
 
   useEffect(() => {
     carregarDados();
@@ -25,23 +27,25 @@ function Despesas({ usuarioEmail }) {
     setCarregando(true);
     
     try {
-      // Atualizar status de vencidas primeiro
       await atualizarStatusVencidas();
       
-      const [despesasCarregadas, resumoCarregado] = await Promise.all([
+      const [despesasMesAtual, todasAsDespesas, resumoCarregado] = await Promise.all([
         buscarDespesasMesAtual(),
+        buscarDespesas(),
         calcularResumoDespesas()
       ]);
       
-      console.log('✅ Despesas carregadas:', despesasCarregadas);
-      console.log('✅ Resumo calculado:', resumoCarregado);
+      console.log('✅ Despesas do mês carregadas:', despesasMesAtual.length);
+      console.log('✅ Todas as despesas carregadas:', todasAsDespesas.length);
       
-      setDespesas(despesasCarregadas || []);
+      setDespesas(despesasMesAtual || []);
+      setTodasDespesas(todasAsDespesas || []);
       setResumo(resumoCarregado || null);
       
     } catch (error) {
       console.error('❌ Erro ao carregar dados:', error);
       setDespesas([]);
+      setTodasDespesas([]);
       setResumo(null);
     } finally {
       setCarregando(false);
@@ -63,7 +67,6 @@ function Despesas({ usuarioEmail }) {
     console.log('📝 Editando despesa:', despesa);
     setDespesaEditando(despesa);
     setMostrarFormulario(true);
-    // Scroll para o topo
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -104,10 +107,6 @@ function Despesas({ usuarioEmail }) {
     return cores[status] || '#5f6368';
   };
 
-  const obterTextoStatus = (status) => {
-    return status;
-  };
-
   const obterIconeFormaPagamento = (forma) => {
     const icones = {
       'PIX': '💳',
@@ -120,29 +119,27 @@ function Despesas({ usuarioEmail }) {
     return icones[forma] || '💰';
   };
 
-  // Função auxiliar para converter data
-  const converterData = (data) => {
-    if (!data) return null;
-    
-    // Se já é Date
-    if (data instanceof Date) {
-      return data;
+  // Filtrar despesas conforme aba ativa
+  const getDespesasFiltradas = () => {
+    const agora = new Date();
+    const primeiroDiaMesAtual = new Date(agora.getFullYear(), agora.getMonth(), 1);
+    const ultimoDiaMesAtual = new Date(agora.getFullYear(), agora.getMonth() + 1, 0);
+
+    if (filtroAtivo === 'mes-atual') {
+      return despesas;
+    } else if (filtroAtivo === 'futuras') {
+      return todasDespesas.filter(d => {
+        const dataVenc = new Date(d.vencimento);
+        return dataVenc > ultimoDiaMesAtual;
+      });
+    } else {
+      return todasDespesas;
     }
-    
-    // Se é Timestamp do Firebase
-    if (data && typeof data.toDate === 'function') {
-      return data.toDate();
-    }
-    
-    // Se é string
-    if (typeof data === 'string') {
-      return new Date(data);
-    }
-    
-    return null;
   };
 
-  // Filtrar próximos vencimentos (próximos 7 dias, não pagos)
+  const despesasFiltradas = getDespesasFiltradas();
+
+  // Próximos vencimentos
   const proximosVencimentos = despesas
     .filter(d => d.status === 'Pendente' || d.status === 'Vencida')
     .sort((a, b) => new Date(a.vencimento) - new Date(b.vencimento))
@@ -492,7 +489,7 @@ function Despesas({ usuarioEmail }) {
         </div>
       )}
 
-      {/* Lista de Despesas */}
+      {/* ABAS DE FILTRO */}
       <div style={{
         backgroundColor: '#ffffff',
         borderRadius: '16px',
@@ -500,16 +497,82 @@ function Despesas({ usuarioEmail }) {
         boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
         border: '2px solid #e8eaed'
       }}>
+        {/* Abas */}
+        <div style={{
+          display: 'flex',
+          gap: '8px',
+          marginBottom: '24px',
+          borderBottom: '2px solid #e8eaed',
+          paddingBottom: '12px'
+        }}>
+          <button
+            onClick={() => setFiltroAtivo('mes-atual')}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: filtroAtivo === 'mes-atual' ? '#ea4335' : 'transparent',
+              color: filtroAtivo === 'mes-atual' ? '#ffffff' : '#5f6368',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '0.875rem',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            📅 Mês Atual ({despesas.length})
+          </button>
+          
+          <button
+            onClick={() => setFiltroAtivo('futuras')}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: filtroAtivo === 'futuras' ? '#ea4335' : 'transparent',
+              color: filtroAtivo === 'futuras' ? '#ffffff' : '#5f6368',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '0.875rem',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            🔮 Próximos Meses ({todasDespesas.filter(d => {
+              const dataVenc = new Date(d.vencimento);
+              const ultimoDiaMesAtual = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0);
+              return dataVenc > ultimoDiaMesAtual;
+            }).length})
+          </button>
+
+          <button
+            onClick={() => setFiltroAtivo('todas')}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: filtroAtivo === 'todas' ? '#ea4335' : 'transparent',
+              color: filtroAtivo === 'todas' ? '#ffffff' : '#5f6368',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '0.875rem',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            📋 Todas ({todasDespesas.length})
+          </button>
+        </div>
+
         <h2 style={{
           fontSize: '1.25rem',
           fontWeight: '600',
           color: '#202124',
           marginBottom: '24px'
         }}>
-          📋 Todas as Despesas do Mês
+          {filtroAtivo === 'mes-atual' && '📋 Despesas do Mês Atual'}
+          {filtroAtivo === 'futuras' && '🔮 Despesas Futuras'}
+          {filtroAtivo === 'todas' && '📋 Todas as Despesas'}
         </h2>
 
-        {despesas.length === 0 ? (
+        {despesasFiltradas.length === 0 ? (
           <div style={{
             textAlign: 'center',
             padding: '60px 20px',
@@ -517,7 +580,7 @@ function Despesas({ usuarioEmail }) {
           }}>
             <div style={{ fontSize: '3rem', marginBottom: '16px' }}>📭</div>
             <div style={{ fontSize: '1.125rem', fontWeight: '500' }}>
-              Nenhuma despesa cadastrada neste mês
+              Nenhuma despesa encontrada
             </div>
           </div>
         ) : (
@@ -526,7 +589,7 @@ function Despesas({ usuarioEmail }) {
             flexDirection: 'column',
             gap: '16px'
           }}>
-            {despesas.map(despesa => (
+            {despesasFiltradas.map(despesa => (
               <div key={despesa.id} style={{
                 padding: '20px',
                 backgroundColor: '#f8f9fa',
@@ -566,7 +629,7 @@ function Despesas({ usuarioEmail }) {
                         fontWeight: '700',
                         border: `2px solid ${obterCorStatus(despesa.status)}`
                       }}>
-                        {obterTextoStatus(despesa.status)}
+                        {despesa.status}
                       </div>
 
                       {despesa.parcelado && (
@@ -684,12 +747,6 @@ function Despesas({ usuarioEmail }) {
                             whiteSpace: 'nowrap',
                             transition: 'all 0.2s ease'
                           }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = '#2d8e47';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = '#34a853';
-                          }}
                         >
                           ✓ Pagar
                         </button>
@@ -709,12 +766,6 @@ function Despesas({ usuarioEmail }) {
                           whiteSpace: 'nowrap',
                           transition: 'all 0.2s ease'
                         }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = '#1557b0';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = '#1a73e8';
-                        }}
                       >
                         ✏️ Editar
                       </button>
@@ -733,12 +784,6 @@ function Despesas({ usuarioEmail }) {
                           whiteSpace: 'nowrap',
                           transition: 'all 0.2s ease'
                         }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = '#d33426';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = '#ea4335';
-                        }}
                       >
                         🗑️ Excluir
                       </button>
@@ -751,7 +796,7 @@ function Despesas({ usuarioEmail }) {
                         color: '#34a853',
                         fontWeight: '500'
                       }}>
-                        Pago em: {converterData(despesa.dataPagamento)?.toLocaleDateString('pt-BR') || 'Data inválida'}
+                        Pago em: {despesa.dataPagamento?.toLocaleDateString?.('pt-BR') || 'Data inválida'}
                       </div>
                     )}
                   </div>

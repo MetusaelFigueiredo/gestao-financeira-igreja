@@ -9,6 +9,7 @@ import {
   deletarDespesa
 } from '../services/despesas';
 import { formatarMoeda } from '../utils/formatacao';
+import { exportarParaCalendario } from '../services/calendario';
 
 function Despesas({ usuarioEmail }) {
   const [despesas, setDespesas] = useState([]);
@@ -687,42 +688,141 @@ function Despesas({ usuarioEmail }) {
                       </div>
                     )}
 
-                   {despesa.comprovanteURL && (
-  <a
-    href={despesa.comprovanteURL}
-    target="_blank"
-    rel="noopener noreferrer"
-    style={{
-      display: 'inline-flex',
-      alignItems: 'center',
-      gap: '6px',
-      marginTop: '8px',
-      padding: '8px 16px',
-      backgroundColor: '#34a853',
-      color: '#ffffff',
-      borderRadius: '6px',
-      fontSize: '0.875rem',
-      textDecoration: 'none',
-      fontWeight: '600',
-      border: 'none',
-      boxShadow: '0 2px 8px rgba(52, 168, 83, 0.3)',
-      transition: 'all 0.2s ease',
-      cursor: 'pointer'
-    }}
-    onMouseEnter={(e) => {
-      e.currentTarget.style.backgroundColor = '#2d8e47';
-      e.currentTarget.style.transform = 'translateY(-2px)';
-      e.currentTarget.style.boxShadow = '0 4px 12px rgba(52, 168, 83, 0.4)';
-    }}
-    onMouseLeave={(e) => {
-      e.currentTarget.style.backgroundColor = '#34a853';
-      e.currentTarget.style.transform = 'translateY(0)';
-      e.currentTarget.style.boxShadow = '0 2px 8px rgba(52, 168, 83, 0.3)';
-    }}
-  >
-    📎 Ver Comprovante
-  </a>
-)}
+                    {/* Botões de Ação Secundários */}
+                    <div style={{
+                      display: 'flex',
+                      gap: '8px',
+                      marginTop: '12px',
+                      flexWrap: 'wrap'
+                    }}>
+                      {despesa.comprovanteURL && (
+                        <a
+                          href={despesa.comprovanteURL}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '8px 16px',
+                            backgroundColor: '#34a853',
+                            color: '#ffffff',
+                            borderRadius: '6px',
+                            fontSize: '0.875rem',
+                            textDecoration: 'none',
+                            fontWeight: '600',
+                            border: 'none',
+                            boxShadow: '0 2px 8px rgba(52, 168, 83, 0.3)',
+                            transition: 'all 0.2s ease',
+                            cursor: 'pointer'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = '#2d8e47';
+                            e.currentTarget.style.transform = 'translateY(-2px)';
+                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(52, 168, 83, 0.4)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = '#34a853';
+                            e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(52, 168, 83, 0.3)';
+                          }}
+                        >
+                          📎 Ver Comprovante
+                        </a>
+                      )}
+
+                      {despesa.vencimento && (
+                        <button
+                          onClick={() => exportarParaCalendario(despesa)}
+                          title="Adicionar lembrete ao calendário"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '8px 16px',
+                            backgroundColor: '#9334e6',
+                            color: '#ffffff',
+                            borderRadius: '6px',
+                            fontSize: '0.875rem',
+                            fontWeight: '600',
+                            border: 'none',
+                            boxShadow: '0 2px 8px rgba(147, 52, 230, 0.3)',
+                            transition: 'all 0.2s ease',
+                            cursor: 'pointer'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = '#7c2dbf';
+                            e.currentTarget.style.transform = 'translateY(-2px)';
+                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(147, 52, 230, 0.4)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = '#9334e6';
+                            e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(147, 52, 230, 0.3)';
+                          }}
+                        >
+                          📅 Adicionar ao Calendário
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Informações de Auditoria */}
+                    {(despesa.criadoPor || despesa.createdAt || despesa.editadoPor || despesa.updatedAt) && (
+                      <div style={{
+                        marginTop: '16px',
+                        padding: '12px',
+                        backgroundColor: '#f8f9fa',
+                        borderRadius: '6px',
+                        border: '1px solid #e8eaed'
+                      }}>
+                        <div style={{
+                          fontSize: '0.75rem',
+                          fontWeight: '600',
+                          color: '#5f6368',
+                          marginBottom: '8px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}>
+                          ℹ️ Informações de Auditoria
+                        </div>
+                        
+                        {despesa.criadoPor && despesa.createdAt && (
+                          <div style={{
+                            fontSize: '0.75rem',
+                            color: '#5f6368',
+                            marginBottom: '4px'
+                          }}>
+                            <strong>Criado por:</strong> {despesa.criadoPor}
+                            {' - '}
+                            {despesa.createdAt?.toLocaleDateString?.('pt-BR', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            }) || 'Data não disponível'}
+                          </div>
+                        )}
+
+                        {despesa.editadoPor && despesa.updatedAt && (
+                          <div style={{
+                            fontSize: '0.75rem',
+                            color: '#5f6368'
+                          }}>
+                            <strong>Editado por:</strong> {despesa.editadoPor}
+                            {' - '}
+                            {despesa.updatedAt?.toLocaleDateString?.('pt-BR', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            }) || 'Data não disponível'}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Valor e Ações */}

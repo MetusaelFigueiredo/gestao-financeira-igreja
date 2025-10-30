@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import FormMembro from '../components/FormMembro';
 import { buscarMembros } from '../services/membros';
 
-function Membros() {
+function Membros({ usuarioEmail }) {
   const [membros, setMembros] = useState([]);
   const [carregando, setCarregando] = useState(true);
 
@@ -48,7 +48,7 @@ function Membros() {
       
       {/* Formulário de Cadastro */}
       <div style={{ marginBottom: '32px' }}>
-        <FormMembro onSucesso={carregarMembros} />
+        <FormMembro onSucesso={carregarMembros} usuarioEmail={usuarioEmail} />
       </div>
       
       {/* Lista de Membros */}
@@ -143,9 +143,49 @@ function Membros() {
                 {membro.email && (
                   <div style={{
                     fontSize: '0.8125rem',
-                    color: '#5f6368'
+                    color: '#5f6368',
+                    marginBottom: '4px'
                   }}>
                     📧 {membro.email}
+                  </div>
+                )}
+
+                {/* Informações de Auditoria */}
+                {(membro.criadoPor || membro.criadoEm || membro.editadoPor || membro.updatedAt) && (
+                  <div style={{
+                    marginTop: '12px',
+                    paddingTop: '12px',
+                    borderTop: '1px solid #e8eaed',
+                    fontSize: '0.7rem',
+                    color: '#5f6368'
+                  }}>
+                    {membro.criadoPor && membro.criadoEm && (
+                      <div style={{ marginBottom: '4px' }}>
+                        ℹ️ Criado por: <strong>{membro.criadoPor}</strong>
+                        <br />
+                        {membro.criadoEm?.toDate?.()?.toLocaleDateString?.('pt-BR', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        }) || 'Data não disponível'}
+                      </div>
+                    )}
+
+                    {membro.editadoPor && membro.updatedAt && (
+                      <div>
+                        Editado por: <strong>{membro.editadoPor}</strong>
+                        <br />
+                        {membro.updatedAt?.toDate?.()?.toLocaleDateString?.('pt-BR', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        }) || 'Data não disponível'}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

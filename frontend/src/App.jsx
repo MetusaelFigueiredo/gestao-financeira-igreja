@@ -288,8 +288,8 @@ function App() {
 
       <main>
         {paginaAtual === 'dashboard' && <Dashboard />}
-        {paginaAtual === 'membros' && <Membros />}
-        {paginaAtual === 'entradas' && <Entradas />}
+        {paginaAtual === 'membros' && <Membros usuarioEmail={usuario.email} />}
+        {paginaAtual === 'entradas' && <Entradas usuarioEmail={usuario.email} />}
         {paginaAtual === 'despesas' && <Despesas usuarioEmail={usuario.email} />}
         {paginaAtual === 'relatorios' && <Relatorios />}
         {/* ✨ NOVA PÁGINA BACKUP */}

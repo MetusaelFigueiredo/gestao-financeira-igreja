@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { buscarResumoFinanceiro, buscarDespesasPendentes, buscarMetaMissoes, atualizarMetaMissoes } from '../services/dashboard';
 import { marcarComoPago } from '../services/despesas';
 import { formatarMoeda } from '../utils/formatacao';
+import '../styles/Dashboard.css';
 
 function Dashboard() {
   const [resumo, setResumo] = useState(null);
@@ -74,39 +75,11 @@ function Dashboard() {
 
   if (carregando) {
     return (
-      <div style={{
-        maxWidth: '1400px',
-        margin: '0 auto',
-        padding: '40px 24px',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        minHeight: '400px'
-      }}>
-        <div style={{
-          fontSize: '1.125rem',
-          color: '#5f6368',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          fontWeight: '500'
-        }}>
-          <div style={{
-            width: '28px',
-            height: '28px',
-            border: '4px solid #e0e0e0',
-            borderTop: '4px solid #1a73e8',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite'
-          }} />
+      <div className="loading-container">
+        <div className="loading-content">
+          <div className="loading-spinner" />
           Carregando dados financeiros...
         </div>
-        <style>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
       </div>
     );
   }
@@ -118,231 +91,131 @@ function Dashboard() {
   const mesNome = new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
 
   return (
-    <div style={{
-      maxWidth: '1400px',
-      margin: '0 auto',
-      padding: '40px 24px',
-      backgroundColor: '#fafafa'
-    }}>
+    <div className="dashboard-container">
       {/* Cabeçalho */}
-      <div style={{
-        backgroundColor: '#ffffff',
-        borderRadius: '16px',
-        padding: '32px',
-        marginBottom: '32px',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
-        border: '2px solid #e8eaed'
-      }}>
-        <h1 style={{
-          fontSize: '2rem',
-          fontWeight: '700',
-          color: '#202124',
-          marginBottom: '8px',
-          letterSpacing: '-0.5px'
-        }}>
-          💰 FLUXO DE CAIXA COMPLETO
-        </h1>
-        <div style={{
-          height: '3px',
-          width: '120px',
-          background: 'linear-gradient(90deg, #1a73e8 0%, #34a853 100%)',
-          borderRadius: '2px',
-          marginBottom: '12px'
-        }} />
-        <p style={{
-          fontSize: '0.9375rem',
-          color: '#5f6368',
-          fontWeight: '500',
-          textTransform: 'capitalize'
-        }}>
-          Período: {mesNome}
-        </p>
+      <div className="dashboard-header">
+        <h1>💰 FLUXO DE CAIXA COMPLETO</h1>
+        <div className="dashboard-header-divider" />
+        <p>Período: {mesNome}</p>
       </div>
 
-      {/* SEÇÃO 1: Resumo Financeiro (3 cards) */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-        gap: '20px',
-        marginBottom: '32px'
-      }}>
-        {/* Card Entrada Local */}
-        <div style={{
-          backgroundColor: '#ffffff',
-          borderRadius: '12px',
-          padding: '24px',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
-          border: '2px solid #34a853'
-        }}>
-          <div style={{
-            fontSize: '0.875rem',
-            color: '#5f6368',
-            fontWeight: '600',
-            marginBottom: '8px',
-            letterSpacing: '0.5px'
-          }}>
-            💵 ENTRADA LOCAL
+      {/* GRID 2 COLUNAS - DESPESAS E RECEITAS */}
+      <div className="dashboard-grid">
+        {/* COLUNA ESQUERDA - DESPESAS */}
+        <div className="coluna-despesas">
+          <h2 className="coluna-titulo">💸 DESPESAS</h2>
+          
+          {/* Card Despesas Pagas */}
+          <div className="dashboard-card card-despesa-paga">
+            <h3>💰 DESPESAS PAGAS</h3>
+            <div className="valor">{formatarMoeda(resumo.totalDespesasPagas)}</div>
+            <div className="subtitulo">Despesas já pagas no mês</div>
           </div>
-          <div style={{
-            fontSize: '2rem',
-            fontWeight: '700',
-            color: '#34a853',
-            marginBottom: '8px'
-          }}>
-            {formatarMoeda(resumo.totalLocal)}
+
+          {/* Card Despesas Pendentes */}
+          <div className="dashboard-card card-despesa-pendente">
+            <h3>⏰ DESPESAS PENDENTES</h3>
+            <div className="valor">{formatarMoeda(despesas.totais.geral)}</div>
+            <div className="subtitulo">A vencer nos próximos 15 dias</div>
           </div>
-          <div style={{
-            fontSize: '0.75rem',
-            color: '#5f6368'
-          }}>
-            40% dízimos/ofertas + outras entradas
+
+          {/* Alertas */}
+          <div className="alertas-container">
+            {despesas.vencidas.length > 0 && (
+              <div className="alerta vencidas">
+                ⚠️ VENCIDAS: {despesas.vencidas.length}
+              </div>
+            )}
+            {despesas.proximos7Dias.length > 0 && (
+              <div className="alerta proximas">
+                🔔 VENCE EM 7 DIAS: {despesas.proximos7Dias.length}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Card Despesas Pagas */}
-        <div style={{
-          backgroundColor: '#ffffff',
-          borderRadius: '12px',
-          padding: '24px',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
-          border: '2px solid #ea4335'
-        }}>
-          <div style={{
-            fontSize: '0.875rem',
-            color: '#5f6368',
-            fontWeight: '600',
-            marginBottom: '8px',
-            letterSpacing: '0.5px'
-          }}>
-            💸 DESPESAS PAGAS
+        {/* COLUNA DIREITA - RECEITAS */}
+        <div className="coluna-receitas">
+          <h2 className="coluna-titulo">💰 RECEITAS</h2>
+          
+          {/* Card Entrada Local */}
+          <div className="dashboard-card card-receita-entrada">
+            <h3>💵 ENTRADA LOCAL</h3>
+            <div className="valor">{formatarMoeda(resumo.totalLocal)}</div>
+            <div className="subtitulo">40% dízimo + 60% ofertas</div>
           </div>
-          <div style={{
-            fontSize: '2rem',
-            fontWeight: '700',
-            color: '#ea4335',
-            marginBottom: '8px'
-          }}>
-            {formatarMoeda(resumo.totalDespesasPagas)}
-          </div>
-          <div style={{
-            fontSize: '0.75rem',
-            color: '#5f6368'
-          }}>
-            Despesas pagas no mês atual
-          </div>
-        </div>
 
-        {/* Card Saldo do Mês */}
-        <div style={{
-          backgroundColor: '#ffffff',
-          borderRadius: '12px',
-          padding: '24px',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
-          border: `2px solid ${resumo.saldoMes >= 0 ? '#34a853' : '#ea4335'}`
-        }}>
-          <div style={{
-            fontSize: '0.875rem',
-            color: '#5f6368',
-            fontWeight: '600',
-            marginBottom: '8px',
-            letterSpacing: '0.5px'
-          }}>
-            💰 SALDO DO MÊS {resumo.saldoMes >= 0 ? '✅' : '⚠️'}
+          {/* Card Fina Central */}
+          <div className="dashboard-card card-receita-fina">
+            <h3>💰 FINA CENTRAL</h3>
+            <div className="valor">{formatarMoeda(resumo.totalCentral)}</div>
+            <div className="subtitulo">Dízimo + Ofertas enviadas</div>
           </div>
-          <div style={{
-            fontSize: '2rem',
-            fontWeight: '700',
-            color: resumo.saldoMes >= 0 ? '#34a853' : '#ea4335',
-            marginBottom: '8px'
-          }}>
-            {formatarMoeda(resumo.saldoMes)}
-          </div>
-          <div style={{
-            fontSize: '0.75rem',
-            color: '#5f6368'
-          }}>
-            {resumo.saldoMes >= 0 ? 'Positivo' : 'Negativo'}
+
+          {/* Card Missões */}
+          <div className="dashboard-card card-missoes">
+            <h3>🎯 MISSÕES</h3>
+            <div className="valor">{formatarMoeda(resumo.totalMissoes)}</div>
+            <div className="subtitulo">{missoes.progresso >= 100 ? 'Meta atingida! 🎉' : 'Meta não atingida'}</div>
           </div>
         </div>
       </div>
 
-      {/* SEÇÃO 2: Detalhamento de Entradas (3 cards - SEM PIX E DINHEIRO SEPARADOS) */}
-      <div style={{
-        backgroundColor: '#ffffff',
-        borderRadius: '16px',
-        padding: '24px',
-        marginBottom: '32px',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
-        border: '2px solid #e8eaed'
-      }}>
-        <h2 style={{
-          fontSize: '1.25rem',
-          fontWeight: '700',
-          color: '#202124',
-          marginBottom: '20px'
-        }}>
-          📊 DETALHAMENTO DAS ENTRADAS
-        </h2>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-          gap: '16px'
-        }}>
-          {/* Para Central COM cards PIX/Dinheiro DENTRO */}
-          <div style={{
-            backgroundColor: '#e8f0fe',
-            borderRadius: '10px',
-            padding: '20px',
-            border: '2px solid #1a73e8'
-          }}>
-            <div style={{
-              fontSize: '0.875rem',
-              color: '#5f6368',
-              fontWeight: '600',
-              marginBottom: '8px'
-            }}>
+      {/* SEÇÃO: Resumo Financeiro */}
+      <div className="card-detalhamento">
+        <h2>💵 RESUMO FINANCEIRO</h2>
+        <div className="resumo-financeiro">
+          <div className="resumo-titulo">💰 Total de Receitas</div>
+          <div className="resumo-saldo">R$ {formatarMoeda(resumo.totalLocal + resumo.totalCentral + resumo.totalMissoes)}</div>
+          <div className="resumo-titulo">💸 Total de Despesas Pagas</div>
+          <div className="resumo-saldo">{formatarMoeda(resumo.totalDespesasPagas)}</div>
+          <div className="resumo-divider" />
+          <div className={`resumo-resultado ${resumo.saldoMes >= 0 ? 'positivo' : 'negativo'}`}>
+            <div className="resumo-resultado-titulo">
+              ✅ Saldo do Mês: {formatarMoeda(resumo.saldoMes)}
+            </div>
+            <div className="resumo-resultado-subtitulo">
+              {resumo.saldoMes >= 0 ? 'Saldo positivo' : 'Saldo negativo'}
+            </div>
+          </div>
+          {despesas.totais.geral > 0 && (
+            <div className={`resumo-resultado ${resumo.totalLocal >= despesas.totais.geral ? 'positivo' : 'negativo'}`} style={{ marginTop: '12px' }}>
+              <div className="resumo-resultado-titulo">
+                {resumo.totalLocal >= despesas.totais.geral ? '✅' : '⚠️'} Saldo Após Pagar Pendentes: {formatarMoeda(resumo.totalLocal - despesas.totais.geral)}
+              </div>
+              <div className="resumo-resultado-subtitulo">
+                {resumo.totalLocal >= despesas.totais.geral 
+                  ? 'Saldo suficiente para cobrir despesas pendentes' 
+                  : `Faltam ${formatarMoeda(despesas.totais.geral - resumo.totalLocal)} para cobrir despesas`}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* SEÇÃO: Detalhamento de Entradas */}
+      <div className="card-detalhamento">
+        <h2>📊 DETALHAMENTO DAS ENTRADAS</h2>
+        <div className="detalhamento-grid">
+          {/* Para Central */}
+          <div className="detalhamento-item azul">
+            <div style={{ fontSize: '0.875rem', color: '#5f6368', fontWeight: '600', marginBottom: '8px' }}>
               🏛️ PARA CENTRAL
             </div>
-            <div style={{
-              fontSize: '1.5rem',
-              fontWeight: '700',
-              color: '#1a73e8',
-              marginBottom: '12px'
-            }}>
+            <div style={{ fontSize: '1.5rem', fontWeight: '700', color: '#1a73e8', marginBottom: '12px' }}>
               {formatarMoeda(resumo.totalCentral)}
             </div>
-            <div style={{
-              fontSize: '0.75rem',
-              color: '#5f6368',
-              marginBottom: '12px'
-            }}>
+            <div style={{ fontSize: '0.75rem', color: '#5f6368', marginBottom: '12px' }}>
               60% dízimos/ofertas
             </div>
-
-            {/* Cards menores PIX/Dinheiro DENTRO */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: '8px',
-              marginTop: '12px'
-            }}>
-              <div style={{
-                backgroundColor: 'rgba(255,255,255,0.7)',
-                borderRadius: '6px',
-                padding: '8px',
-                textAlign: 'center'
-              }}>
+            <div className="detalhamento-subgrid">
+              <div className="detalhamento-subitem">
                 <div style={{ fontSize: '0.7rem', color: '#5f6368', marginBottom: '4px' }}>💳 PIX</div>
                 <div style={{ fontSize: '0.9rem', fontWeight: '600', color: '#1a73e8' }}>
                   {formatarMoeda(resumo.totalPixCentral)}
                 </div>
               </div>
-              <div style={{
-                backgroundColor: 'rgba(255,255,255,0.7)',
-                borderRadius: '6px',
-                padding: '8px',
-                textAlign: 'center'
-              }}>
+              <div className="detalhamento-subitem">
                 <div style={{ fontSize: '0.7rem', color: '#5f6368', marginBottom: '4px' }}>💵 Dinheiro</div>
                 <div style={{ fontSize: '0.9rem', fontWeight: '600', color: '#1a73e8' }}>
                   {formatarMoeda(resumo.totalDinheiroCentral)}
@@ -351,61 +224,25 @@ function Dashboard() {
             </div>
           </div>
 
-          {/* Fica Local COM cards PIX/Dinheiro DENTRO */}
-          <div style={{
-            backgroundColor: '#e6f4ea',
-            borderRadius: '10px',
-            padding: '20px',
-            border: '2px solid #34a853'
-          }}>
-            <div style={{
-              fontSize: '0.875rem',
-              color: '#5f6368',
-              fontWeight: '600',
-              marginBottom: '8px'
-            }}>
+          {/* Fica Local */}
+          <div className="detalhamento-item verde">
+            <div style={{ fontSize: '0.875rem', color: '#5f6368', fontWeight: '600', marginBottom: '8px' }}>
               🏠 FICA LOCAL
             </div>
-            <div style={{
-              fontSize: '1.5rem',
-              fontWeight: '700',
-              color: '#34a853',
-              marginBottom: '12px'
-            }}>
+            <div style={{ fontSize: '1.5rem', fontWeight: '700', color: '#34a853', marginBottom: '12px' }}>
               {formatarMoeda(resumo.totalLocal)}
             </div>
-            <div style={{
-              fontSize: '0.75rem',
-              color: '#5f6368',
-              marginBottom: '12px'
-            }}>
+            <div style={{ fontSize: '0.75rem', color: '#5f6368', marginBottom: '12px' }}>
               40% dízimos + outros
             </div>
-
-            {/* Cards menores PIX/Dinheiro DENTRO */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: '8px',
-              marginTop: '12px'
-            }}>
-              <div style={{
-                backgroundColor: 'rgba(255,255,255,0.7)',
-                borderRadius: '6px',
-                padding: '8px',
-                textAlign: 'center'
-              }}>
+            <div className="detalhamento-subgrid">
+              <div className="detalhamento-subitem">
                 <div style={{ fontSize: '0.7rem', color: '#5f6368', marginBottom: '4px' }}>💳 PIX</div>
                 <div style={{ fontSize: '0.9rem', fontWeight: '600', color: '#34a853' }}>
                   {formatarMoeda(resumo.totalPixLocal)}
                 </div>
               </div>
-              <div style={{
-                backgroundColor: 'rgba(255,255,255,0.7)',
-                borderRadius: '6px',
-                padding: '8px',
-                textAlign: 'center'
-              }}>
+              <div className="detalhamento-subitem">
                 <div style={{ fontSize: '0.7rem', color: '#5f6368', marginBottom: '4px' }}>💵 Dinheiro</div>
                 <div style={{ fontSize: '0.9rem', fontWeight: '600', color: '#34a853' }}>
                   {formatarMoeda(resumo.totalDinheiroLocal)}
@@ -415,308 +252,97 @@ function Dashboard() {
           </div>
 
           {/* Missões */}
-          <div style={{
-            backgroundColor: '#fef7e0',
-            borderRadius: '10px',
-            padding: '20px',
-            border: '2px solid #fbbc04'
-          }}>
-            <div style={{
-              fontSize: '0.875rem',
-              color: '#5f6368',
-              fontWeight: '600',
-              marginBottom: '8px'
-            }}>
+          <div className="detalhamento-item amarelo">
+            <div style={{ fontSize: '0.875rem', color: '#5f6368', fontWeight: '600', marginBottom: '8px' }}>
               ⛪ MISSÕES
             </div>
-            <div style={{
-              fontSize: '1.5rem',
-              fontWeight: '700',
-              color: '#fbbc04'
-            }}>
+            <div style={{ fontSize: '1.5rem', fontWeight: '700', color: '#fbbc04' }}>
               {formatarMoeda(resumo.totalMissoes)}
             </div>
-            <div style={{
-              fontSize: '0.75rem',
-              color: '#5f6368',
-              marginTop: '4px'
-            }}>
+            <div style={{ fontSize: '0.75rem', color: '#5f6368', marginTop: '4px' }}>
               100% santa ceia
             </div>
           </div>
         </div>
       </div>
 
-      {/* SEÇÃO 3: Meta de Missões COM EDIÇÃO */}
-      <div style={{
-        backgroundColor: '#ffffff',
-        borderRadius: '16px',
-        padding: '24px',
-        marginBottom: '32px',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
-        border: '2px solid #fbbc04'
-      }}>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '16px',
-          flexWrap: 'wrap',
-          gap: '12px'
-        }}>
-          <h2 style={{
-            fontSize: '1.25rem',
-            fontWeight: '700',
-            color: '#202124',
-            margin: 0
-          }}>
-            🎯 META DE MISSÕES - {mesNome.toUpperCase()}
-          </h2>
+      {/* SEÇÃO: Meta de Missões */}
+      <div className="meta-missoes">
+        <div className="meta-header">
+          <h2>🎯 META DE MISSÕES - {mesNome.toUpperCase()}</h2>
           <button
             onClick={() => setModoEdicaoMeta(!modoEdicaoMeta)}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: modoEdicaoMeta ? '#ea4335' : '#1a73e8',
-              color: '#ffffff',
-              border: 'none',
-              borderRadius: '6px',
-              fontSize: '0.875rem',
-              fontWeight: '600',
-              cursor: 'pointer',
-              transition: 'background-color 0.3s'
-            }}
+            className={`meta-btn ${modoEdicaoMeta ? 'cancelar' : 'editar'}`}
           >
             {modoEdicaoMeta ? '✖️ Cancelar' : '✏️ Editar Meta'}
           </button>
         </div>
 
         {modoEdicaoMeta && (
-          <div style={{
-            backgroundColor: '#f1f3f4',
-            borderRadius: '8px',
-            padding: '16px',
-            marginBottom: '16px',
-            display: 'flex',
-            gap: '12px',
-            alignItems: 'center',
-            flexWrap: 'wrap'
-          }}>
-            <label style={{ fontSize: '0.875rem', fontWeight: '600', color: '#202124' }}>
-              Nova Meta (R$):
-            </label>
+          <div className="meta-editor">
+            <label>Nova Meta (R$):</label>
             <input
               type="number"
               value={novaMeta}
               onChange={(e) => setNovaMeta(e.target.value)}
-              style={{
-                padding: '8px 12px',
-                fontSize: '1rem',
-                border: '2px solid #e8eaed',
-                borderRadius: '6px',
-                width: '150px'
-              }}
             />
-            <button
-              onClick={handleSalvarNovaMeta}
-              style={{
-                padding: '8px 20px',
-                backgroundColor: '#34a853',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: '6px',
-                fontSize: '0.875rem',
-                fontWeight: '600',
-                cursor: 'pointer'
-              }}
-            >
+            <button onClick={handleSalvarNovaMeta} className="meta-btn salvar">
               💾 Salvar
             </button>
           </div>
         )}
 
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr 1fr',
-          gap: '20px',
-          marginBottom: '16px'
-        }}>
+        <div className="meta-grid">
           <div>
-            <div style={{
-              fontSize: '0.875rem',
-              color: '#5f6368',
-              marginBottom: '4px'
-            }}>
-              Arrecadado
-            </div>
-            <div style={{
-              fontSize: '1.5rem',
-              fontWeight: '700',
-              color: '#34a853'
-            }}>
-              {formatarMoeda(missoes.arrecadado)}
-            </div>
+            <div className="meta-item">Arrecadado</div>
+            <div className="meta-valor verde">{formatarMoeda(missoes.arrecadado)}</div>
           </div>
           <div>
-            <div style={{
-              fontSize: '0.875rem',
-              color: '#5f6368',
-              marginBottom: '4px'
-            }}>
-              Meta
-            </div>
-            <div style={{
-              fontSize: '1.5rem',
-              fontWeight: '700',
-              color: '#1a73e8'
-            }}>
-              {formatarMoeda(missoes.meta)}
-            </div>
+            <div className="meta-item">Meta</div>
+            <div className="meta-valor azul">{formatarMoeda(missoes.meta)}</div>
           </div>
           <div>
-            <div style={{
-              fontSize: '0.875rem',
-              color: '#5f6368',
-              marginBottom: '4px'
-            }}>
-              Falta
-            </div>
-            <div style={{
-              fontSize: '1.5rem',
-              fontWeight: '700',
-              color: missoes.falta > 0 ? '#ea4335' : '#34a853'
-            }}>
+            <div className="meta-item">Falta</div>
+            <div className={`meta-valor ${missoes.falta > 0 ? 'vermelho' : 'verde'}`}>
               {formatarMoeda(missoes.falta)}
             </div>
           </div>
         </div>
 
-        {/* Barra de Progresso */}
-        <div style={{
-          backgroundColor: '#f1f3f4',
-          borderRadius: '12px',
-          height: '24px',
-          overflow: 'hidden',
-          position: 'relative',
-          border: '2px solid #e8eaed'
-        }}>
-          <div style={{
-            height: '100%',
-            width: `${missoes.progresso}%`,
-            backgroundColor: parseFloat(missoes.progresso) >= 100 ? '#34a853' : '#fbbc04',
-            transition: 'width 1s ease',
-            borderRadius: '10px'
-          }} />
-          <div style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            fontSize: '0.875rem',
-            fontWeight: '700',
-            color: parseFloat(missoes.progresso) > 50 ? '#ffffff' : '#202124'
-          }}>
+        <div className="meta-progresso">
+          <div 
+            className={`meta-progresso-barra ${parseFloat(missoes.progresso) >= 100 ? 'completo' : 'incompleto'}`}
+            style={{ width: `${missoes.progresso}%` }}
+          />
+          <div className={`meta-progresso-texto ${parseFloat(missoes.progresso) > 50 ? 'claro' : 'escuro'}`}>
             {missoes.progresso}%
           </div>
         </div>
       </div>
 
-      {/* SEÇÃO 4: Despesas Pendentes COM SALDO APÓS PAGAR */}
-      <div style={{
-        backgroundColor: '#ffffff',
-        borderRadius: '16px',
-        padding: '24px',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
-        border: '2px solid #e8eaed'
-      }}>
-        <h2 style={{
-          fontSize: '1.25rem',
-          fontWeight: '700',
-          color: '#202124',
-          marginBottom: '20px'
-        }}>
-          ⚠️ DESPESAS PENDENTES - PRÓXIMOS 15 DIAS
-        </h2>
+      {/* SEÇÃO: Despesas Pendentes */}
+      <div className="despesas-pendentes">
+        <h2>⚠️ DESPESAS PENDENTES - PRÓXIMOS 15 DIAS</h2>
 
         {/* Grupo: Vencidas */}
         {despesas.vencidas.length > 0 && (
-          <div style={{
-            marginBottom: '24px',
-            backgroundColor: '#fce8e6',
-            borderRadius: '12px',
-            padding: '20px',
-            border: '2px solid #ea4335'
-          }}>
-            <h3 style={{
-              fontSize: '1.125rem',
-              fontWeight: '700',
-              color: '#c5221f',
-              marginBottom: '16px'
-            }}>
-              🔴 VENCIDAS ({despesas.vencidas.length})
-            </h3>
+          <div className="despesa-grupo vencidas">
+            <h3>🔴 VENCIDAS ({despesas.vencidas.length})</h3>
             {despesas.vencidas.map(d => (
-              <div key={d.id} style={{
-                backgroundColor: '#ffffff',
-                borderRadius: '8px',
-                padding: '16px',
-                marginBottom: '12px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                gap: '12px',
-                border: '1px solid #ea4335'
-              }}>
-                <div style={{ flex: '1', minWidth: '200px' }}>
-                  <div style={{
-                    fontSize: '1rem',
-                    fontWeight: '600',
-                    color: '#202124',
-                    marginBottom: '4px'
-                  }}>
-                    {d.descricao}
-                  </div>
-                  <div style={{
-                    fontSize: '0.875rem',
-                    color: '#5f6368'
-                  }}>
+              <div key={d.id} className="despesa-item vencidas">
+                <div className="despesa-info">
+                  <div className="despesa-descricao">{d.descricao}</div>
+                  <div className="despesa-vencimento">
                     Vencimento: {new Date(d.vencimento).toLocaleDateString('pt-BR')}
                   </div>
                 </div>
-                <div style={{
-                  fontSize: '1.25rem',
-                  fontWeight: '700',
-                  color: '#ea4335'
-                }}>
-                  {formatarMoeda(d.valor)}
-                </div>
-                <button
-                  onClick={() => handlePagarDespesa(d.id)}
-                  style={{
-                    padding: '10px 20px',
-                    backgroundColor: '#34a853',
-                    color: '#ffffff',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '0.875rem',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    transition: 'background-color 0.3s'
-                  }}
-                  onMouseEnter={(e) => e.target.style.backgroundColor = '#2d8e47'}
-                  onMouseLeave={(e) => e.target.style.backgroundColor = '#34a853'}
-                >
+                <div className="despesa-valor vencidas">{formatarMoeda(d.valor)}</div>
+                <button onClick={() => handlePagarDespesa(d.id)} className="despesa-btn">
                   Pagar
                 </button>
               </div>
             ))}
-            <div style={{
-              fontSize: '1rem',
-              fontWeight: '700',
-              color: '#c5221f',
-              marginTop: '12px',
-              textAlign: 'right'
-            }}>
+            <div className="despesa-total vencidas">
               Total: {formatarMoeda(despesas.totais.vencidas)}
             </div>
           </div>
@@ -724,84 +350,23 @@ function Dashboard() {
 
         {/* Grupo: Próximos 7 Dias */}
         {despesas.proximos7Dias.length > 0 && (
-          <div style={{
-            marginBottom: '24px',
-            backgroundColor: '#fef7e0',
-            borderRadius: '12px',
-            padding: '20px',
-            border: '2px solid #fbbc04'
-          }}>
-            <h3 style={{
-              fontSize: '1.125rem',
-              fontWeight: '700',
-              color: '#f9ab00',
-              marginBottom: '16px'
-            }}>
-              🟡 VENCE EM 7 DIAS ({despesas.proximos7Dias.length})
-            </h3>
+          <div className="despesa-grupo proximas">
+            <h3>🟡 VENCE EM 7 DIAS ({despesas.proximos7Dias.length})</h3>
             {despesas.proximos7Dias.map(d => (
-              <div key={d.id} style={{
-                backgroundColor: '#ffffff',
-                borderRadius: '8px',
-                padding: '16px',
-                marginBottom: '12px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                gap: '12px',
-                border: '1px solid #fbbc04'
-              }}>
-                <div style={{ flex: '1', minWidth: '200px' }}>
-                  <div style={{
-                    fontSize: '1rem',
-                    fontWeight: '600',
-                    color: '#202124',
-                    marginBottom: '4px'
-                  }}>
-                    {d.descricao}
-                  </div>
-                  <div style={{
-                    fontSize: '0.875rem',
-                    color: '#5f6368'
-                  }}>
+              <div key={d.id} className="despesa-item proximas">
+                <div className="despesa-info">
+                  <div className="despesa-descricao">{d.descricao}</div>
+                  <div className="despesa-vencimento">
                     Vencimento: {new Date(d.vencimento).toLocaleDateString('pt-BR')}
                   </div>
                 </div>
-                <div style={{
-                  fontSize: '1.25rem',
-                  fontWeight: '700',
-                  color: '#f9ab00'
-                }}>
-                  {formatarMoeda(d.valor)}
-                </div>
-                <button
-                  onClick={() => handlePagarDespesa(d.id)}
-                  style={{
-                    padding: '10px 20px',
-                    backgroundColor: '#34a853',
-                    color: '#ffffff',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '0.875rem',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    transition: 'background-color 0.3s'
-                  }}
-                  onMouseEnter={(e) => e.target.style.backgroundColor = '#2d8e47'}
-                  onMouseLeave={(e) => e.target.style.backgroundColor = '#34a853'}
-                >
+                <div className="despesa-valor proximas">{formatarMoeda(d.valor)}</div>
+                <button onClick={() => handlePagarDespesa(d.id)} className="despesa-btn">
                   Pagar
                 </button>
               </div>
             ))}
-            <div style={{
-              fontSize: '1rem',
-              fontWeight: '700',
-              color: '#f9ab00',
-              marginTop: '12px',
-              textAlign: 'right'
-            }}>
+            <div className="despesa-total proximas">
               Total: {formatarMoeda(despesas.totais.proximos7)}
             </div>
           </div>
@@ -809,180 +374,61 @@ function Dashboard() {
 
         {/* Grupo: 8-15 Dias */}
         {despesas.de8a15Dias.length > 0 && (
-          <div style={{
-            marginBottom: '24px',
-            backgroundColor: '#e6f4ea',
-            borderRadius: '12px',
-            padding: '20px',
-            border: '2px solid #34a853'
-          }}>
-            <h3 style={{
-              fontSize: '1.125rem',
-              fontWeight: '700',
-              color: '#137333',
-              marginBottom: '16px'
-            }}>
-              🟢 VENCE EM 8-15 DIAS ({despesas.de8a15Dias.length})
-            </h3>
+          <div className="despesa-grupo futuras">
+            <h3>🟢 VENCE EM 8-15 DIAS ({despesas.de8a15Dias.length})</h3>
             {despesas.de8a15Dias.map(d => (
-              <div key={d.id} style={{
-                backgroundColor: '#ffffff',
-                borderRadius: '8px',
-                padding: '16px',
-                marginBottom: '12px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                gap: '12px',
-                border: '1px solid #34a853'
-              }}>
-                <div style={{ flex: '1', minWidth: '200px' }}>
-                  <div style={{
-                    fontSize: '1rem',
-                    fontWeight: '600',
-                    color: '#202124',
-                    marginBottom: '4px'
-                  }}>
-                    {d.descricao}
-                  </div>
-                  <div style={{
-                    fontSize: '0.875rem',
-                    color: '#5f6368'
-                  }}>
+              <div key={d.id} className="despesa-item futuras">
+                <div className="despesa-info">
+                  <div className="despesa-descricao">{d.descricao}</div>
+                  <div className="despesa-vencimento">
                     Vencimento: {new Date(d.vencimento).toLocaleDateString('pt-BR')}
                   </div>
                 </div>
-                <div style={{
-                  fontSize: '1.25rem',
-                  fontWeight: '700',
-                  color: '#137333'
-                }}>
-                  {formatarMoeda(d.valor)}
-                </div>
-                <button
-                  onClick={() => handlePagarDespesa(d.id)}
-                  style={{
-                    padding: '10px 20px',
-                    backgroundColor: '#34a853',
-                    color: '#ffffff',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '0.875rem',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    transition: 'background-color 0.3s'
-                  }}
-                  onMouseEnter={(e) => e.target.style.backgroundColor = '#2d8e47'}
-                  onMouseLeave={(e) => e.target.style.backgroundColor = '#34a853'}
-                >
+                <div className="despesa-valor futuras">{formatarMoeda(d.valor)}</div>
+                <button onClick={() => handlePagarDespesa(d.id)} className="despesa-btn">
                   Pagar
                 </button>
               </div>
             ))}
-            <div style={{
-              fontSize: '1rem',
-              fontWeight: '700',
-              color: '#137333',
-              marginTop: '12px',
-              textAlign: 'right'
-            }}>
+            <div className="despesa-total futuras">
               Total: {formatarMoeda(despesas.totais.de8a15)}
             </div>
           </div>
         )}
 
-        {/* Totais e SALDO APÓS PAGAR */}
-        <div style={{
-          backgroundColor: '#f1f3f4',
-          borderRadius: '12px',
-          padding: '20px',
-          border: '2px solid #e8eaed'
-        }}>
-          <div style={{
-            fontSize: '1.125rem',
-            fontWeight: '700',
-            color: '#202124',
-            marginBottom: '8px'
-          }}>
+        {/* Totais e Saldo */}
+        <div className="resumo-financeiro">
+          <div className="resumo-titulo">
             💰 TOTAL A PAGAR: {formatarMoeda(despesas.totais.geral)}
           </div>
-          
-          <div style={{
-            fontSize: '1rem',
-            fontWeight: '600',
-            color: '#5f6368',
-            marginBottom: '12px'
-          }}>
+          <div className="resumo-saldo">
             💵 SALDO DISPONÍVEL: {formatarMoeda(resumo.totalLocal)}
           </div>
-
-          <div style={{
-            height: '2px',
-            backgroundColor: '#e8eaed',
-            margin: '12px 0'
-          }} />
+          <div className="resumo-divider" />
           
           {resumo.totalLocal >= despesas.totais.geral ? (
-            <div style={{
-              backgroundColor: '#e6f4ea',
-              borderRadius: '8px',
-              padding: '16px',
-              border: '2px solid #34a853'
-            }}>
-              <div style={{
-                fontSize: '1.125rem',
-                fontWeight: '700',
-                color: '#137333',
-                marginBottom: '4px'
-              }}>
+            <div className="resumo-resultado positivo">
+              <div className="resumo-resultado-titulo">
                 ✅ SALDO APÓS PAGAR: {formatarMoeda(resumo.totalLocal - despesas.totais.geral)}
               </div>
-              <div style={{
-                fontSize: '0.875rem',
-                color: '#5f6368'
-              }}>
+              <div className="resumo-resultado-subtitulo">
                 Saldo suficiente para cobrir todas as despesas pendentes
               </div>
             </div>
           ) : (
-            <div style={{
-              backgroundColor: '#fce8e6',
-              borderRadius: '8px',
-              padding: '16px',
-              border: '2px solid #ea4335'
-            }}>
-              <div style={{
-                fontSize: '1.125rem',
-                fontWeight: '700',
-                color: '#c5221f',
-                marginBottom: '4px'
-              }}>
+            <div className="resumo-resultado negativo">
+              <div className="resumo-resultado-titulo">
                 ⚠️ FALTAM: {formatarMoeda(despesas.totais.geral - resumo.totalLocal)}
               </div>
-              <div style={{
-                fontSize: '0.875rem',
-                color: '#5f6368'
-              }}>
+              <div className="resumo-resultado-subtitulo">
                 Saldo insuficiente para cobrir todas as despesas pendentes
               </div>
             </div>
           )}
 
           {despesas.vencidas.length === 0 && despesas.proximos7Dias.length === 0 && despesas.de8a15Dias.length === 0 && (
-            <div style={{
-              backgroundColor: '#e6f4ea',
-              borderRadius: '8px',
-              padding: '16px',
-              border: '2px solid #34a853',
-              textAlign: 'center',
-              marginTop: '12px'
-            }}>
-              <div style={{
-                fontSize: '1rem',
-                fontWeight: '600',
-                color: '#137333'
-              }}>
+            <div className="resumo-vazio">
+              <div className="resumo-vazio-texto">
                 ✅ Nenhuma despesa pendente nos próximos 15 dias
               </div>
             </div>

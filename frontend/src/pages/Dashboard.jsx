@@ -166,7 +166,7 @@ function Dashboard() {
         <h2>💵 RESUMO FINANCEIRO</h2>
         <div className="resumo-financeiro">
           <div className="resumo-titulo">💰 Total de Receitas</div>
-          <div className="resumo-saldo">R$ {formatarMoeda(resumo.totalLocal + resumo.totalCentral + resumo.totalMissoes)}</div>
+          <div className="resumo-saldo">{formatarMoeda(resumo.totalLocal + resumo.totalCentral + resumo.totalMissoes)}</div>
           <div className="resumo-titulo">💸 Total de Despesas Pagas</div>
           <div className="resumo-saldo">{formatarMoeda(resumo.totalDespesasPagas)}</div>
           <div className="resumo-divider" />

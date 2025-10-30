@@ -687,27 +687,42 @@ function Despesas({ usuarioEmail }) {
                       </div>
                     )}
 
-                    {despesa.comprovanteURL && (
-                      <a
-                        href={despesa.comprovanteURL}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          display: 'inline-block',
-                          marginTop: '8px',
-                          padding: '6px 12px',
-                          backgroundColor: '#e6f4ea',
-                          color: '#137333',
-                          borderRadius: '6px',
-                          fontSize: '0.75rem',
-                          textDecoration: 'none',
-                          fontWeight: '500',
-                          border: '1px solid #34a853'
-                        }}
-                      >
-                        📎 Ver Comprovante
-                      </a>
-                    )}
+                   {despesa.comprovanteURL && (
+  <a
+    href={despesa.comprovanteURL}
+    target="_blank"
+    rel="noopener noreferrer"
+    style={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '6px',
+      marginTop: '8px',
+      padding: '8px 16px',
+      backgroundColor: '#34a853',
+      color: '#ffffff',
+      borderRadius: '6px',
+      fontSize: '0.875rem',
+      textDecoration: 'none',
+      fontWeight: '600',
+      border: 'none',
+      boxShadow: '0 2px 8px rgba(52, 168, 83, 0.3)',
+      transition: 'all 0.2s ease',
+      cursor: 'pointer'
+    }}
+    onMouseEnter={(e) => {
+      e.currentTarget.style.backgroundColor = '#2d8e47';
+      e.currentTarget.style.transform = 'translateY(-2px)';
+      e.currentTarget.style.boxShadow = '0 4px 12px rgba(52, 168, 83, 0.4)';
+    }}
+    onMouseLeave={(e) => {
+      e.currentTarget.style.backgroundColor = '#34a853';
+      e.currentTarget.style.transform = 'translateY(0)';
+      e.currentTarget.style.boxShadow = '0 2px 8px rgba(52, 168, 83, 0.3)';
+    }}
+  >
+    📎 Ver Comprovante
+  </a>
+)}
                   </div>
 
                   {/* Valor e Ações */}

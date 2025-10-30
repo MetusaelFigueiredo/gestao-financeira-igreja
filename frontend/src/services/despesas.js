@@ -85,7 +85,7 @@ export const adicionarDespesa = async (despesaData) => {
       observacoes: despesaData.observacoes || '',
       parcelado: despesaData.parcelado || false,
       numeroParcelas: despesaData.parcelado ? parseInt(despesaData.numeroParcelas) : 1,
-      comprovanteURL: null,
+      comprovanteURL: despesaData.comprovanteURL || null,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now()
     };
@@ -95,18 +95,21 @@ export const adicionarDespesa = async (despesaData) => {
     const docRef = await addDoc(collection(db, 'despesas'), dadosParaSalvar);
     console.log('✅ Despesa salva com ID:', docRef.id);
 
-    if (despesaData.comprovante && despesaData.comprovante instanceof File) {
-      console.log('📎 Fazendo upload do comprovante...');
-      const comprovanteURL = await uploadComprovante(despesaData.comprovante, docRef.id);
-      
-      if (comprovanteURL) {
-        await updateDoc(doc(db, 'despesas', docRef.id), {
-          comprovanteURL,
-          updatedAt: Timestamp.now()
-        });
-        console.log('✅ Comprovante anexado!');
-      }
-    }
+    // Se já tem URL do comprovante (upload direto), não precisa fazer upload novamente
+if (despesaData.comprovanteURL) {
+  console.log('✅ Comprovante já foi enviado:', despesaData.comprovanteURL);
+} else if (despesaData.comprovante && despesaData.comprovante instanceof File) {
+  console.log('📎 Fazendo upload do comprovante...');
+  const comprovanteURL = await uploadComprovante(despesaData.comprovante, docRef.id);
+  
+  if (comprovanteURL) {
+    await updateDoc(doc(db, 'despesas', docRef.id), {
+      comprovanteURL,
+      updatedAt: Timestamp.now()
+    });
+    console.log('✅ Comprovante anexado!');
+  }
+}
 
     return docRef.id;
     

@@ -15,9 +15,9 @@ const FormDespesa = ({ onSuccess, onCancel, despesaParaEditar }) => {
     observacoes: '',
     parcelado: false,
     numeroParcelas: 1
-  });
+  });   
   const [comprovante, setComprovante] = useState(null);
-
+const [comprovanteURL, setComprovanteURL] = useState(null);
   useEffect(() => {
     if (despesaParaEditar) {
       console.log('📝 Carregando despesa para edição:', despesaParaEditar);
@@ -104,7 +104,8 @@ const FormDespesa = ({ onSuccess, onCancel, despesaParaEditar }) => {
           ...formData,
           valor: parseFloat(formData.valor),
           numeroParcelas: formData.parcelado ? parseInt(formData.numeroParcelas) : 1,
-          comprovante: comprovante || null
+          comprovante: comprovante || null,
+        comprovanteURL: comprovanteURL || null
         };
 
         await adicionarDespesa(despesaData);
@@ -243,7 +244,12 @@ const FormDespesa = ({ onSuccess, onCancel, despesaParaEditar }) => {
 
         <div className="form-group full-width">
           <label>Comprovante {despesaParaEditar && '(deixe vazio para manter o atual)'}</label>
-          <UploadComprovante onUploadComplete={setComprovante} />
+          <UploadComprovante onUploadComplete={(file) => {
+  setComprovante(file);
+  if (file && file.url) {
+    setComprovanteURL(file.url);
+  }
+}} />
         </div>
       </div>
 

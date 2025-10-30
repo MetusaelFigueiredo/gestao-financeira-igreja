@@ -1,6 +1,9 @@
 import { buscarEntradas } from './entradas';
 import { buscarDespesas } from './despesas';
 
+// Configuração da meta de missões (pode ser alterada conforme necessário)
+const META_MISSOES = 5000;
+
 /**
  * Calcula os saldos totais de todas as contas separando por forma de recebimento
  */
@@ -172,7 +175,7 @@ export const buscarResumoFinanceiro = async () => {
 
     // Filtra entradas do mês atual
     const entradasMesAtual = entradas.filter(entrada => {
-      const dataEntrada = entrada.data;
+      const dataEntrada = entrada.data instanceof Date ? entrada.data : new Date(entrada.data);
       return dataEntrada.getMonth() === mesAtual && 
              dataEntrada.getFullYear() === anoAtual;
     });
@@ -209,7 +212,7 @@ export const buscarResumoFinanceiro = async () => {
     const despesas = await buscarDespesas();
     const despesasPagasMes = despesas.filter(d => {
       if (d.status !== 'Paga' || !d.dataPagamento) return false;
-      const dataPagamento = new Date(d.dataPagamento);
+      const dataPagamento = d.dataPagamento instanceof Date ? d.dataPagamento : new Date(d.dataPagamento);
       return dataPagamento.getMonth() === mesAtual && 
              dataPagamento.getFullYear() === anoAtual;
     });
@@ -333,7 +336,7 @@ export const buscarMetaMissoes = async () => {
 
     // Filtra entradas do mês atual
     const entradasMesAtual = entradas.filter(entrada => {
-      const dataEntrada = entrada.data;
+      const dataEntrada = entrada.data instanceof Date ? entrada.data : new Date(entrada.data);
       return dataEntrada.getMonth() === mesAtual && 
              dataEntrada.getFullYear() === anoAtual;
     });
@@ -346,15 +349,14 @@ export const buscarMetaMissoes = async () => {
       }
     });
 
-    const meta = 5000;
-    const progresso = (totalMissoes / meta) * 100;
-    const falta = Math.max(0, meta - totalMissoes);
+    const progresso = (totalMissoes / META_MISSOES) * 100;
+    const falta = Math.max(0, META_MISSOES - totalMissoes);
 
     return {
       success: true,
       missoes: {
         arrecadado: totalMissoes,
-        meta,
+        meta: META_MISSOES,
         progresso: Math.min(100, progresso).toFixed(1),
         falta
       }

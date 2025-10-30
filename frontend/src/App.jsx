@@ -6,6 +6,7 @@ import { logout, observarAutenticacao } from './services/auth';
 import Dashboard from './pages/Dashboard';
 import Despesas from './pages/Despesas';
 import Relatorios from './pages/Relatorios';
+import Backup from './pages/Backup'; // ✨ ADICIONAR AQUI
 
 function App() {
   const [usuario, setUsuario] = useState(null);
@@ -187,7 +188,6 @@ function App() {
               Despesas
             </button>
 
-            {/* ✨ NOVO BOTÃO RELATÓRIOS */}
             <button
               onClick={() => setPaginaAtual('relatorios')}
               style={{
@@ -213,6 +213,34 @@ function App() {
               }}
             >
               📊 Relatórios
+            </button>
+
+            {/* ✨ NOVO BOTÃO BACKUP */}
+            <button
+              onClick={() => setPaginaAtual('backup')}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: paginaAtual === 'backup' ? '#1a73e8' : 'transparent',
+                color: paginaAtual === 'backup' ? '#ffffff' : '#5f6368',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: '500',
+                fontSize: '0.875rem',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                if (paginaAtual !== 'backup') {
+                  e.currentTarget.style.backgroundColor = '#f1f3f4';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (paginaAtual !== 'backup') {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }
+              }}
+            >
+              🗓️ Backup
             </button>
 
             <div style={{
@@ -263,8 +291,9 @@ function App() {
         {paginaAtual === 'membros' && <Membros />}
         {paginaAtual === 'entradas' && <Entradas />}
         {paginaAtual === 'despesas' && <Despesas usuarioEmail={usuario.email} />}
-        {/* ✨ NOVA PÁGINA RELATÓRIOS */}
         {paginaAtual === 'relatorios' && <Relatorios />}
+        {/* ✨ NOVA PÁGINA BACKUP */}
+        {paginaAtual === 'backup' && <Backup />}
       </main>
     </div>
   );

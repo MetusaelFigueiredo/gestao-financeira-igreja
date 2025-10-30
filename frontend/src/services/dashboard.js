@@ -1,4 +1,5 @@
 import { buscarEntradas } from './entradas';
+import { buscarDespesas } from './despesas';
 
 /**
  * Calcula os saldos totais de todas as contas separando por forma de recebimento
@@ -148,6 +149,218 @@ export const calcularEstatisticasMes = async () => {
     };
   } catch (error) {
     console.error('Erro ao calcular estatísticas:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * Busca e calcula o resumo financeiro do mês atual
+ * Retorna: entrada local, despesas pagas, saldo do mês, detalhamento de entradas (central, local, missões, PIX, dinheiro)
+ */
+export const buscarResumoFinanceiro = async () => {
+  try {
+    const resultado = await buscarEntradas();
+    
+    if (!resultado.success) {
+      return { success: false, error: resultado.error };
+    }
+
+    const entradas = resultado.entradas;
+    const agora = new Date();
+    const mesAtual = agora.getMonth();
+    const anoAtual = agora.getFullYear();
+
+    // Filtra entradas do mês atual
+    const entradasMesAtual = entradas.filter(entrada => {
+      const dataEntrada = entrada.data;
+      return dataEntrada.getMonth() === mesAtual && 
+             dataEntrada.getFullYear() === anoAtual;
+    });
+
+    // Inicializa totais
+    let totalCentral = 0;
+    let totalLocal = 0;
+    let totalMissoes = 0;
+    let totalPixLocal = 0; // PIX apenas das entradas locais
+    let totalDinheiroLocal = 0; // Dinheiro apenas das entradas locais
+
+    // Calcula rateios e formas de pagamento
+    entradasMesAtual.forEach(entrada => {
+      if (entrada.rateio) {
+        const formaRecebimento = entrada.formaRecebimento || 'pix';
+        
+        // Soma rateios
+        totalCentral += entrada.rateio.central || 0;
+        totalLocal += entrada.rateio.local || 0;
+        totalMissoes += entrada.rateio.missoes || 0;
+
+        // PIX e Dinheiro APENAS das entradas que ficam local (rateio.local > 0)
+        if (entrada.rateio.local > 0) {
+          if (formaRecebimento === 'pix') {
+            totalPixLocal += entrada.rateio.local;
+          } else if (formaRecebimento === 'dinheiro') {
+            totalDinheiroLocal += entrada.rateio.local;
+          }
+        }
+      }
+    });
+
+    // Busca despesas pagas do mês
+    const despesas = await buscarDespesas();
+    const despesasPagasMes = despesas.filter(d => {
+      if (d.status !== 'Paga' || !d.dataPagamento) return false;
+      const dataPagamento = new Date(d.dataPagamento);
+      return dataPagamento.getMonth() === mesAtual && 
+             dataPagamento.getFullYear() === anoAtual;
+    });
+
+    const totalDespesasPagas = despesasPagasMes.reduce((sum, d) => sum + d.valor, 0);
+
+    // Calcula saldo do mês
+    const saldoMes = totalLocal - totalDespesasPagas;
+
+    // Calcula percentuais de PIX e Dinheiro
+    const totalLocalRecebido = totalPixLocal + totalDinheiroLocal;
+    const percentualPix = totalLocalRecebido > 0 ? (totalPixLocal / totalLocalRecebido) * 100 : 0;
+    const percentualDinheiro = totalLocalRecebido > 0 ? (totalDinheiroLocal / totalLocalRecebido) * 100 : 0;
+
+    return {
+      success: true,
+      resumo: {
+        totalCentral,
+        totalLocal,
+        totalMissoes,
+        totalPix: totalPixLocal,
+        totalDinheiro: totalDinheiroLocal,
+        percentualPix: percentualPix.toFixed(1),
+        percentualDinheiro: percentualDinheiro.toFixed(1),
+        totalDespesasPagas,
+        saldoMes
+      }
+    };
+  } catch (error) {
+    console.error('Erro ao buscar resumo financeiro:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * Busca despesas pendentes dos próximos 15 dias agrupadas por urgência
+ * Grupos: vencidas, próximos 7 dias, 8-15 dias
+ */
+export const buscarDespesasPendentes = async () => {
+  try {
+    const despesas = await buscarDespesas();
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+
+    const data15Dias = new Date(hoje);
+    data15Dias.setDate(data15Dias.getDate() + 15);
+
+    const data7Dias = new Date(hoje);
+    data7Dias.setDate(data7Dias.getDate() + 7);
+
+    // Filtra apenas despesas pendentes ou vencidas até 15 dias
+    const despesasPendentes = despesas.filter(d => {
+      if (d.status === 'Paga') return false;
+      
+      const vencimento = new Date(d.vencimento);
+      vencimento.setHours(0, 0, 0, 0);
+      
+      return vencimento <= data15Dias;
+    });
+
+    // Agrupa por urgência
+    const vencidas = [];
+    const proximos7Dias = [];
+    const de8a15Dias = [];
+
+    despesasPendentes.forEach(d => {
+      const vencimento = new Date(d.vencimento);
+      vencimento.setHours(0, 0, 0, 0);
+
+      if (vencimento < hoje || d.status === 'Vencida') {
+        vencidas.push(d);
+      } else if (vencimento <= data7Dias) {
+        proximos7Dias.push(d);
+      } else if (vencimento <= data15Dias) {
+        de8a15Dias.push(d);
+      }
+    });
+
+    // Calcula totais
+    const totalVencidas = vencidas.reduce((sum, d) => sum + d.valor, 0);
+    const totalProximos7 = proximos7Dias.reduce((sum, d) => sum + d.valor, 0);
+    const totalDe8a15 = de8a15Dias.reduce((sum, d) => sum + d.valor, 0);
+    const totalGeral = totalVencidas + totalProximos7 + totalDe8a15;
+
+    return {
+      success: true,
+      despesas: {
+        vencidas,
+        proximos7Dias,
+        de8a15Dias,
+        totais: {
+          vencidas: totalVencidas,
+          proximos7: totalProximos7,
+          de8a15: totalDe8a15,
+          geral: totalGeral
+        }
+      }
+    };
+  } catch (error) {
+    console.error('Erro ao buscar despesas pendentes:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * Busca e calcula progresso da meta de missões
+ * Meta fixa: R$ 5.000,00
+ */
+export const buscarMetaMissoes = async () => {
+  try {
+    const resultado = await buscarEntradas();
+    
+    if (!resultado.success) {
+      return { success: false, error: resultado.error };
+    }
+
+    const entradas = resultado.entradas;
+    const agora = new Date();
+    const mesAtual = agora.getMonth();
+    const anoAtual = agora.getFullYear();
+
+    // Filtra entradas do mês atual
+    const entradasMesAtual = entradas.filter(entrada => {
+      const dataEntrada = entrada.data;
+      return dataEntrada.getMonth() === mesAtual && 
+             dataEntrada.getFullYear() === anoAtual;
+    });
+
+    // Soma rateio de missões
+    let totalMissoes = 0;
+    entradasMesAtual.forEach(entrada => {
+      if (entrada.rateio && entrada.rateio.missoes) {
+        totalMissoes += entrada.rateio.missoes;
+      }
+    });
+
+    const meta = 5000;
+    const progresso = (totalMissoes / meta) * 100;
+    const falta = Math.max(0, meta - totalMissoes);
+
+    return {
+      success: true,
+      missoes: {
+        arrecadado: totalMissoes,
+        meta,
+        progresso: Math.min(100, progresso).toFixed(1),
+        falta
+      }
+    };
+  } catch (error) {
+    console.error('Erro ao buscar meta de missões:', error);
     return { success: false, error: error.message };
   }
 };

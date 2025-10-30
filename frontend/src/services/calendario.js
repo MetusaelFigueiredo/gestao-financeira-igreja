@@ -36,11 +36,28 @@ export const exportarParaCalendario = (despesa) => {
     const dtstart = formatarDataICS(dataVencimento);
     const dtstamp = formatarDataHoraICS(new Date());
 
+    // Função para escapar texto para iCalendar (substituir caracteres especiais)
+    const escaparTextoICS = (texto) => {
+      if (!texto || typeof texto !== 'string') return '';
+      return texto
+        .replace(/\\/g, '\\\\')  // Escapar backslashes
+        .replace(/;/g, '\\;')    // Escapar ponto e vírgula
+        .replace(/,/g, '\\,')    // Escapar vírgulas
+        .replace(/\n/g, '\\n')   // Escapar quebras de linha
+        .replace(/\r/g, '');     // Remover carriage returns
+    };
+
+    // Validar e sanitizar campos
+    const descricaoSegura = escaparTextoICS(despesa.descricao) || 'Despesa sem descrição';
+    const categoriaSegura = escaparTextoICS(despesa.categoria) || 'Sem categoria';
+    const formaPagamentoSegura = escaparTextoICS(despesa.formaPagamento) || 'Não informado';
+    const observacoesSegura = despesa.observacoes ? escaparTextoICS(despesa.observacoes) : '';
+
     // Criar descrição com informações da despesa
     const descricao = `Valor: R$ ${despesa.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\\n` +
-                     `Categoria: ${despesa.categoria || 'Sem categoria'}\\n` +
-                     `Forma de Pagamento: ${despesa.formaPagamento || 'Não informado'}\\n` +
-                     (despesa.observacoes ? `Observações: ${despesa.observacoes}` : '');
+                     `Categoria: ${categoriaSegura}\\n` +
+                     `Forma de Pagamento: ${formaPagamentoSegura}\\n` +
+                     (observacoesSegura ? `Observações: ${observacoesSegura}` : '');
 
     // Criar conteúdo do arquivo .ics
     const icsContent = [
@@ -54,13 +71,13 @@ export const exportarParaCalendario = (despesa) => {
       `DTSTAMP:${dtstamp}`,
       `DTSTART;VALUE=DATE:${dtstart}`,
       `DTEND;VALUE=DATE:${dtstart}`,
-      `SUMMARY:Vencimento: ${despesa.descricao}`,
+      `SUMMARY:Vencimento: ${descricaoSegura}`,
       `DESCRIPTION:${descricao}`,
       'STATUS:CONFIRMED',
       'BEGIN:VALARM',
       'TRIGGER:-P1D',
       'ACTION:DISPLAY',
-      `DESCRIPTION:Lembrete: ${despesa.descricao} vence amanhã`,
+      `DESCRIPTION:Lembrete: ${descricaoSegura} vence amanhã`,
       'END:VALARM',
       'END:VEVENT',
       'END:VCALENDAR'
@@ -75,7 +92,11 @@ export const exportarParaCalendario = (despesa) => {
     link.href = url;
     
     // Nome do arquivo: vencimento-{descricao}-{data}.ics
-    const nomeArquivo = `vencimento-${despesa.descricao.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-${dtstart}.ics`;
+    // Validar que descricao existe antes de usar replace
+    const descricaoArquivo = (despesa.descricao && typeof despesa.descricao === 'string') 
+      ? despesa.descricao.replace(/[^a-z0-9]/gi, '-').toLowerCase() 
+      : 'despesa';
+    const nomeArquivo = `vencimento-${descricaoArquivo}-${dtstart}.ics`;
     link.download = nomeArquivo;
     
     // Fazer download

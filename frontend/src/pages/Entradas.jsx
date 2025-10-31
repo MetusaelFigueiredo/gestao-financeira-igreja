@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import FormEntrada from '../components/FormEntrada';
 import { buscarEntradas } from '../services/entradas';
 import { formatarMoeda } from '../utils/formatacao';
+import { calcularResumoMes } from '../utils/entradasUtils';
 
 function Entradas({ usuarioEmail }) {
   const [entradas, setEntradas] = useState([]);
@@ -46,6 +47,9 @@ function Entradas({ usuarioEmail }) {
     return cores[tipo] || '#5f6368';
   };
 
+  // Calcula resumo do mês atual
+  const resumo = calcularResumoMes(entradas, new Date());
+
   return (
     <div style={{
       maxWidth: '1400px',
@@ -74,6 +78,94 @@ function Entradas({ usuarioEmail }) {
       {/* Formulário de Lançamento */}
       <div style={{ marginBottom: '32px' }}>
         <FormEntrada onSucesso={carregarEntradas} usuarioEmail={usuarioEmail} />
+      </div>
+
+      {/* Cards de Resumo (Entrada Total / Igreja Central / Igreja Local / Missões) */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+        gap: '16px',
+        marginBottom: '24px'
+      }}>
+        {/* Entrada Total */}
+        <div style={{
+          border: '2px solid #e0e0e0',
+          borderRadius: '8px',
+          padding: '18px',
+          backgroundColor: '#fff'
+        }}>
+          <div style={{ fontSize: '0.75rem', color: '#5f6368' }}>ENTRADA TOTAL</div>
+          <div style={{ fontSize: '1.5rem', fontWeight: '700', marginTop: '8px' }}>
+            {formatarMoeda(resumo.total)}
+          </div>
+          <div style={{ fontSize: '0.875rem', color: '#9aa0a6', marginTop: '6px' }}>
+            {resumo.totalCount} lançamento(s)
+          </div>
+          <div style={{ marginTop: '10px', fontSize: '0.85rem', color: '#5f6368' }}>
+            <div>PIX: <strong>{formatarMoeda(resumo.totalByForma.pix)}</strong></div>
+            <div>Dinheiro: <strong>{formatarMoeda(resumo.totalByForma.dinheiro)}</strong></div>
+          </div>
+        </div>
+
+        {/* Igreja Central */}
+        <div style={{
+          border: '2px solid #1a73e8',
+          borderRadius: '8px',
+          padding: '18px',
+          backgroundColor: '#fff'
+        }}>
+          <div style={{ fontSize: '0.75rem', color: '#1a73e8' }}>IGREJA CENTRAL</div>
+          <div style={{ fontSize: '1.5rem', fontWeight: '700', marginTop: '8px', color: '#1a73e8' }}>
+            {formatarMoeda(resumo.central)}
+          </div>
+          <div style={{ fontSize: '0.875rem', color: '#9aa0a6', marginTop: '6px' }}>
+            {resumo.centralCount} lançamento(s)
+          </div>
+          <div style={{ marginTop: '10px', fontSize: '0.85rem', color: '#5f6368' }}>
+            <div>PIX: <strong>{formatarMoeda(resumo.centralByForma.pix)}</strong></div>
+            <div>Dinheiro: <strong>{formatarMoeda(resumo.centralByForma.dinheiro)}</strong></div>
+          </div>
+        </div>
+
+        {/* Igreja Local */}
+        <div style={{
+          border: '2px solid #34a853',
+          borderRadius: '8px',
+          padding: '18px',
+          backgroundColor: '#fff'
+        }}>
+          <div style={{ fontSize: '0.75rem', color: '#34a853' }}>IGREJA LOCAL</div>
+          <div style={{ fontSize: '1.5rem', fontWeight: '700', marginTop: '8px', color: '#34a853' }}>
+            {formatarMoeda(resumo.local)}
+          </div>
+          <div style={{ fontSize: '0.875rem', color: '#9aa0a6', marginTop: '6px' }}>
+            {resumo.localCount} lançamento(s)
+          </div>
+          <div style={{ marginTop: '10px', fontSize: '0.85rem', color: '#5f6368' }}>
+            <div>PIX: <strong>{formatarMoeda(resumo.localByForma.pix)}</strong></div>
+            <div>Dinheiro: <strong>{formatarMoeda(resumo.localByForma.dinheiro)}</strong></div>
+          </div>
+        </div>
+
+        {/* Missões */}
+        <div style={{
+          border: '2px solid #9334e6',
+          borderRadius: '8px',
+          padding: '18px',
+          backgroundColor: '#fff'
+        }}>
+          <div style={{ fontSize: '0.75rem', color: '#9334e6' }}>MISSÕES</div>
+          <div style={{ fontSize: '1.5rem', fontWeight: '700', marginTop: '8px', color: '#9334e6' }}>
+            {formatarMoeda(resumo.missoes)}
+          </div>
+          <div style={{ fontSize: '0.875rem', color: '#9aa0a6', marginTop: '6px' }}>
+            {resumo.missoesCount} lançamento(s)
+          </div>
+          <div style={{ marginTop: '10px', fontSize: '0.85rem', color: '#5f6368' }}>
+            <div>PIX: <strong>{formatarMoeda(resumo.missoesByForma.pix)}</strong></div>
+            <div>Dinheiro: <strong>{formatarMoeda(resumo.missoesByForma.dinheiro)}</strong></div>
+          </div>
+        </div>
       </div>
       
       {/* Histórico de Entradas */}
@@ -175,7 +267,7 @@ function Entradas({ usuarioEmail }) {
                         <span>{entrada.membroNome} • </span>
                       )}
                       <span style={{ color: '#5f6368', fontSize: '0.875rem' }}>
-                        {entrada.data.toLocaleDateString('pt-BR')}
+                        {entrada.data ? new Date(entrada.data).toLocaleDateString('pt-BR') : ''}
                       </span>
                     </div>
                     
@@ -197,13 +289,13 @@ function Entradas({ usuarioEmail }) {
                       color: '#5f6368',
                       marginTop: '6px'
                     }}>
-                      {entrada.rateio.central > 0 && (
+                      {entrada.rateio?.central > 0 && (
                         <span>Central: {formatarMoeda(entrada.rateio.central)}</span>
                       )}
-                      {entrada.rateio.local > 0 && (
+                      {entrada.rateio?.local > 0 && (
                         <span>Local: {formatarMoeda(entrada.rateio.local)}</span>
                       )}
-                      {entrada.rateio.missoes > 0 && (
+                      {entrada.rateio?.missoes > 0 && (
                         <span>Missões: {formatarMoeda(entrada.rateio.missoes)}</span>
                       )}
                     </div>

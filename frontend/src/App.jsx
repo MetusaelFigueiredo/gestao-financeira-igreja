@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard';
 import Despesas from './pages/Despesas';
 import Relatorios from './pages/Relatorios';
 import Backup from './pages/Backup'; // ✨ ADICIONAR AQUI
+import DiagnosticoFirebase from './components/DiagnosticoFirebase'; // 🔍 Diagnóstico
 
 function App() {
   const [usuario, setUsuario] = useState(null);
@@ -243,6 +244,34 @@ function App() {
               🗓️ Backup
             </button>
 
+            {/* 🔍 BOTÃO DIAGNÓSTICO */}
+            <button
+              onClick={() => setPaginaAtual('diagnostico')}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: paginaAtual === 'diagnostico' ? '#ea4335' : 'transparent',
+                color: paginaAtual === 'diagnostico' ? '#ffffff' : '#5f6368',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: '500',
+                fontSize: '0.875rem',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                if (paginaAtual !== 'diagnostico') {
+                  e.currentTarget.style.backgroundColor = '#f1f3f4';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (paginaAtual !== 'diagnostico') {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }
+              }}
+            >
+              🔍 Diagnóstico
+            </button>
+
             <div style={{
               width: '1px',
               height: '24px',
@@ -294,6 +323,8 @@ function App() {
         {paginaAtual === 'relatorios' && <Relatorios />}
         {/* ✨ NOVA PÁGINA BACKUP */}
         {paginaAtual === 'backup' && <Backup />}
+        {/* 🔍 PÁGINA DIAGNÓSTICO */}
+        {paginaAtual === 'diagnostico' && <DiagnosticoFirebase />}
       </main>
     </div>
   );

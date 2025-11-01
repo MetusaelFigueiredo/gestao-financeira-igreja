@@ -6,12 +6,12 @@ import { getStorage } from "firebase/storage";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyDR0gXHBys8cPMsUu43ECOGt8jaOs5xYkI",
-  authDomain: "gestao-financeira-igreja.firebaseapp.com",
-  projectId: "gestao-financeira-igreja",
-  storageBucket: "gestao-financeira-igreja.firebasestorage.app",
-  messagingSenderId: "389509997147",
-  appId: "1:389509997147:web:8c745a64fcdab324d6957e",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyDR0gXHBys8cPMsUu43ECOGt8jaOs5xYkI",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "gestao-financeira-igreja.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "gestao-financeira-igreja",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "gestao-financeira-igreja.firebasestorage.app",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "389509997147",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:389509997147:web:8c745a64fcdab324d6957e",
   measurementId: "G-Z5YBHZ6EF8"
 };
 

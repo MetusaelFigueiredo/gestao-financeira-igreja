@@ -1,5 +1,5 @@
 import { collection, getDocs } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL, listAll, deleteObject } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL, listAll, deleteObject, getMetadata } from 'firebase/storage';
 import { db, storage } from './firebase';
 
 /**
@@ -122,7 +122,7 @@ export const listarBackupsNuvem = async () => {
     const backups = await Promise.all(
       resultado.items.map(async (itemRef) => {
         const url = await getDownloadURL(itemRef);
-        const metadata = await itemRef.getMetadata();
+        const metadata = await getMetadata(itemRef);
 
         return {
           nome: itemRef.name,

@@ -9,7 +9,7 @@ import {
   doc,
   updateDoc
 } from 'firebase/firestore';
-import { db } from './firebase';
+import { db, auth } from './firebase';
 
 /**
  * Calcula o rateio baseado no tipo de entrada
@@ -51,13 +51,17 @@ export const adicionarEntrada = async (dados, usuarioEmail) => {
     
     const valorNum = parseFloat(dados.valor);
 
+    // CORREÇÃO: Criar data corretamente para evitar problema de timezone
+    const [ano, mes, dia] = dados.data.split('-').map(Number);
+    const dataCorreta = new Date(ano, mes - 1, dia, 12, 0, 0); // Meio-dia para evitar problemas de timezone
+    
     const documento = {
       tipo: dados.tipo,
       descricao: dados.descricao || '',
       valor: valorNum,
-      data: Timestamp.fromDate(new Date(dados.data)),
+      data: Timestamp.fromDate(dataCorreta),
       formaRecebimento: dados.formaRecebimento,
-      rateio: rateio,
+      rateio: rateio, // SEMPRE vai ter rateio calculado
       
       // Se for dízimo, guarda o membro
       ...(dados.tipo === 'dizimo' && dados.membroId && {
@@ -88,9 +92,23 @@ export const adicionarEntrada = async (dados, usuarioEmail) => {
  */
 export const buscarEntradas = async () => {
   try {
+    console.log('🔍 Iniciando busca de entradas no Firebase...');
+    console.log('🔥 Objeto db:', db);
+    console.log('👤 Usuário autenticado:', auth.currentUser);
+    
+    if (!auth.currentUser) {
+      throw new Error('Usuário não está autenticado');
+    }
+    
     const entradasRef = collection(db, 'entradas');
+    console.log('📁 Referência da coleção:', entradasRef);
+    
     const q = query(entradasRef, orderBy('data', 'desc'));
+    console.log('🔍 Query criada:', q);
+    
     const snapshot = await getDocs(q);
+    console.log('📸 Snapshot obtido:', snapshot);
+    console.log('📊 Número de documentos:', snapshot.size);
     
     const entradas = [];
     snapshot.forEach((doc) => {
@@ -105,10 +123,15 @@ export const buscarEntradas = async () => {
       });
     });
     
+    console.log('✅ Entradas processadas:', entradas.length, 'documentos');
+    console.log('📋 Primeiras 3 entradas:', entradas.slice(0, 3));
+    
     return { success: true, entradas };
   } catch (error) {
-    console.error('❌ Erro ao buscar entradas:', error);
-    return { success: false, error: error.message };
+    console.error('❌ Erro detalhado ao buscar entradas:', error);
+    console.error('❌ Stack trace:', error.stack);
+    console.error('❌ Firebase Auth:', auth.currentUser);
+    return { success: false, error: error.message, errorDetails: error };
   }
 };
 
@@ -153,11 +176,15 @@ export const atualizarEntrada = async (id, dados, usuarioEmail) => {
     
     const rateio = dados.rateio || calcularRateio(dados.tipo, dados.valor);
 
+    // CORREÇÃO: Criar data corretamente para evitar problema de timezone
+    const [ano, mes, dia] = dados.data.split('-').map(Number);
+    const dataCorreta = new Date(ano, mes - 1, dia, 12, 0, 0);
+    
     const dadosAtualizados = {
       tipo: dados.tipo,
       descricao: dados.descricao || '',
       valor: parseFloat(dados.valor),
-      data: Timestamp.fromDate(new Date(dados.data)),
+      data: Timestamp.fromDate(dataCorreta),
       formaRecebimento: dados.formaRecebimento,
       rateio: rateio,
       

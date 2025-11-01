@@ -10,34 +10,60 @@ function Dashboard() {
   const [carregando, setCarregando] = useState(true);
   const [modoEdicaoMeta, setModoEdicaoMeta] = useState(false);
   const [novaMeta, setNovaMeta] = useState('');
+  
+  // Estados para filtros de data
+  const dataAtual = new Date();
+  const [anoSelecionado, setAnoSelecionado] = useState(dataAtual.getFullYear());
+  const [mesSelecionado, setMesSelecionado] = useState(dataAtual.getMonth());
 
   useEffect(() => {
     carregarDados();
-  }, []);
+  }, [anoSelecionado, mesSelecionado]); // Recarrega quando filtros mudarem
 
   const carregarDados = async () => {
+    console.log('🔄 Iniciando carregamento dos dados do Dashboard...');
+    console.log('📅 Filtros:', { ano: anoSelecionado, mes: mesSelecionado });
     setCarregando(true);
     
-    const [resultadoResumo, resultadoDespesas, resultadoMissoes] = await Promise.all([
-      buscarResumoFinanceiro(),
-      buscarDespesasPendentes(),
-      buscarMetaMissoes()
-    ]);
-    
-    if (resultadoResumo.success) {
-      setResumo(resultadoResumo.resumo);
-    }
-    
-    if (resultadoDespesas.success) {
-      setDespesas(resultadoDespesas.despesas);
-    }
-    
-    if (resultadoMissoes.success) {
-      setMissoes(resultadoMissoes.missoes);
-      setNovaMeta(resultadoMissoes.missoes.meta);
+    try {
+      const [resultadoResumo, resultadoDespesas, resultadoMissoes] = await Promise.all([
+        buscarResumoFinanceiro(anoSelecionado, mesSelecionado),
+        buscarDespesasPendentes(),
+        buscarMetaMissoes(anoSelecionado, mesSelecionado)
+      ]);
+      
+      console.log('📊 Resultado resumo:', resultadoResumo);
+      console.log('💸 Resultado despesas:', resultadoDespesas);
+      console.log('🎯 Resultado missões:', resultadoMissoes);
+      
+      if (resultadoResumo.success) {
+        setResumo(resultadoResumo.resumo);
+        console.log('✅ Resumo carregado com sucesso');
+      } else {
+        console.error('❌ Erro ao carregar resumo:', resultadoResumo.error);
+      }
+      
+      if (resultadoDespesas.success) {
+        setDespesas(resultadoDespesas.despesas);
+        console.log('✅ Despesas carregadas com sucesso');
+      } else {
+        console.error('❌ Erro ao carregar despesas:', resultadoDespesas.error);
+      }
+      
+      if (resultadoMissoes.success) {
+        setMissoes(resultadoMissoes.missoes);
+        setNovaMeta(resultadoMissoes.missoes.meta);
+        console.log('✅ Missões carregadas com sucesso');
+      } else {
+        console.error('❌ Erro ao carregar missões:', resultadoMissoes.error);
+      }
+      
+    } catch (error) {
+      console.error('❌ Erro geral ao carregar dados:', error);
     }
     
     setCarregando(false);
+    console.log('✅ Carregamento finalizado');
   };
 
   const handlePagarDespesa = async (despesaId, formaPagamento = 'Dinheiro') => {
@@ -115,7 +141,20 @@ function Dashboard() {
     return null;
   }
 
-  const mesNome = new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  // Gerar nome do período baseado nos filtros
+  const dataFiltro = new Date(anoSelecionado, mesSelecionado, 1);
+  const mesNome = dataFiltro.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  
+  // Arrays para os seletores
+  const meses = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+  ];
+  
+  const anosDisponiveis = [];
+  for (let ano = 2020; ano <= new Date().getFullYear() + 1; ano++) {
+    anosDisponiveis.push(ano);
+  }
 
   return (
     <div style={{
@@ -133,39 +172,143 @@ function Dashboard() {
         boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
         border: '2px solid #e8eaed'
       }}>
-        <h1 style={{
-          fontSize: '2rem',
-          fontWeight: '700',
-          color: '#202124',
-          marginBottom: '8px',
-          letterSpacing: '-0.5px'
-        }}>
-          💰 FLUXO DE CAIXA COMPLETO
-        </h1>
-        <div style={{
-          height: '3px',
-          width: '120px',
-          background: 'linear-gradient(90deg, #1a73e8 0%, #34a853 100%)',
-          borderRadius: '2px',
-          marginBottom: '12px'
-        }} />
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
+          <div>
+            <h1 style={{
+              fontSize: '2rem',
+              fontWeight: '700',
+              color: '#202124',
+              marginBottom: '8px',
+              letterSpacing: '-0.5px'
+            }}>
+              💰 FLUXO DE CAIXA COMPLETO
+            </h1>
+            <div style={{
+              height: '3px',
+              width: '120px',
+              background: 'linear-gradient(90deg, #1a73e8 0%, #34a853 100%)',
+              borderRadius: '2px'
+            }} />
+          </div>
+          
+          {/* Filtros de Data */}
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <label style={{ fontSize: '0.875rem', color: '#5f6368', fontWeight: '500' }}>
+              📅 Filtros:
+            </label>
+            
+            <select
+              value={mesSelecionado}
+              onChange={(e) => setMesSelecionado(parseInt(e.target.value))}
+              style={{
+                padding: '8px 12px',
+                border: '1px solid #dadce0',
+                borderRadius: '6px',
+                fontSize: '0.875rem',
+                color: '#202124',
+                backgroundColor: '#ffffff',
+                cursor: 'pointer',
+                outline: 'none'
+              }}
+            >
+              {meses.map((mes, index) => (
+                <option key={index} value={index}>{mes}</option>
+              ))}
+            </select>
+            
+            <select
+              value={anoSelecionado}
+              onChange={(e) => setAnoSelecionado(parseInt(e.target.value))}
+              style={{
+                padding: '8px 12px',
+                border: '1px solid #dadce0',
+                borderRadius: '6px',
+                fontSize: '0.875rem',
+                color: '#202124',
+                backgroundColor: '#ffffff',
+                cursor: 'pointer',
+                outline: 'none'
+              }}
+            >
+              {anosDisponiveis.map((ano) => (
+                <option key={ano} value={ano}>{ano}</option>
+              ))}
+            </select>
+            
+            <button
+              onClick={() => {
+                const hoje = new Date();
+                setAnoSelecionado(hoje.getFullYear());
+                setMesSelecionado(hoje.getMonth());
+              }}
+              style={{
+                padding: '8px 12px',
+                backgroundColor: '#1a73e8',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '0.875rem',
+                cursor: 'pointer',
+                fontWeight: '500'
+              }}
+            >
+              📅 Hoje
+            </button>
+          </div>
+        </div>
+        
         <p style={{
           fontSize: '0.9375rem',
           color: '#5f6368',
           fontWeight: '500',
-          textTransform: 'capitalize'
+          textTransform: 'capitalize',
+          marginTop: '12px'
         }}>
           Período: {mesNome}
         </p>
       </div>
 
-      {/* SEÇÃO 1: Resumo Financeiro (3 cards) */}
+      {/* SEÇÃO 1: Resumo Financeiro (4 cards) */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
         gap: '20px',
         marginBottom: '32px'
       }}>
+        {/* Card Entrada Total do Mês */}
+        <div style={{
+          backgroundColor: '#ffffff',
+          borderRadius: '12px',
+          padding: '24px',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+          border: '3px solid #1a73e8',
+          position: 'relative'
+        }}>
+          <div style={{
+            fontSize: '0.875rem',
+            color: '#1a73e8',
+            fontWeight: '700',
+            marginBottom: '8px',
+            letterSpacing: '0.5px'
+          }}>
+            💎 ENTRADA TOTAL DO MÊS
+          </div>
+          <div style={{
+            fontSize: '2rem',
+            fontWeight: '700',
+            color: '#1a73e8',
+            marginBottom: '8px'
+          }}>
+            {formatarMoeda(resumo.totalCentral + resumo.totalLocal + resumo.totalMissoes)}
+          </div>
+          <div style={{
+            fontSize: '0.75rem',
+            color: '#5f6368'
+          }}>
+            {resumo.quantidadeEntradas} {resumo.quantidadeEntradas === 1 ? 'entrada' : 'entradas'} registradas
+          </div>
+        </div>
+
         {/* Card Entrada Local */}
         <div style={{
           backgroundColor: '#ffffff',
@@ -228,7 +371,7 @@ function Dashboard() {
             fontSize: '0.75rem',
             color: '#5f6368'
           }}>
-            Despesas pagas no mês atual
+            Despesas pagas no período selecionado
           </div>
         </div>
 
@@ -281,7 +424,7 @@ function Dashboard() {
           color: '#202124',
           marginBottom: '20px'
         }}>
-          📊 DETALHAMENTO DAS ENTRADAS
+          📊 DETALHAMENTO DOS RATEIOS
         </h2>
         <div style={{
           display: 'grid',

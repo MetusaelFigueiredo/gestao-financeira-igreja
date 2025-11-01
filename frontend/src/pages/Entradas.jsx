@@ -7,6 +7,12 @@ import { calcularResumoMes } from '../utils/entradasUtils';
 function Entradas({ usuarioEmail }) {
   const [entradas, setEntradas] = useState([]);
   const [carregando, setCarregando] = useState(true);
+  const [entradaParaEdicao, setEntradaParaEdicao] = useState(null);
+  
+  // Estados para filtros de data
+  const dataAtual = new Date();
+  const [anoSelecionado, setAnoSelecionado] = useState(dataAtual.getFullYear());
+  const [mesSelecionado, setMesSelecionado] = useState(dataAtual.getMonth());
 
   useEffect(() => {
     carregarEntradas();
@@ -47,8 +53,72 @@ function Entradas({ usuarioEmail }) {
     return cores[tipo] || '#5f6368';
   };
 
-  // Calcula resumo do mês atual
-  const resumo = calcularResumoMes(entradas, new Date());
+  // Filtrar entradas pelo mês/ano selecionado
+  const entradasFiltradas = entradas.filter(entrada => {
+    if (!entrada.data) return false;
+    const dataEntrada = new Date(entrada.data);
+    return dataEntrada.getMonth() === mesSelecionado && 
+           dataEntrada.getFullYear() === anoSelecionado;
+  });
+
+  // Calcula resumo baseado no período filtrado
+  const dataFiltro = new Date(anoSelecionado, mesSelecionado, 1);
+  const resumo = calcularResumoMes(entradasFiltradas, dataFiltro);
+
+  // Arrays para os seletores
+  const meses = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+  ];
+  
+  const anosDisponiveis = [];
+  for (let ano = 2020; ano <= new Date().getFullYear() + 1; ano++) {
+    anosDisponiveis.push(ano);
+  }
+
+  // Nome do período atual
+  const nomePeriodo = dataFiltro.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  const nomePeriodoCapitalizado = nomePeriodo.charAt(0).toUpperCase() + nomePeriodo.slice(1);
+
+  // Agrupar entradas por mês/ano
+  const agruparPorMes = (entradas) => {
+    const grupos = {};
+    
+    entradas.forEach(entrada => {
+      if (entrada.data) {
+        const data = new Date(entrada.data);
+        const chave = `${data.getFullYear()}-${data.getMonth()}`;
+        const nomeGrupo = data.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+        
+        if (!grupos[chave]) {
+          grupos[chave] = {
+            nome: nomeGrupo.charAt(0).toUpperCase() + nomeGrupo.slice(1),
+            entradas: []
+          };
+        }
+        
+        grupos[chave].entradas.push(entrada);
+      }
+    });
+    
+    // Ordenar grupos por data (mais recente primeiro)
+    return Object.keys(grupos)
+      .sort((a, b) => b.localeCompare(a))
+      .map(chave => grupos[chave]);
+  };
+
+  // Para o histórico, usar apenas as entradas filtradas (sem agrupamento por mês, já que são do mesmo período)
+  const entradasOrdenadas = entradasFiltradas.sort((a, b) => {
+    const dataA = new Date(a.data);
+    const dataB = new Date(b.data);
+    return dataB.getTime() - dataA.getTime(); // Mais recente primeiro
+  });
+
+  const editarEntrada = (entrada) => {
+    setEntradaParaEdicao(entrada);
+    // Scroll para o formulário
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   return (
     <div style={{
@@ -58,26 +128,115 @@ function Entradas({ usuarioEmail }) {
     }}>
       {/* Cabeçalho */}
       <div style={{ marginBottom: '32px' }}>
-        <h1 style={{
-          fontSize: '1.875rem',
-          fontWeight: '600',
-          color: '#202124',
-          marginBottom: '8px',
-          letterSpacing: '-0.5px'
-        }}>
-          Entradas
-        </h1>
-        <p style={{
-          fontSize: '0.875rem',
-          color: '#5f6368'
-        }}>
-          Registre dízimos, ofertas e outras entradas financeiras
-        </p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+          <div>
+            <h1 style={{
+              fontSize: '1.875rem',
+              fontWeight: '600',
+              color: '#202124',
+              marginBottom: '8px',
+              letterSpacing: '-0.5px'
+            }}>
+              Entradas
+            </h1>
+          </div>
+          
+          {/* Filtros de Data */}
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <label style={{ fontSize: '0.875rem', color: '#5f6368', fontWeight: '500' }}>
+              📅 Filtros:
+            </label>
+            
+            <select
+              value={mesSelecionado}
+              onChange={(e) => setMesSelecionado(parseInt(e.target.value))}
+              style={{
+                padding: '8px 12px',
+                border: '1px solid #dadce0',
+                borderRadius: '6px',
+                fontSize: '0.875rem',
+                color: '#202124',
+                backgroundColor: '#ffffff',
+                cursor: 'pointer',
+                outline: 'none'
+              }}
+            >
+              {meses.map((mes, index) => (
+                <option key={index} value={index}>{mes}</option>
+              ))}
+            </select>
+            
+            <select
+              value={anoSelecionado}
+              onChange={(e) => setAnoSelecionado(parseInt(e.target.value))}
+              style={{
+                padding: '8px 12px',
+                border: '1px solid #dadce0',
+                borderRadius: '6px',
+                fontSize: '0.875rem',
+                color: '#202124',
+                backgroundColor: '#ffffff',
+                cursor: 'pointer',
+                outline: 'none'
+              }}
+            >
+              {anosDisponiveis.map((ano) => (
+                <option key={ano} value={ano}>{ano}</option>
+              ))}
+            </select>
+            
+            <button
+              onClick={() => {
+                const hoje = new Date();
+                setAnoSelecionado(hoje.getFullYear());
+                setMesSelecionado(hoje.getMonth());
+              }}
+              style={{
+                padding: '8px 12px',
+                backgroundColor: '#1a73e8',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '0.875rem',
+                cursor: 'pointer',
+                fontWeight: '500'
+              }}
+            >
+              📅 Hoje
+            </button>
+          </div>
+        </div>
+        
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <p style={{
+            fontSize: '0.875rem',
+            color: '#5f6368',
+            margin: 0
+          }}>
+            Registre dízimos, ofertas e outras entradas financeiras
+          </p>
+          
+          <p style={{
+            fontSize: '0.875rem',
+            color: '#1a73e8',
+            fontWeight: '500',
+            margin: 0
+          }}>
+            Período: {nomePeriodoCapitalizado}
+          </p>
+        </div>
       </div>
       
       {/* Formulário de Lançamento */}
       <div style={{ marginBottom: '32px' }}>
-        <FormEntrada onSucesso={carregarEntradas} usuarioEmail={usuarioEmail} />
+        <FormEntrada 
+          onSucesso={() => {
+            carregarEntradas();
+            setEntradaParaEdicao(null); // Limpar edição após sucesso
+          }} 
+          usuarioEmail={usuarioEmail}
+          entradaParaEdicao={entradaParaEdicao}
+        />
       </div>
 
       {/* Cards de Resumo (Entrada Total / Igreja Central / Igreja Local / Missões) */}
@@ -198,7 +357,7 @@ function Entradas({ usuarioEmail }) {
             borderRadius: '12px',
             fontWeight: '500'
           }}>
-            {entradas.length} {entradas.length === 1 ? 'lançamento' : 'lançamentos'}
+            {entradasFiltradas.length} {entradasFiltradas.length === 1 ? 'lançamento' : 'lançamentos'}
           </span>
         </div>
         
@@ -210,17 +369,20 @@ function Entradas({ usuarioEmail }) {
           }}>
             Carregando entradas...
           </div>
-        ) : entradas.length === 0 ? (
+        ) : entradasFiltradas.length === 0 ? (
           <div style={{
             textAlign: 'center',
             padding: '40px',
             color: '#5f6368'
           }}>
-            Nenhuma entrada lançada ainda.
+            {entradas.length === 0 
+              ? 'Nenhuma entrada lançada ainda.' 
+              : `Nenhuma entrada encontrada para ${nomePeriodoCapitalizado}.`
+            }
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {entradas.map(entrada => (
+            {entradasOrdenadas.map(entrada => (
               <div key={entrada.id} style={{
                 padding: '16px',
                 backgroundColor: '#f8f9fa',
@@ -240,7 +402,7 @@ function Entradas({ usuarioEmail }) {
                   display: 'grid',
                   gridTemplateColumns: 'auto 1fr auto',
                   gap: '16px',
-                  alignItems: 'center'
+                  alignItems: 'flex-start'
                 }}>
                   {/* Badge do Tipo */}
                   <div style={{
@@ -301,15 +463,48 @@ function Entradas({ usuarioEmail }) {
                     </div>
                   </div>
 
-                  {/* Valor */}
+                  {/* Valor e Ações */}
                   <div style={{
-                    fontSize: '1.125rem',
-                    fontWeight: '600',
-                    color: '#34a853',
-                    textAlign: 'right',
-                    whiteSpace: 'nowrap'
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-end',
+                    gap: '8px'
                   }}>
-                    {formatarMoeda(entrada.valor)}
+                    <div style={{
+                      fontSize: '1.125rem',
+                      fontWeight: '600',
+                      color: '#34a853',
+                      textAlign: 'right',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      {formatarMoeda(entrada.valor)}
+                    </div>
+                    
+                    {/* Botão Editar */}
+                    <button
+                      onClick={() => editarEntrada(entrada)}
+                      style={{
+                        padding: '6px 10px',
+                        backgroundColor: '#1a73e8',
+                        color: '#ffffff',
+                        border: 'none',
+                        borderRadius: '6px',
+                        fontSize: '0.75rem',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        fontWeight: '500'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#1557b0';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = '#1a73e8';
+                      }}
+                    >
+                      ✏️ Editar
+                    </button>
                   </div>
                 </div>
 

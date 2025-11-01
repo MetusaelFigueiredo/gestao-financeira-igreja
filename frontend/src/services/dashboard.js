@@ -7,6 +7,33 @@ import { doc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
 const META_MISSOES = 5000;
 
 /**
+ * Calcula o rateio baseado no tipo de entrada
+ */
+const calcularRateio = (tipo, valor) => {
+  const valorNum = parseFloat(valor) || 0;
+  
+  if (tipo === 'santa_ceia') {
+    return {
+      central: 0,
+      local: 0,
+      missoes: valorNum
+    };
+  } else if (tipo === 'dizimo' || tipo === 'oferta') {
+    return {
+      central: valorNum * 0.60,
+      local: valorNum * 0.40,
+      missoes: 0
+    };
+  } else {
+    return {
+      central: 0,
+      local: valorNum,
+      missoes: 0
+    };
+  }
+};
+
+/**
  * Busca a meta de missões configurada no Firestore
  */
 export const buscarMetaMissoesConfig = async () => {
@@ -197,10 +224,10 @@ export const calcularEstatisticasMes = async () => {
 };
 
 /**
- * Busca e calcula o resumo financeiro do mês atual
+ * Busca e calcula o resumo financeiro do mês especificado
  * Retorna: entrada local, despesas pagas, saldo do mês, detalhamento de entradas (central, local, missões, PIX, dinheiro)
  */
-export const buscarResumoFinanceiro = async () => {
+export const buscarResumoFinanceiro = async (ano = null, mes = null) => {
   try {
     const resultado = await buscarEntradas();
     
@@ -209,15 +236,17 @@ export const buscarResumoFinanceiro = async () => {
     }
 
     const entradas = resultado.entradas;
+    
+    // Usar filtros fornecidos ou data atual como padrão
     const agora = new Date();
-    const mesAtual = agora.getMonth();
-    const anoAtual = agora.getFullYear();
+    const mesAlvo = mes !== null ? mes : agora.getMonth();
+    const anoAlvo = ano !== null ? ano : agora.getFullYear();
 
-    // Filtra entradas do mês atual
+    // Filtra entradas do mês/ano especificado
     const entradasMesAtual = entradas.filter(entrada => {
       const dataEntrada = entrada.data instanceof Date ? entrada.data : new Date(entrada.data);
-      return dataEntrada.getMonth() === mesAtual && 
-             dataEntrada.getFullYear() === anoAtual;
+      return dataEntrada.getMonth() === mesAlvo && 
+             dataEntrada.getFullYear() === anoAlvo;
     });
 
     // Inicializa totais
@@ -231,44 +260,66 @@ export const buscarResumoFinanceiro = async () => {
 
     // Calcula rateios e formas de pagamento
     entradasMesAtual.forEach(entrada => {
-      if (entrada.rateio) {
-        const formaRecebimento = entrada.formaRecebimento || 'pix';
-        
-        // Soma rateios
-        totalCentral += entrada.rateio.central || 0;
-        totalLocal += entrada.rateio.local || 0;
-        totalMissoes += entrada.rateio.missoes || 0;
+      // CORREÇÃO: Calcular rateio se não existir
+      let rateio = entrada.rateio;
+      if (!rateio) {
+        rateio = calcularRateio(entrada.tipo, entrada.valor);
+        console.log(`🔧 Rateio calculado para entrada ${entrada.id}:`, rateio);
+      }
+      
+      const formaRecebimento = entrada.formaRecebimento || 'pix';
+      
+      // Soma rateios
+      totalCentral += rateio.central || 0;
+      totalLocal += rateio.local || 0;
+      totalMissoes += rateio.missoes || 0;
 
-        // PIX e Dinheiro para CENTRAL
-        if (entrada.rateio.central > 0) {
-          if (formaRecebimento === 'pix') {
-            totalPixCentral += entrada.rateio.central;
-          } else if (formaRecebimento === 'dinheiro') {
-            totalDinheiroCentral += entrada.rateio.central;
-          }
+      // PIX e Dinheiro para CENTRAL
+      if (rateio.central > 0) {
+        if (formaRecebimento === 'pix') {
+          totalPixCentral += rateio.central;
+        } else if (formaRecebimento === 'dinheiro') {
+          totalDinheiroCentral += rateio.central;
         }
+      }
 
-        // PIX e Dinheiro para LOCAL
-        if (entrada.rateio.local > 0) {
-          if (formaRecebimento === 'pix') {
-            totalPixLocal += entrada.rateio.local;
-          } else if (formaRecebimento === 'dinheiro') {
-            totalDinheiroLocal += entrada.rateio.local;
-          }
+      // PIX e Dinheiro para LOCAL
+      if (rateio.local > 0) {
+        if (formaRecebimento === 'pix') {
+          totalPixLocal += rateio.local;
+        } else if (formaRecebimento === 'dinheiro') {
+          totalDinheiroLocal += rateio.local;
         }
       }
     });
 
-    // Busca despesas pagas do mês
+    // Busca despesas pagas do mês/ano especificado
+    // Observação: algumas despesas podem ter status 'Paga' mas não ter o campo dataPagamento
+    // (por exemplo: lançadas já como pagas manualmente). Para ser resiliente, consideramos
+    // uma despesa como paga para o período quando:
+    // - tem dataPagamento no mês/ano selecionado OR
+    // - tem status 'Paga' e não tem dataPagamento, mas seu vencimento cai no mês/ano selecionado
     const despesas = await buscarDespesas();
     const despesasPagasMes = despesas.filter(d => {
-      if (d.status !== 'Paga' || !d.dataPagamento) return false;
-      const dataPagamento = d.dataPagamento instanceof Date ? d.dataPagamento : new Date(d.dataPagamento);
-      return dataPagamento.getMonth() === mesAtual && 
-             dataPagamento.getFullYear() === anoAtual;
+      if (d.status !== 'Paga') return false;
+
+      const dataPagamento = d.dataPagamento ? (d.dataPagamento instanceof Date ? d.dataPagamento : new Date(d.dataPagamento)) : null;
+      const vencimento = d.vencimento ? (new Date(d.vencimento)) : null;
+
+      // Se houver dataPagamento, use-a
+      if (dataPagamento) {
+        return dataPagamento.getMonth() === mesAlvo && dataPagamento.getFullYear() === anoAlvo;
+      }
+
+      // Caso não haja dataPagamento, mas esteja marcado como Paga, considerar vencimento
+      if (vencimento) {
+        return vencimento.getMonth() === mesAlvo && vencimento.getFullYear() === anoAlvo;
+      }
+
+      return false;
     });
 
-    const totalDespesasPagas = despesasPagasMes.reduce((sum, d) => sum + d.valor, 0);
+    const totalDespesasPagas = despesasPagasMes.reduce((sum, d) => sum + (d.valor || 0), 0);
 
     // Calcula saldo do mês (APENAS LOCAL - DESPESAS)
     const saldoMes = totalLocal - totalDespesasPagas;
@@ -302,7 +353,8 @@ export const buscarResumoFinanceiro = async () => {
         percentualPixLocal: percentualPixLocal.toFixed(1),
         percentualDinheiroLocal: percentualDinheiroLocal.toFixed(1),
         totalDespesasPagas,
-        saldoMes
+        saldoMes,
+        quantidadeEntradas: entradasMesAtual.length
       }
     };
   } catch (error) {
@@ -384,7 +436,7 @@ export const buscarDespesasPendentes = async () => {
 /**
  * Busca e calcula progresso da meta de missões
  */
-export const buscarMetaMissoes = async () => {
+export const buscarMetaMissoes = async (ano = null, mes = null) => {
   try {
     const metaConfig = await buscarMetaMissoesConfig();
     const resultado = await buscarEntradas();
@@ -394,22 +446,30 @@ export const buscarMetaMissoes = async () => {
     }
 
     const entradas = resultado.entradas;
+    
+    // Usar filtros fornecidos ou data atual como padrão
     const agora = new Date();
-    const mesAtual = agora.getMonth();
-    const anoAtual = agora.getFullYear();
+    const mesAlvo = mes !== null ? mes : agora.getMonth();
+    const anoAlvo = ano !== null ? ano : agora.getFullYear();
 
-    // Filtra entradas do mês atual
+    // Filtra entradas do mês/ano especificado
     const entradasMesAtual = entradas.filter(entrada => {
       const dataEntrada = entrada.data instanceof Date ? entrada.data : new Date(entrada.data);
-      return dataEntrada.getMonth() === mesAtual && 
-             dataEntrada.getFullYear() === anoAtual;
+      return dataEntrada.getMonth() === mesAlvo && 
+             dataEntrada.getFullYear() === anoAlvo;
     });
 
     // Soma rateio de missões
     let totalMissoes = 0;
     entradasMesAtual.forEach(entrada => {
-      if (entrada.rateio && entrada.rateio.missoes) {
-        totalMissoes += entrada.rateio.missoes;
+      // CORREÇÃO: Calcular rateio se não existir
+      let rateio = entrada.rateio;
+      if (!rateio) {
+        rateio = calcularRateio(entrada.tipo, entrada.valor);
+      }
+      
+      if (rateio && rateio.missoes) {
+        totalMissoes += rateio.missoes;
       }
     });
 

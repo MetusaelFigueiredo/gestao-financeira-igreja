@@ -1,10 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { adicionarEntrada } from '../services/entradas';
+import { adicionarEntrada, atualizarEntrada } from '../services/entradas';
 import { buscarMembros } from '../services/membros';
 import { formatarMoeda, dataParaString } from '../utils/formatacao';
 
-function FormEntrada({ onSucesso, usuarioEmail }) {
+function FormEntrada({ onSucesso, usuarioEmail, entradaParaEdicao = null }) {
   const hoje = dataParaString(new Date());
+  
+  // Calcular data máxima (30 dias no futuro)
+  const dataMaxima = new Date();
+  dataMaxima.setDate(dataMaxima.getDate() + 30);
+  const dataMaximaString = dataParaString(dataMaxima);
   
   const [tipo, setTipo] = useState('dizimo');
   const [data, setData] = useState(hoje);
@@ -18,10 +23,28 @@ function FormEntrada({ onSucesso, usuarioEmail }) {
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState('');
   const [sucesso, setSucesso] = useState('');
+  
+  // Estados para modo de edição
+  const [modoEdicao, setModoEdicao] = useState(false);
+  const [entradaId, setEntradaId] = useState(null);
 
   useEffect(() => {
     carregarMembros();
   }, []);
+
+  // Preencher formulário quando há entrada para edição
+  useEffect(() => {
+    if (entradaParaEdicao) {
+      setModoEdicao(true);
+      setEntradaId(entradaParaEdicao.id);
+      setTipo(entradaParaEdicao.tipo || 'dizimo');
+      setData(entradaParaEdicao.data ? dataParaString(new Date(entradaParaEdicao.data)) : hoje);
+      setValor(entradaParaEdicao.valor?.toString() || '');
+      setFormaRecebimento(entradaParaEdicao.formaRecebimento || 'pix');
+      setDescricao(entradaParaEdicao.descricao || '');
+      setMembroId(entradaParaEdicao.membroId || '');
+    }
+  }, [entradaParaEdicao]);
 
   const carregarMembros = async () => {
     const resultado = await buscarMembros();
@@ -74,10 +97,15 @@ function FormEntrada({ onSucesso, usuarioEmail }) {
     if (tipo === 'dizimo' && membroId) {
       const membro = membros.find(m => m.id === membroId);
       dadosEntrada.membroId = membroId;
-      dadosEntrada.membroNome = membro.nome;
+      dadosEntrada.membroNome = membro?.nome;
     }
     
-    const resultado = await adicionarEntrada(dadosEntrada, usuarioEmail);
+    let resultado;
+    if (modoEdicao && entradaId) {
+      resultado = await atualizarEntrada(entradaId, dadosEntrada, usuarioEmail);
+    } else {
+      resultado = await adicionarEntrada(dadosEntrada, usuarioEmail);
+    }
     
     setCarregando(false);
     
@@ -86,12 +114,16 @@ function FormEntrada({ onSucesso, usuarioEmail }) {
                        tipo === 'oferta' ? 'Oferta' :
                        tipo === 'santa_ceia' ? 'Oferta Santa Ceia' : 'Entrada';
       
-      setSucesso(`${tipoNome} de ${formatarMoeda(valorNum)} lançado com sucesso!`);
+      const acao = modoEdicao ? 'atualizado' : 'lançado';
+      setSucesso(`${tipoNome} de ${formatarMoeda(valorNum)} ${acao} com sucesso!`);
       
-      setValor('');
-      setDescricao('');
-      setMembroId('');
-      setData(hoje);
+      // Limpar formulário após sucesso
+      if (!modoEdicao) {
+        setValor('');
+        setDescricao('');
+        setMembroId('');
+        setData(hoje);
+      }
       
       if (onSucesso) onSucesso();
       
@@ -99,6 +131,19 @@ function FormEntrada({ onSucesso, usuarioEmail }) {
     } else {
       setErro('Erro ao salvar: ' + resultado.error);
     }
+  };
+
+  const cancelarEdicao = () => {
+    setModoEdicao(false);
+    setEntradaId(null);
+    setTipo('dizimo');
+    setData(hoje);
+    setValor('');
+    setFormaRecebimento('pix');
+    setDescricao('');
+    setMembroId('');
+    setErro('');
+    setSucesso('');
   };
 
   return (
@@ -109,14 +154,34 @@ function FormEntrada({ onSucesso, usuarioEmail }) {
       boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
       border: '1px solid #e8eaed'
     }}>
-      <h2 style={{
-        fontSize: '1.125rem',
-        fontWeight: '500',
-        color: '#202124',
-        marginBottom: '20px'
-      }}>
-        Nova Entrada
-      </h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <h2 style={{
+          fontSize: '1.125rem',
+          fontWeight: '500',
+          color: '#202124',
+          margin: 0
+        }}>
+          {modoEdicao ? '✏️ Editar Entrada' : 'Nova Entrada'}
+        </h2>
+        
+        {modoEdicao && (
+          <button
+            type="button"
+            onClick={cancelarEdicao}
+            style={{
+              padding: '6px 12px',
+              backgroundColor: '#f1f3f4',
+              color: '#5f6368',
+              border: 'none',
+              borderRadius: '6px',
+              fontSize: '0.875rem',
+              cursor: 'pointer'
+            }}
+          >
+            ✖️ Cancelar
+          </button>
+        )}
+      </div>
       
       <form onSubmit={handleSubmit}>
         <div style={{
@@ -175,7 +240,7 @@ function FormEntrada({ onSucesso, usuarioEmail }) {
               type="date"
               value={data}
               onChange={(e) => setData(e.target.value)}
-              max={hoje}
+              max={dataMaximaString}
               style={{
                 width: '100%',
                 padding: '10px 12px',

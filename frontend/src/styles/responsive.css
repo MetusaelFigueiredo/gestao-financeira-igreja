@@ -1,0 +1,467 @@
+/* ========================================
+   CSS RESPONSIVO - GESTÃO FINANCEIRA IGREJA
+   ======================================== */
+
+/* ========================================
+   NAVBAR RESPONSIVO
+   ======================================== */
+
+/* Desktop - Menu normal visível */
+@media (min-width: 769px) {
+  .desktop-menu {
+    display: flex !important;
+  }
+  
+  .mobile-menu-button {
+    display: none !important;
+  }
+  
+  .mobile-menu-overlay {
+    display: none !important;
+  }
+}
+
+/* Mobile - Menu hamburger */
+@media (max-width: 768px) {
+  .desktop-menu {
+    display: none !important;
+  }
+  
+  .mobile-menu-button {
+    display: block !important;
+  }
+  
+  /* Ajustes no cabeçalho mobile */
+  .header-container {
+    padding: 0 12px !important;
+    flex-wrap: nowrap !important;
+    gap: 8px !important;
+  }
+  
+  .logo-title {
+    font-size: 1rem !important;
+    flex-shrink: 0;
+  }
+  
+  /* Header principal */
+  header {
+    padding: 12px 0 !important;
+  }
+}
+
+/* ========================================
+   DASHBOARD E PÁGINAS RESPONSIVAS
+   ======================================== */
+
+@media (max-width: 768px) {
+  /* Container principal do Dashboard */
+  div[style*="maxWidth: '1400px'"][style*="padding: '40px 24px'"] {
+    padding: 16px 12px !important;
+  }
+  
+  /* Container principal dos Relatórios */
+  div[style*="maxWidth: '1400px'"] {
+    padding: 16px 12px !important;
+  }
+  
+  /* ========================================
+     PÁGINA DE RELATÓRIOS RESPONSIVA
+     ======================================== */
+  
+  /* Container principal dos resumos - empilhar verticalmente */
+  .resumos-container,
+  div[style*="display: flex"][style*="gap: '30px'"] {
+    flex-direction: column !important;
+    gap: 20px !important;
+  }
+  
+  /* Colunas dos resumos ocupam 100% da largura */
+  .resumo-coluna,
+  div[style*="flex: 1"] {
+    flex: none !important;
+    width: 100% !important;
+  }
+  
+  /* Container das tabelas detalhadas - empilhar verticalmente */
+  .tabelas-detalhes,
+  div[style*="display: flex"][style*="gap: '30px'"][style*="marginTop: '40px'"] {
+    flex-direction: column !important;
+    gap: 20px !important;
+    margin-top: 20px !important;
+  }
+  
+  /* Colunas das tabelas ocupam 100% da largura */
+  .tabela-detalhes-coluna {
+    flex: none !important;
+    width: 100% !important;
+  }
+  
+  /* Títulos das seções menores em mobile */
+  .titulo-secao,
+  div[style*="fontSize: '1.25rem'"],
+  div[style*="fontSize: '1.1rem'"] {
+    font-size: 1rem !important;
+    padding: 10px !important;
+    margin-bottom: 12px !important;
+  }
+  
+  /* Tabelas responsivas com scroll horizontal */
+  .tabela-relatorio,
+  table[style*="width: '100%'"] {
+    font-size: 0.75rem !important;
+    display: block !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+  }
+  
+  .tabela-relatorio th,
+  .tabela-relatorio td {
+    padding: 6px 8px !important;
+    min-width: 80px !important;
+  }
+  
+  /* Configuração do relatório também responsiva */
+  .configurar-relatorio {
+    padding: 20px 16px !important;
+    margin-bottom: 20px !important;
+  }
+  
+  /* Controles de período em coluna */
+  div[style*="display: flex"][style*="gap: '12px'"] {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+  
+  /* Valores monetários legíveis */
+  .valor-monetario {
+    font-size: 0.85rem !important;
+  }
+  
+  /* Botões de exportação em mobile */
+  .no-print button {
+    width: 100% !important;
+    margin: 4px 0 !important;
+    padding: 12px 16px !important;
+    font-size: 14px !important;
+  }
+  
+  /* Container de botões em coluna */
+  .no-print div[style*="display: flex"] {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+  
+  /* Ajustes nos inputs de data */
+  input[type="date"],
+  input[type="month"] {
+    width: 100% !important;
+    padding: 12px !important;
+    font-size: 16px !important;
+    margin: 4px 0 !important;
+  }
+  
+  /* Labels dos formulários */
+  label {
+    font-size: 14px !important;
+    margin-bottom: 8px !important;
+    display: block !important;
+  }
+  
+  /* Seções de texto em mobile */
+  div[style*="paddingLeft: '15px'"] {
+    padding-left: 8px !important;
+  }
+  
+  /* Espaçamento entre linhas das tabelas */
+  div[style*="display: flex"][style*="justifyContent: space-between"] {
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+  }
+  
+  /* Cabeçalho do Dashboard */
+  div[style*="backgroundColor: '#ffffff'"][style*="borderRadius: '16px'"][style*="padding: '32px'"] {
+    padding: 20px 16px !important;
+    margin-bottom: 20px !important;
+  }
+  
+  /* Título e filtros - empilhar verticalmente */
+  div[style*="display: flex"][style*="justifyContent: space-between"][style*="alignItems: flex-start"] {
+    flex-direction: column !important;
+    gap: 16px !important;
+    align-items: stretch !important;
+  }
+  
+  /* Título principal */
+  h1[style*="fontSize: '2rem'"] {
+    font-size: 1.5rem !important;
+    text-align: center !important;
+    margin-bottom: 12px !important;
+  }
+  
+  /* Container de filtros - empilhar verticalmente */
+  div[style*="display: flex"][style*="gap: '12px'"][style*="alignItems: 'center'"] {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+  
+  /* Label dos filtros - centralizar */
+  label[style*="fontSize: '0.875rem'"] {
+    font-size: 0.75rem !important;
+    text-align: center !important;
+    margin-bottom: 8px !important;
+  }
+  
+  /* Container interno dos selects */
+  div[style*="display: flex"][style*="gap: '12px'"][style*="alignItems: 'center'"] > select {
+    width: 100% !important;
+    max-width: 200px !important;
+    margin: 0 auto !important;
+    font-size: 14px !important;
+    padding: 12px 16px !important;
+    text-align: center !important;
+  }
+  
+  /* Botão de filtro também centralizado */
+  div[style*="display: flex"][style*="gap: '12px'"][style*="alignItems: 'center'"] > button {
+    width: 100% !important;
+    max-width: 200px !important;
+    margin: 0 auto !important;
+    padding: 12px 16px !important;
+    font-size: 14px !important;
+  }
+}
+
+/* ========================================
+   CARDS DE RESUMO RESPONSIVOS
+   ======================================== */
+
+@media (max-width: 768px) {
+  /* TODOS os containers de grid viram flex column */
+  div[style*="display: grid"] {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 16px !important;
+  }
+  
+  /* TODOS os cards individuais ocupam 100% da largura */
+  div[style*="backgroundColor: '#ffffff'"][style*="borderRadius: '12px'"],
+  div[style*="backgroundColor: #ffffff"][style*="borderRadius: 12px"] {
+    width: 100% !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+    padding: 16px !important;
+  }
+  
+  /* Cards internos (PIX/Dinheiro) também empilhados */
+  div[style*="display: flex"][style*="gap: '12px'"] {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+  
+  /* Subcards menores PIX/Dinheiro */
+  div[style*="flex: 1"][style*="backgroundColor: '#f8f9fa'"],
+  div[style*="flex: 1"][style*="backgroundColor: #f8f9fa"] {
+    flex: none !important;
+    width: 100% !important;
+  }
+  
+  /* Valores monetários menores em mobile */
+  div[style*="fontSize: '2rem'"] {
+    font-size: 1.5rem !important;
+  }
+  
+  div[style*="fontSize: '1.5rem'"] {
+    font-size: 1.25rem !important;
+  }
+  
+  /* Títulos dos cards menores */
+  div[style*="fontSize: '0.875rem'"][style*="fontWeight: '700'"] {
+    font-size: 0.75rem !important;
+  }
+}
+
+/* ========================================
+   CONTROLES E FORMULÁRIOS RESPONSIVOS
+   ======================================== */
+
+@media (max-width: 768px) {
+  /* Botões em mobile */
+  button {
+    min-height: 44px !important;
+    padding: 12px 16px !important;
+    font-size: 14px !important;
+  }
+  
+  /* Inputs em mobile */
+  input {
+    min-height: 44px !important;
+    padding: 12px !important;
+    font-size: 16px !important; /* Evita zoom no iOS */
+  }
+  
+  /* Tabelas responsivas */
+  table {
+    display: block !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    width: 100% !important;
+  }
+  
+  th {
+    min-width: 100px !important;
+    padding: 8px 12px !important;
+    font-size: 12px !important;
+  }
+  
+  td {
+    min-width: 100px !important;
+    padding: 8px 12px !important;
+    font-size: 14px !important;
+  }
+  
+  /* Títulos gerais */
+  h1 {
+    font-size: 24px !important;
+    line-height: 1.2 !important;
+    margin-bottom: 16px !important;
+  }
+  
+  h2 {
+    font-size: 20px !important;
+    line-height: 1.3 !important;
+    margin-bottom: 12px !important;
+  }
+  
+  h3 {
+    font-size: 18px !important;
+    line-height: 1.4 !important;
+    margin-bottom: 8px !important;
+  }
+}
+
+/* ========================================
+   TABLET - Breakpoint intermediário
+   ======================================== */
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  /* Cards com 2 colunas em tablets */
+  div[style*="display: grid"][style*="gridTemplateColumns"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 16px !important;
+  }
+  
+  /* Container com padding reduzido */
+  .container,
+  div[style*="maxWidth: '1200px'"] {
+    padding: 20px !important;
+  }
+}
+
+/* ========================================
+   UTILIDADES GERAIS
+   ======================================== */
+
+/* Scroll lock quando menu está aberto */
+body.menu-open {
+  overflow: hidden;
+}
+
+/* ========================================
+   MENU MOBILE Z-INDEX FIX
+   ======================================== */
+
+/* Garantir que o menu mobile apareça sempre na frente */
+.mobile-menu-overlay {
+  z-index: 1001 !important;
+  transition: opacity 0.3s ease, visibility 0.3s ease !important;
+}
+
+.mobile-menu {
+  z-index: 1002 !important;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Garantir que conteúdo das páginas fique atrás do menu */
+@media (max-width: 768px) {
+  /* Resetar z-index de elementos que possam estar conflitando */
+  div[style*="position: relative"],
+  div[style*="position: absolute"],
+  div[style*="zIndex"],
+  .container,
+  main,
+  section {
+    z-index: auto !important;
+  }
+  
+  /* Header principal fica atrás do menu mobile */
+  header {
+    z-index: 100 !important;
+  }
+}
+
+/* Classes auxiliares para cards */
+.cards-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+  margin-bottom: 32px;
+}
+
+/* Classe auxiliar para filtros responsivos */
+.filters-container {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+@media (max-width: 768px) {
+  .filters-container {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+  
+  .filters-container label {
+    text-align: center !important;
+    margin-bottom: 8px !important;
+  }
+  
+  .filters-container select,
+  .filters-container button {
+    width: 100% !important;
+    max-width: 200px !important;
+    margin: 0 auto !important;
+    padding: 12px 16px !important;
+    font-size: 14px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .cards-container {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 16px !important;
+  }
+}
+
+.summary-card {
+  background-color: #ffffff;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.summary-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+}
+
+@media (max-width: 768px) {
+  .summary-card {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 16px !important;
+  }
+}

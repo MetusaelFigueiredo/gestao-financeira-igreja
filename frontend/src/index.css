@@ -1,3 +1,6 @@
+/* Importar CSS responsivo */
+@import './styles/responsive.css';
+
 /* Reset básico */
 * {
   margin: 0;

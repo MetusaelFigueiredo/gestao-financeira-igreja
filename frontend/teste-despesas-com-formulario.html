@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste - Página Despesas com Formulário</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background-color: #f8f9fa;
+            color: #202124;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid #e8eaed;
+        }
+
+        .title {
+            font-size: 1.875rem;
+            font-weight: 700;
+            color: #202124;
+        }
+
+        .count {
+            font-size: 0.875rem;
+            color: #5f6368;
+            margin-top: 4px;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .period-info {
+            font-size: 0.9375rem;
+            color: #5f6368;
+            font-weight: 500;
+        }
+
+        .btn-new-expense {
+            padding: 14px 28px;
+            background-color: #ea4335;
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9375rem;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(234, 67, 53, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .btn-new-expense:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(234, 67, 53, 0.4);
+        }
+
+        .btn-new-expense.close {
+            background-color: #5f6368;
+        }
+
+        /* Formulário */
+        .form-container {
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 32px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            border: 2px solid #ea4335;
+        }
+
+        .form-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #202124;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .form-label {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #202124;
+            margin-bottom: 6px;
+        }
+
+        .form-input, .form-select, .form-textarea {
+            padding: 12px;
+            border: 1px solid #dadce0;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            color: #202124;
+            background-color: #ffffff;
+            outline: none;
+            transition: border-color 0.2s ease;
+        }
+
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            border-color: #1a73e8;
+            box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.1);
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background-color: #1a73e8;
+            color: #ffffff;
+        }
+
+        .btn-secondary {
+            background-color: #5f6368;
+            color: #ffffff;
+        }
+
+        .filters-container {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .filter-select {
+            padding: 8px 12px;
+            border: 1px solid #dadce0;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            color: #202124;
+            background-color: #ffffff;
+            cursor: pointer;
+            outline: none;
+        }
+
+        /* Responsividade */
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 16px;
+                align-items: flex-start;
+            }
+
+            .header-actions {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .form-actions {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+
+            .filters-container {
+                flex-direction: column;
+            }
+
+            .filter-select {
+                width: 100%;
+            }
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div>
+                <h1 class="title">💸 Despesas</h1>
+                <div class="count">3 despesa(s) encontrada(s)</div>
+            </div>
+            
+            <div class="header-actions">
+                <p class="period-info">Período: Janeiro de 2024</p>
+                <button class="btn-new-expense" id="toggleForm">
+                    ＋ Nova Despesa
+                </button>
+            </div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="filters-container">
+            <select class="filter-select">
+                <option>Janeiro</option>
+                <option>Fevereiro</option>
+                <option>Março</option>
+            </select>
+            <select class="filter-select">
+                <option>2024</option>
+                <option>2023</option>
+            </select>
+            <button class="filter-select" style="background-color: #1a73e8; color: white;">
+                📅 Hoje
+            </button>
+        </div>
+
+        <!-- Formulário (inicialmente oculto) -->
+        <div class="form-container hidden" id="formContainer">
+            <div class="form-title">
+                💸 Nova Despesa
+            </div>
+            
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">Descrição</label>
+                    <input type="text" class="form-input" placeholder="Ex: Energia elétrica" />
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Valor</label>
+                    <input type="number" class="form-input" placeholder="0,00" step="0.01" />
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Categoria</label>
+                    <select class="form-select">
+                        <option>Infraestrutura</option>
+                        <option>Limpeza</option>
+                        <option>Equipamentos</option>
+                        <option>Administrativo</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Forma de Pagamento</label>
+                    <select class="form-select">
+                        <option>PIX</option>
+                        <option>Cartão Débito</option>
+                        <option>Cartão Crédito</option>
+                        <option>Dinheiro</option>
+                        <option>Transferência</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Data de Vencimento</label>
+                    <input type="date" class="form-input" />
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Status</label>
+                    <select class="form-select">
+                        <option>Pendente</option>
+                        <option>Paga</option>
+                    </select>
+                </div>
+                
+                <div class="form-group full-width">
+                    <label class="form-label">Observações</label>
+                    <textarea class="form-textarea" placeholder="Informações adicionais (opcional)"></textarea>
+                </div>
+            </div>
+            
+            <div class="form-actions">
+                <button class="btn btn-secondary" id="cancelForm">
+                    Cancelar
+                </button>
+                <button class="btn btn-primary">
+                    💾 Salvar Despesa
+                </button>
+            </div>
+        </div>
+
+        <!-- Exemplo de cards de resumo e lista (simplificado para o teste) -->
+        <div style="padding: 20px; background: white; border-radius: 8px; text-align: center; color: #5f6368;">
+            <p>Cards de resumo e lista de despesas aparecerão aqui...</p>
+            <p style="margin-top: 8px; font-size: 0.875rem;">
+                <strong>Instruções:</strong> Clique no botão "Nova Despesa" acima para ver o formulário em ação!
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // JavaScript para demonstrar o funcionamento do formulário
+        const toggleButton = document.getElementById('toggleForm');
+        const formContainer = document.getElementById('formContainer');
+        const cancelButton = document.getElementById('cancelForm');
+        
+        let formVisible = false;
+        
+        function toggleForm() {
+            formVisible = !formVisible;
+            
+            if (formVisible) {
+                formContainer.classList.remove('hidden');
+                toggleButton.textContent = '✕ Fechar';
+                toggleButton.classList.add('close');
+            } else {
+                formContainer.classList.add('hidden');
+                toggleButton.textContent = '＋ Nova Despesa';
+                toggleButton.classList.remove('close');
+            }
+        }
+        
+        toggleButton.addEventListener('click', toggleForm);
+        cancelButton.addEventListener('click', toggleForm);
+    </script>
+</body>
+</html>

@@ -142,7 +142,7 @@ function Entradas({ usuarioEmail }) {
           </div>
           
           {/* Filtros de Data */}
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <div className="filters-container" style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
             <label style={{ fontSize: '0.875rem', color: '#5f6368', fontWeight: '500' }}>
               📅 Filtros:
             </label>

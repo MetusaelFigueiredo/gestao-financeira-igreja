@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste - Página Despesas Padronizada</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background-color: #f8f9fa;
+            color: #202124;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid #e8eaed;
+        }
+
+        .title {
+            font-size: 1.875rem;
+            font-weight: 700;
+            color: #202124;
+        }
+
+        .count {
+            font-size: 0.875rem;
+            color: #5f6368;
+            margin-top: 4px;
+        }
+
+        .filters-container {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .filter-select {
+            padding: 8px 12px;
+            border: 1px solid #dadce0;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            color: #202124;
+            background-color: #ffffff;
+            cursor: pointer;
+            outline: none;
+        }
+
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .summary-card {
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+        }
+
+        .summary-card.total { border: 3px solid #1a73e8; }
+        .summary-card.paid { border: 3px solid #34a853; }
+        .summary-card.pending { border: 3px solid #ea4335; }
+
+        .summary-label {
+            font-size: 0.8125rem;
+            color: #5f6368;
+            font-weight: 600;
+            margin-bottom: 8px;
+            letter-spacing: 0.5px;
+        }
+
+        .summary-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .summary-count {
+            font-size: 0.75rem;
+            color: #5f6368;
+        }
+
+        .cards-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .expense-card {
+            padding: 16px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e8eaed;
+            transition: all 0.2s ease;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .expense-card:hover {
+            background-color: #ffffff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .expense-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .expense-desc {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #202124;
+        }
+
+        .expense-details {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .detail-item {
+            font-size: 0.75rem;
+            color: #5f6368;
+        }
+
+        .status-paid { color: #34a853; font-weight: 600; }
+        .status-pending { color: #ea4335; font-weight: 600; }
+
+        .expense-actions {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 8px;
+        }
+
+        .expense-value {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #202124;
+        }
+
+        .expense-value.paid {
+            color: #34a853;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 6px;
+        }
+
+        .btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .btn-pay { background-color: #34a853; color: #ffffff; }
+        .btn-edit { background-color: #1a73e8; color: #ffffff; }
+        .btn-delete { background-color: #ea4335; color: #ffffff; }
+
+        .audit-info {
+            font-size: 0.6875rem;
+            color: #5f6368;
+            padding-top: 8px;
+            border-top: 1px solid #e8eaed;
+            text-align: left;
+        }
+
+        /* Responsividade Mobile */
+        @media (max-width: 768px) {
+            .filters-container {
+                flex-direction: column;
+            }
+
+            .filter-select {
+                width: 100%;
+            }
+
+            .summary-cards {
+                grid-template-columns: 1fr;
+            }
+
+            .expense-card {
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .expense-actions {
+                align-items: flex-start;
+                width: 100%;
+            }
+
+            .action-buttons {
+                width: 100%;
+                justify-content: flex-start;
+            }
+
+            .audit-info {
+                text-align: left;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div>
+                <h1 class="title">💸 Despesas</h1>
+                <div class="count">3 despesa(s) encontrada(s)</div>
+            </div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="filters-container">
+            <select class="filter-select">
+                <option>Janeiro</option>
+                <option>Fevereiro</option>
+                <option>Março</option>
+            </select>
+            <select class="filter-select">
+                <option>2024</option>
+                <option>2023</option>
+            </select>
+        </div>
+
+        <!-- Cards de Resumo -->
+        <div class="summary-cards">
+            <div class="summary-card total">
+                <div class="summary-label">💰 TOTAL</div>
+                <div class="summary-value" style="color: #1a73e8;">R$ 2.500,00</div>
+                <div class="summary-count">3 lançamento(s)</div>
+            </div>
+            <div class="summary-card paid">
+                <div class="summary-label">✅ PAGAS</div>
+                <div class="summary-value" style="color: #34a853;">R$ 1.500,00</div>
+                <div class="summary-count">2 paga(s)</div>
+            </div>
+            <div class="summary-card pending">
+                <div class="summary-label">⏳ PENDENTES</div>
+                <div class="summary-value" style="color: #ea4335;">R$ 1.000,00</div>
+                <div class="summary-count">1 pendente(s)</div>
+            </div>
+        </div>
+
+        <!-- Lista de Despesas -->
+        <div class="cards-container">
+            <!-- Despesa 1 - Paga -->
+            <div class="expense-card">
+                <div class="expense-info">
+                    <div class="expense-desc">Energia Elétrica</div>
+                    <div class="expense-details">
+                        <span class="detail-item">📅 15/01/2024</span>
+                        <span class="detail-item">🏦 PIX</span>
+                        <span class="detail-item status-paid">✅ Paga</span>
+                        <span class="detail-item">📂 Infraestrutura</span>
+                    </div>
+                    <div class="audit-info">
+                        <div>Criado por: João Silva</div>
+                        <div>em 10/01/2024</div>
+                        <div style="margin-top: 2px; color: #34a853; font-weight: 500;">
+                            Pago em: 15/01/2024
+                        </div>
+                    </div>
+                </div>
+                <div class="expense-actions">
+                    <div class="expense-value paid">R$ 850,00</div>
+                    <div class="action-buttons">
+                        <button class="btn btn-edit">✏️ Editar</button>
+                        <button class="btn btn-delete">🗑️ Excluir</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Despesa 2 - Paga -->
+            <div class="expense-card">
+                <div class="expense-info">
+                    <div class="expense-desc">Material de Limpeza</div>
+                    <div class="expense-details">
+                        <span class="detail-item">📅 20/01/2024</span>
+                        <span class="detail-item">💳 Cartão Débito</span>
+                        <span class="detail-item status-paid">✅ Paga</span>
+                        <span class="detail-item">📂 Limpeza</span>
+                    </div>
+                    <div class="audit-info">
+                        <div>Criado por: Maria Santos</div>
+                        <div>em 18/01/2024</div>
+                        <div style="margin-top: 2px; color: #34a853; font-weight: 500;">
+                            Pago em: 20/01/2024
+                        </div>
+                    </div>
+                </div>
+                <div class="expense-actions">
+                    <div class="expense-value paid">R$ 650,00</div>
+                    <div class="action-buttons">
+                        <button class="btn btn-edit">✏️ Editar</button>
+                        <button class="btn btn-delete">🗑️ Excluir</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Despesa 3 - Pendente -->
+            <div class="expense-card">
+                <div class="expense-info">
+                    <div class="expense-desc">Reparo Sistema Som</div>
+                    <div class="expense-details">
+                        <span class="detail-item">📅 Venc: 30/01/2024</span>
+                        <span class="detail-item">🏦 PIX</span>
+                        <span class="detail-item status-pending">⏳ Pendente</span>
+                        <span class="detail-item">📂 Equipamentos</span>
+                    </div>
+                    <div class="audit-info">
+                        <div>Criado por: Pedro Costa</div>
+                        <div>em 25/01/2024</div>
+                    </div>
+                </div>
+                <div class="expense-actions">
+                    <div class="expense-value">R$ 1.000,00</div>
+                    <div class="action-buttons">
+                        <button class="btn btn-pay">✓ Pagar</button>
+                        <button class="btn btn-edit">✏️ Editar</button>
+                        <button class="btn btn-delete">🗑️ Excluir</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

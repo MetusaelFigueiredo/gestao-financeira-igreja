@@ -255,7 +255,7 @@ function Despesas({ usuarioEmail }) {
           </div>
           
           {/* Filtros de Data */}
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <div className="filters-container" style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
             <label style={{ fontSize: '0.875rem', color: '#5f6368', fontWeight: '500' }}>
               📅 Filtros:
             </label>
@@ -519,48 +519,61 @@ function Despesas({ usuarioEmail }) {
       {/* Lista de Despesas */}
       <div style={{
         backgroundColor: '#ffffff',
-        borderRadius: '16px',
-        padding: '28px',
-        boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
-        border: '2px solid #e8eaed'
+        borderRadius: '12px',
+        padding: '24px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+        border: '1px solid #e8eaed'
       }}>
-        <h2 style={{
-          fontSize: '1.25rem',
-          fontWeight: '600',
-          color: '#202124',
-          marginBottom: '24px'
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '20px'
         }}>
-          � Despesas do Período
-        </h2>
+          <h2 style={{
+            fontSize: '1.125rem',
+            fontWeight: '500',
+            color: '#202124',
+            margin: 0
+          }}>
+            Histórico de Despesas
+          </h2>
+          <span style={{
+            fontSize: '0.875rem',
+            color: '#5f6368',
+            backgroundColor: '#f1f3f4',
+            padding: '4px 12px',
+            borderRadius: '12px',
+            fontWeight: '500'
+          }}>
+            {despesasOrdenadas.length} {despesasOrdenadas.length === 1 ? 'despesa' : 'despesas'}
+          </span>
+        </div>
 
         {despesasOrdenadas.length === 0 ? (
           <div style={{
             textAlign: 'center',
-            padding: '60px 20px',
+            padding: '40px',
             color: '#5f6368'
           }}>
-            <div style={{ fontSize: '3rem', marginBottom: '16px' }}>📭</div>
-            <div style={{ fontSize: '1.125rem', fontWeight: '500' }}>
-              Nenhuma despesa encontrada para este período
-            </div>
+            {todasDespesas.length === 0 
+              ? 'Nenhuma despesa cadastrada ainda.' 
+              : `Nenhuma despesa encontrada para ${nomePeriodoCapitalizado}.`
+            }
           </div>
         ) : (
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '16px'
-          }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {despesasOrdenadas.map(despesa => (
               <div key={despesa.id} style={{
-                padding: '20px',
+                padding: '16px',
                 backgroundColor: '#f8f9fa',
-                borderRadius: '12px',
-                border: `2px solid ${obterCorStatus(despesa.status)}`,
-                transition: 'all 0.3s ease'
+                borderRadius: '8px',
+                border: '1px solid #e8eaed',
+                transition: 'all 0.2s ease'
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.backgroundColor = '#ffffff';
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+                e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.backgroundColor = '#f8f9fa';
@@ -570,219 +583,84 @@ function Despesas({ usuarioEmail }) {
                   display: 'flex',
                   alignItems: 'flex-start',
                   justifyContent: 'space-between',
-                  gap: '16px',
-                  flexWrap: 'wrap'
+                  gap: '16px'
                 }}>
-                  {/* Info Principal */}
-                  <div style={{ flex: '1', minWidth: '250px' }}>
+                  {/* Informações principais */}
+                  <div style={{ flex: 1 }}>
                     <div style={{
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '12px',
+                      gap: '8px',
                       marginBottom: '8px'
                     }}>
-                      <div style={{
-                        padding: '6px 12px',
-                        borderRadius: '6px',
-                        backgroundColor: `${obterCorStatus(despesa.status)}20`,
-                        color: obterCorStatus(despesa.status),
+                      <span style={{
                         fontSize: '0.75rem',
-                        fontWeight: '700',
-                        border: `2px solid ${obterCorStatus(despesa.status)}`
+                        color: '#5f6368',
+                        fontWeight: '500'
+                      }}>
+                        {new Date(despesa.vencimento).toLocaleDateString('pt-BR')}
+                      </span>
+                      <span style={{
+                        padding: '2px 8px',
+                        backgroundColor: despesa.status === 'Paga' ? '#e8f5e8' : despesa.status === 'Vencida' ? '#fce8e6' : '#fff3cd',
+                        color: despesa.status === 'Paga' ? '#34a853' : despesa.status === 'Vencida' ? '#ea4335' : '#f9ab00',
+                        borderRadius: '12px',
+                        fontSize: '0.75rem',
+                        fontWeight: '500'
                       }}>
                         {despesa.status}
-                      </div>
-
-                      {despesa.parcelado && (
-                        <div style={{
-                          padding: '6px 12px',
-                          borderRadius: '6px',
-                          backgroundColor: '#e8f0fe',
-                          color: '#1a73e8',
-                          fontSize: '0.75rem',
-                          fontWeight: '600',
-                          border: '1px solid #1a73e8'
-                        }}>
-                          {despesa.parcelaAtual || 1}/{despesa.numeroParcelas}
-                        </div>
-                      )}
-                    </div>
-
-                    <div style={{
-                      fontSize: '1.125rem',
-                      fontWeight: '600',
-                      color: '#202124',
-                      marginBottom: '8px'
-                    }}>
-                      {despesa.descricao}
-                    </div>
-
-                    <div style={{
-                      display: 'flex',
-                      gap: '16px',
-                      fontSize: '0.8125rem',
-                      color: '#5f6368',
-                      flexWrap: 'wrap'
-                    }}>
-                      <span>
-                        📅 Venc: {new Date(despesa.vencimento).toLocaleDateString('pt-BR')}
-                      </span>
-                      <span>
-                        {obterIconeFormaPagamento(despesa.formaPagamento)} {despesa.formaPagamento}
                       </span>
                       {despesa.categoria && (
-                        <span>
-                          🏷️ {despesa.categoria}
+                        <span style={{
+                          fontSize: '0.75rem',
+                          color: '#5f6368'
+                        }}>
+                          • {despesa.categoria}
                         </span>
                       )}
                     </div>
-
-                    {despesa.observacoes && (
-                      <div style={{
-                        marginTop: '8px',
-                        fontSize: '0.8125rem',
-                        color: '#5f6368',
-                        fontStyle: 'italic'
-                      }}>
-                        📝 {despesa.observacoes}
-                      </div>
-                    )}
-
-                    {/* Botões de Ação Secundários */}
+                    
                     <div style={{
-                      display: 'flex',
-                      gap: '8px',
-                      marginTop: '12px',
-                      flexWrap: 'wrap'
+                      fontSize: '0.875rem',
+                      fontWeight: '500',
+                      color: '#202124',
+                      marginBottom: '4px'
                     }}>
-                      {despesa.comprovanteURL && (
-                        <a
-                          href={despesa.comprovanteURL}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            padding: '8px 16px',
-                            backgroundColor: '#34a853',
-                            color: '#ffffff',
-                            borderRadius: '6px',
-                            fontSize: '0.875rem',
-                            textDecoration: 'none',
-                            fontWeight: '600',
-                            border: 'none',
-                            boxShadow: '0 2px 8px rgba(52, 168, 83, 0.3)',
-                            transition: 'all 0.2s ease',
-                            cursor: 'pointer'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = '#2d8e47';
-                            e.currentTarget.style.transform = 'translateY(-2px)';
-                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(52, 168, 83, 0.4)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = '#34a853';
-                            e.currentTarget.style.transform = 'translateY(0)';
-                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(52, 168, 83, 0.3)';
-                          }}
-                        >
-                          📎 Ver Comprovante
-                        </a>
-                      )}
-
-                      {despesa.vencimento && (
-                        <button
-                          onClick={() => exportarParaCalendario(despesa)}
-                          title="Adicionar lembrete ao calendário"
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            padding: '8px 16px',
-                            backgroundColor: '#9334e6',
-                            color: '#ffffff',
-                            borderRadius: '6px',
-                            fontSize: '0.875rem',
-                            fontWeight: '600',
-                            border: 'none',
-                            boxShadow: '0 2px 8px rgba(147, 52, 230, 0.3)',
-                            transition: 'all 0.2s ease',
-                            cursor: 'pointer'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = '#7c2dbf';
-                            e.currentTarget.style.transform = 'translateY(-2px)';
-                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(147, 52, 230, 0.4)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = '#9334e6';
-                            e.currentTarget.style.transform = 'translateY(0)';
-                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(147, 52, 230, 0.3)';
-                          }}
-                        >
-                          📅 Adicionar ao Calendário
-                        </button>
-                      )}
+                      {despesa.descricao}
+                    </div>
+                    
+                    <div style={{
+                      fontSize: '0.75rem',
+                      color: '#5f6368'
+                    }}>
+                      {despesa.formaPagamento}
+                      {despesa.observacoes && ` • ${despesa.observacoes}`}
+                      {despesa.parcelado && ` • Parcela ${despesa.parcelaAtual || 1}/${despesa.numeroParcelas}`}
                     </div>
 
-                    {/* Informações de Auditoria */}
-                    {(despesa.criadoPor || despesa.createdAt || despesa.editadoPor || despesa.updatedAt) && (
-                      <div style={{
-                        marginTop: '16px',
-                        padding: '12px',
-                        backgroundColor: '#f8f9fa',
-                        borderRadius: '6px',
-                        border: '1px solid #e8eaed'
-                      }}>
-                        <div style={{
-                          fontSize: '0.75rem',
-                          fontWeight: '600',
-                          color: '#5f6368',
-                          marginBottom: '8px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px'
-                        }}>
-                          ℹ️ Informações de Auditoria
+                    {/* Auditoria */}
+                    <div style={{
+                      fontSize: '0.6875rem',
+                      color: '#5f6368',
+                      paddingTop: '8px',
+                      borderTop: '1px solid #e8eaed',
+                      textAlign: 'left'
+                    }}>
+                      <div>Criado por: {despesa.criadoPor || 'N/A'}</div>
+                      {despesa.createdAt && (
+                        <div>em {despesa.createdAt?.toLocaleDateString?.('pt-BR') || 'Data inválida'}</div>
+                      )}
+                      {despesa.editadoPor && despesa.updatedAt && (
+                        <div style={{ marginTop: '2px' }}>
+                          Editado por: {despesa.editadoPor} em {despesa.updatedAt?.toLocaleDateString?.('pt-BR') || 'Data inválida'}
                         </div>
-                        
-                        {despesa.criadoPor && despesa.createdAt && (
-                          <div style={{
-                            fontSize: '0.75rem',
-                            color: '#5f6368',
-                            marginBottom: '4px'
-                          }}>
-                            <strong>Criado por:</strong> {despesa.criadoPor}
-                            {' - '}
-                            {despesa.createdAt?.toLocaleDateString?.('pt-BR', {
-                              day: '2-digit',
-                              month: '2-digit',
-                              year: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            }) || 'Data não disponível'}
-                          </div>
-                        )}
-
-                        {despesa.editadoPor && despesa.updatedAt && (
-                          <div style={{
-                            fontSize: '0.75rem',
-                            color: '#5f6368'
-                          }}>
-                            <strong>Editado por:</strong> {despesa.editadoPor}
-                            {' - '}
-                            {despesa.updatedAt?.toLocaleDateString?.('pt-BR', {
-                              day: '2-digit',
-                              month: '2-digit',
-                              year: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            }) || 'Data não disponível'}
-                          </div>
-                        )}
-                      </div>
-                    )}
+                      )}
+                      {despesa.status === 'Paga' && despesa.dataPagamento && (
+                        <div style={{ marginTop: '2px', color: '#34a853', fontWeight: '500' }}>
+                          Pago em: {despesa.dataPagamento?.toLocaleDateString?.('pt-BR') || 'Data inválida'}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Valor e Ações */}
@@ -790,56 +668,63 @@ function Despesas({ usuarioEmail }) {
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'flex-end',
-                    gap: '12px'
+                    gap: '8px'
                   }}>
                     <div style={{
-                      fontSize: '1.75rem',
-                      fontWeight: '700',
+                      fontSize: '1.125rem',
+                      fontWeight: '600',
                       color: despesa.status === 'Paga' ? '#34a853' : '#202124'
                     }}>
                       {formatarMoeda(despesa.valor)}
                     </div>
-
-                    {/* Botões de Ação */}
+                    
                     <div style={{
                       display: 'flex',
-                      gap: '8px',
-                      flexWrap: 'wrap',
-                      justifyContent: 'flex-end'
+                      gap: '6px'
                     }}>
                       {despesa.status !== 'Paga' && despesa.status !== 'Cancelado' && (
                         <button
                           onClick={() => handleMarcarPago(despesa.id, despesa.formaPagamento)}
                           style={{
-                            padding: '8px 16px',
+                            padding: '6px 12px',
                             backgroundColor: '#34a853',
                             color: '#ffffff',
                             border: 'none',
-                            borderRadius: '6px',
+                            borderRadius: '4px',
                             fontSize: '0.75rem',
-                            fontWeight: '600',
+                            fontWeight: '500',
                             cursor: 'pointer',
-                            whiteSpace: 'nowrap',
-                            transition: 'all 0.2s ease'
+                            transition: 'background-color 0.2s ease'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = '#2d8e47';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = '#34a853';
                           }}
                         >
                           ✓ Pagar
                         </button>
                       )}
-
+                      
                       <button
                         onClick={() => handleEditarDespesa(despesa)}
                         style={{
-                          padding: '8px 16px',
+                          padding: '6px 12px',
                           backgroundColor: '#1a73e8',
                           color: '#ffffff',
                           border: 'none',
-                          borderRadius: '6px',
+                          borderRadius: '4px',
                           fontSize: '0.75rem',
-                          fontWeight: '600',
+                          fontWeight: '500',
                           cursor: 'pointer',
-                          whiteSpace: 'nowrap',
-                          transition: 'all 0.2s ease'
+                          transition: 'background-color 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#1557b0';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = '#1a73e8';
                         }}
                       >
                         ✏️ Editar
@@ -848,32 +733,26 @@ function Despesas({ usuarioEmail }) {
                       <button
                         onClick={() => handleExcluirDespesa(despesa.id, despesa.descricao)}
                         style={{
-                          padding: '8px 16px',
+                          padding: '6px 12px',
                           backgroundColor: '#ea4335',
                           color: '#ffffff',
                           border: 'none',
-                          borderRadius: '6px',
+                          borderRadius: '4px',
                           fontSize: '0.75rem',
-                          fontWeight: '600',
+                          fontWeight: '500',
                           cursor: 'pointer',
-                          whiteSpace: 'nowrap',
-                          transition: 'all 0.2s ease'
+                          transition: 'background-color 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#d33b2c';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = '#ea4335';
                         }}
                       >
                         🗑️ Excluir
                       </button>
                     </div>
-
-                    {/* Data de Pagamento */}
-                    {despesa.status === 'Paga' && despesa.dataPagamento && (
-                      <div style={{
-                        fontSize: '0.75rem',
-                        color: '#34a853',
-                        fontWeight: '500'
-                      }}>
-                        Pago em: {despesa.dataPagamento?.toLocaleDateString?.('pt-BR') || 'Data inválida'}
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>

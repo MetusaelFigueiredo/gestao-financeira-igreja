@@ -144,20 +144,6 @@ function Login({ onLoginSuccess }) {
             {carregando ? '⏳ Entrando...' : '🔐 Entrar'}
           </button>
         </form>
-
-        {/* Informação para testes */}
-        <div style={{
-          marginTop: '20px',
-          padding: '15px',
-          backgroundColor: '#fff3e0',
-          borderRadius: '8px',
-          fontSize: '0.9rem',
-          color: '#e65100'
-        }}>
-          <strong>💡 Para testar:</strong><br />
-          Email: tesoureiro@igreja.com<br />
-          Senha: teste123
-        </div>
       </div>
     </div>
   );

@@ -205,10 +205,17 @@ function Entradas({ usuarioEmail }) {
       if (entrada.dadosComprovante.data) {
         // Converter string DD/MM/YYYY para Date e depois para Timestamp
         const dataString = entrada.dadosComprovante.data;
+        console.log('📅 Processando data do comprovante:', dataString);
+        
         if (dataString.includes('/')) {
           const [dia, mes, ano] = dataString.split('/');
-          const dataDate = new Date(parseInt(ano), parseInt(mes) - 1, parseInt(dia));
+          // Criar data no meio-dia para evitar problemas de timezone
+          const dataDate = new Date(parseInt(ano), parseInt(mes) - 1, parseInt(dia), 12, 0, 0);
           dataProcessada = Timestamp.fromDate(dataDate);
+          
+          console.log('📅 Data original da entrada:', entrada.data instanceof Date ? entrada.data.toLocaleDateString('pt-BR') : entrada.data);
+          console.log('📅 Nova data do comprovante:', dataDate.toLocaleDateString('pt-BR'));
+          console.log('📅 Timestamp gerado:', dataProcessada.toDate().toLocaleDateString('pt-BR'));
         }
       }
       

@@ -33,7 +33,7 @@ function Dashboard() {
     try {
       // Usar o mesmo método que a página Entradas
       const { buscarEntradas } = await import('../services/entradas');
-      const { calcularResumoMes } = await import('../utils/entradasUtils');
+      const { calcularResumoSemFiltro } = await import('../utils/entradasUtils');
       
       const [resultadoEntradas, resultadoDespesas, resultadoMissoes, resumoDespesas] = await Promise.all([
         buscarEntradas(),
@@ -54,8 +54,23 @@ function Dashboard() {
                  dataEntrada.getFullYear() === anoSelecionado;
         });
         
-        // Calcular resumo usando a mesma função da página Entradas
-        const resumoCalculado = calcularResumoMes(entradasFiltradas);
+        // Calcular resumo sem aplicar filtro novamente (entradas já filtradas)
+        const resumoCalculado = calcularResumoSemFiltro(entradasFiltradas);
+        
+        console.log('📊 Entradas filtradas para o período:', entradasFiltradas.length);
+        console.log('📊 Primeira entrada (exemplo):', entradasFiltradas[0]);
+        
+        // Debug detalhado das entradas
+        entradasFiltradas.forEach((entrada, index) => {
+          console.log(`📊 Entrada ${index + 1}:`, {
+            id: entrada.id,
+            descricao: entrada.descricao,
+            valor: entrada.valor,
+            data: entrada.data,
+            tipo: entrada.tipo,
+            rateio: entrada.rateio
+          });
+        });
         
         // Adicionar informações adicionais
         resumoCalculado.quantidadeEntradas = resumoCalculado.totalCount || 0;

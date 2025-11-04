@@ -4,6 +4,7 @@ import AlertaDivergencia from '../components/AlertaDivergencia';
 import { buscarEntradas, excluirEntrada, atualizarEntrada, atualizarCamposControle } from '../services/entradas';
 import { formatarMoeda } from '../utils/formatacao';
 import { calcularResumoMes } from '../utils/entradasUtils';
+import { calcularRateio } from '../utils/migracaoRateio';
 
 function Entradas({ usuarioEmail }) {
   const [entradas, setEntradas] = useState([]);
@@ -190,7 +191,6 @@ function Entradas({ usuarioEmail }) {
   // 🆕 Função para aceitar dados do comprovante
   const aceitarDadosComprovante = async (entrada) => {
     try {
-      const { calcularRateio } = await import('../utils/migracaoRateio');
       
       const dadosAtualizados = {
         // Usar dados do comprovante
@@ -199,7 +199,7 @@ function Entradas({ usuarioEmail }) {
         data: entrada.dadosComprovante.data || entrada.data,
         
         // Recalcular rateio com novo valor
-        rateio: calcularRateio(entrada.dadosComprovante.valor || entrada.valor, entrada.tipo),
+        rateio: calcularRateio(entrada.tipo, entrada.dadosComprovante.valor || entrada.valor),
         
         // Marcar como resolvido
         divergenciaResolvida: true,

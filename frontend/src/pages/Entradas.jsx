@@ -543,239 +543,214 @@ function Entradas({ usuarioEmail }) {
             }
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {entradasOrdenadas.map(entrada => (
-              <div key={entrada.id} style={{
-                padding: '16px',
-                backgroundColor: '#f8f9fa',
-                borderRadius: '8px',
-                border: '1px solid #e8eaed',
-                transition: 'all 0.2s ease'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#ffffff';
-                e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = '#f8f9fa';
-                e.currentTarget.style.boxShadow = 'none';
+          <div style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '12px',
+            padding: '24px',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+            border: '1px solid #e8eaed'
+          }}>
+            <h3 style={{
+              fontSize: '1.125rem',
+              fontWeight: '600',
+              color: '#202124',
+              margin: '0 0 20px 0',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              📋 TODAS AS ENTRADAS
+              <span style={{
+                fontSize: '0.875rem',
+                color: '#5f6368',
+                fontWeight: '400'
               }}>
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'auto 1fr auto',
-                  gap: '16px',
-                  alignItems: 'flex-start'
-                }}>
-                  {/* Badge do Tipo */}
-                  <div style={{
-                    padding: '6px 12px',
-                    borderRadius: '6px',
-                    backgroundColor: `${obterCorTipo(entrada.tipo)}15`,
-                    color: obterCorTipo(entrada.tipo),
-                    fontSize: '0.8125rem',
-                    fontWeight: '500',
-                    whiteSpace: 'nowrap'
-                  }}>
-                    {obterNomeTipo(entrada.tipo)}
-                  </div>
-
-                  {/* Informações Principais */}
-                  <div>
-                    <div style={{
-                      fontSize: '0.9375rem',
-                      fontWeight: '500',
-                      color: '#202124',
-                      marginBottom: '4px'
+                ({entradasOrdenadas.length} entrada{entradasOrdenadas.length !== 1 ? 's' : ''})
+              </span>
+            </h3>
+            
+            <div style={{
+              overflowX: 'auto',
+              border: '1px solid #e8eaed',
+              borderRadius: '8px'
+            }}>
+              <table style={{
+                width: '100%',
+                borderCollapse: 'collapse',
+                fontSize: '0.875rem'
+              }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#f8f9fa' }}>
+                    <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e8eaed', fontWeight: '600' }}>
+                      📅 Data
+                    </th>
+                    <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e8eaed', fontWeight: '600' }}>
+                      👤 Membro/Descrição
+                    </th>
+                    <th style={{ padding: '12px', textAlign: 'center', borderBottom: '1px solid #e8eaed', fontWeight: '600' }}>
+                      🏷️ Tipo
+                    </th>
+                    <th style={{ padding: '12px', textAlign: 'center', borderBottom: '1px solid #e8eaed', fontWeight: '600' }}>
+                      💳 Forma
+                    </th>
+                    <th style={{ padding: '12px', textAlign: 'right', borderBottom: '1px solid #e8eaed', fontWeight: '600' }}>
+                      💰 Valor
+                    </th>
+                    <th style={{ padding: '12px', textAlign: 'center', borderBottom: '1px solid #e8eaed', fontWeight: '600' }}>
+                      ⚙️ Ações
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {entradasOrdenadas.map((entrada, index) => (
+                    <tr key={entrada.id} style={{
+                      backgroundColor: index % 2 === 0 ? '#ffffff' : '#f8f9fa'
                     }}>
-                      {entrada.membroNome && (
-                        <span>{entrada.membroNome} • </span>
-                      )}
-                      <span style={{ color: '#5f6368', fontSize: '0.875rem' }}>
-                        {entrada.data ? new Date(entrada.data).toLocaleDateString('pt-BR') : ''}
-                      </span>
-                    </div>
-                    
-                    {entrada.descricao && (
-                      <div style={{
-                        fontSize: '0.8125rem',
-                        color: '#5f6368',
-                        marginBottom: '6px'
+                      <td style={{ padding: '12px', borderBottom: '1px solid #e8eaed' }}>
+                        {entrada.data ? new Date(entrada.data).toLocaleDateString('pt-BR') : '-'}
+                      </td>
+                      <td style={{ padding: '12px', borderBottom: '1px solid #e8eaed', maxWidth: '200px' }}>
+                        <div style={{ 
+                          overflow: 'hidden', 
+                          textOverflow: 'ellipsis', 
+                          whiteSpace: 'nowrap',
+                          fontSize: '0.875rem'
+                        }}>
+                          {entrada.tipo?.toLowerCase() === 'dizimo' 
+                            ? (entrada.membroNome || 'Membro não informado')
+                            : (entrada.descricao || 'Descrição não informada')
+                          }
+                        </div>
+                        {/* Mostrar descrição adicional apenas para dízimos que têm membro E descrição */}
+                        {entrada.tipo?.toLowerCase() === 'dizimo' && entrada.membroNome && entrada.descricao && (
+                          <div style={{ 
+                            fontSize: '0.75rem', 
+                            color: '#5f6368',
+                            overflow: 'hidden', 
+                            textOverflow: 'ellipsis', 
+                            whiteSpace: 'nowrap',
+                            marginTop: '2px'
+                          }}>
+                            {entrada.descricao}
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ 
+                        padding: '12px', 
+                        borderBottom: '1px solid #e8eaed',
+                        textAlign: 'center'
                       }}>
-                        {entrada.descricao}
-                      </div>
-                    )}
-
-                    {/* Rateio */}
-                    <div style={{
-                      display: 'flex',
-                      gap: '12px',
-                      fontSize: '0.75rem',
-                      color: '#5f6368',
-                      marginTop: '6px'
-                    }}>
-                      {entrada.rateio?.central > 0 && (
-                        <span>Central: {formatarMoeda(entrada.rateio.central)}</span>
-                      )}
-                      {entrada.rateio?.local > 0 && (
-                        <span>Local: {formatarMoeda(entrada.rateio.local)}</span>
-                      )}
-                      {entrada.rateio?.missoes > 0 && (
-                        <span>Missões: {formatarMoeda(entrada.rateio.missoes)}</span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Valor e Ações */}
-                  <div style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'flex-end',
-                    gap: '8px'
-                  }}>
-                    <div style={{
-                      fontSize: '1.125rem',
-                      fontWeight: '600',
-                      color: '#34a853',
-                      textAlign: 'right',
-                      whiteSpace: 'nowrap'
-                    }}>
-                      {formatarMoeda(entrada.valor)}
-                    </div>
-                    
-                    {/* Botões de Ação */}
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                      {/* Botão Ver Comprovante */}
-                      {entrada.comprovanteUrl && (
-                        <button
-                          onClick={() => verComprovante(entrada.comprovanteUrl)}
-                          title="Ver Comprovante"
-                          style={{
-                            padding: '6px 8px',
-                            backgroundColor: '#34a853',
-                            color: '#ffffff',
-                            border: 'none',
-                            borderRadius: '6px',
-                            fontSize: '0.75rem',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            fontWeight: '500'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = '#2d8f3f';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = '#34a853';
-                          }}
-                        >
-                          📎
-                        </button>
-                      )}
-                      
-                      {/* Botão Editar */}
-                      <button
-                        onClick={() => editarEntrada(entrada)}
-                        title="Editar"
-                        style={{
-                          padding: '6px 8px',
-                          backgroundColor: '#1a73e8',
-                          color: '#ffffff',
-                          border: 'none',
-                          borderRadius: '6px',
+                        <span style={{
+                          padding: '4px 8px',
+                          borderRadius: '12px',
                           fontSize: '0.75rem',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          fontWeight: '500'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = '#1557b0';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = '#1a73e8';
-                        }}
-                      >
-                        ✏️
-                      </button>
-                      
-                      {/* Botão Excluir */}
-                      <button
-                        onClick={() => confirmarExclusao(entrada.id, entrada.valor)}
-                        title="Excluir"
-                        style={{
-                          padding: '6px 8px',
-                          backgroundColor: '#ea4335',
-                          color: '#ffffff',
-                          border: 'none',
-                          borderRadius: '6px',
+                          fontWeight: '500',
+                          backgroundColor: `${obterCorTipo(entrada.tipo)}15`,
+                          color: obterCorTipo(entrada.tipo)
+                        }}>
+                          {obterNomeTipo(entrada.tipo)}
+                        </span>
+                      </td>
+                      <td style={{ 
+                        padding: '12px', 
+                        borderBottom: '1px solid #e8eaed',
+                        textAlign: 'center'
+                      }}>
+                        <span style={{
+                          padding: '4px 8px',
+                          borderRadius: '12px',
                           fontSize: '0.75rem',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          fontWeight: '500'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = '#d33b2c';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = '#ea4335';
-                        }}
-                      >
-                        🗑️
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Informações de Auditoria */}
-                {(entrada.criadoPor || entrada.criadoEm || entrada.editadoPor || entrada.updatedAt) && (
-                  <div style={{
-                    marginTop: '12px',
-                    paddingTop: '12px',
-                    borderTop: '1px solid #e8eaed'
-                  }}>
-                    <div style={{
-                      fontSize: '0.7rem',
-                      color: '#5f6368',
-                      display: 'flex',
-                      gap: '12px',
-                      flexWrap: 'wrap'
-                    }}>
-                      {entrada.criadoPor && entrada.criadoEm && (
-                        <span>
-                          ℹ️ Criado por: <strong>{entrada.criadoPor}</strong>
-                          {' - '}
-                          {entrada.criadoEm?.toDate?.()?.toLocaleDateString?.('pt-BR', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          }) || 'Data não disponível'}
+                          fontWeight: '500',
+                          backgroundColor: entrada.formaRecebimento === 'pix' ? '#e3f2fd' : '#e8f5e8',
+                          color: entrada.formaRecebimento === 'pix' ? '#1565c0' : '#2e7d32'
+                        }}>
+                          {entrada.formaRecebimento === 'pix' ? '💳 PIX' : '💵 DINHEIRO'}
                         </span>
-                      )}
-
-                      {entrada.editadoPor && entrada.updatedAt && (
-                        <span>
-                          | Editado por: <strong>{entrada.editadoPor}</strong>
-                          {' - '}
-                          {entrada.updatedAt?.toDate?.()?.toLocaleDateString?.('pt-BR', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          }) || 'Data não disponível'}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
+                      </td>
+                      <td style={{ 
+                        padding: '12px', 
+                        borderBottom: '1px solid #e8eaed',
+                        textAlign: 'right',
+                        fontWeight: '600',
+                        color: '#34a853',
+                        fontSize: '1rem'
+                      }}>
+                        {formatarMoeda(entrada.valor)}
+                      </td>
+                      <td style={{ 
+                        padding: '12px', 
+                        borderBottom: '1px solid #e8eaed',
+                        textAlign: 'center'
+                      }}>
+                        <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
+                          {/* Botão Ver Comprovante */}
+                          {entrada.comprovanteUrl && (
+                            <button
+                              onClick={() => verComprovante(entrada.comprovanteUrl)}
+                              title="Ver Comprovante"
+                              style={{
+                                padding: '6px 8px',
+                                backgroundColor: '#34a853',
+                                color: '#ffffff',
+                                border: 'none',
+                                borderRadius: '6px',
+                                fontSize: '0.75rem',
+                                cursor: 'pointer',
+                                fontWeight: '500'
+                              }}
+                              onMouseEnter={(e) => e.target.style.backgroundColor = '#2d8f3f'}
+                              onMouseLeave={(e) => e.target.style.backgroundColor = '#34a853'}
+                            >
+                              📎
+                            </button>
+                          )}
+                          
+                          {/* Botão Editar */}
+                          <button
+                            onClick={() => editarEntrada(entrada)}
+                            title="Editar"
+                            style={{
+                              padding: '6px 8px',
+                              backgroundColor: '#1a73e8',
+                              color: '#ffffff',
+                              border: 'none',
+                              borderRadius: '6px',
+                              fontSize: '0.75rem',
+                              cursor: 'pointer',
+                              fontWeight: '500'
+                            }}
+                            onMouseEnter={(e) => e.target.style.backgroundColor = '#1557b0'}
+                            onMouseLeave={(e) => e.target.style.backgroundColor = '#1a73e8'}
+                          >
+                            ✏️
+                          </button>
+                          
+                          {/* Botão Excluir */}
+                          <button
+                            onClick={() => confirmarExclusao(entrada.id, entrada.valor)}
+                            title="Excluir"
+                            style={{
+                              padding: '6px 8px',
+                              backgroundColor: '#ea4335',
+                              color: '#ffffff',
+                              border: 'none',
+                              borderRadius: '6px',
+                              fontSize: '0.75rem',
+                              cursor: 'pointer',
+                              fontWeight: '500'
+                            }}
+                            onMouseEnter={(e) => e.target.style.backgroundColor = '#d33b2c'}
+                            onMouseLeave={(e) => e.target.style.backgroundColor = '#ea4335'}
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>

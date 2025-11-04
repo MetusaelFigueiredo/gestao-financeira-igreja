@@ -7,7 +7,7 @@ import Dashboard from './pages/Dashboard';
 import Despesas from './pages/Despesas';
 import Relatorios from './pages/Relatorios';
 import Backup from './pages/Backup';
-// import Reconciliacao from './pages/Reconciliacao'; // 🔄 SERÁ CRIADA EM BREVE
+import Reconciliacao from './pages/Reconciliacao'; // ✅ IMPLEMENTADA - FASE 3
 import DiagnosticoFirebase from './components/DiagnosticoFirebase'; // 🔍 Diagnóstico
 import './styles/responsive.css'; // 📱 CSS Responsivo
 
@@ -364,24 +364,9 @@ function App() {
       <main>
         {paginaAtual === 'entradas' && <Entradas usuarioEmail={usuario.email} />}
         {paginaAtual === 'despesas' && <Despesas usuarioEmail={usuario.email} />}
-        {paginaAtual === 'dashboard' && <Dashboard />}
+        {paginaAtual === 'dashboard' && <Dashboard onNavigate={setPaginaAtual} />}
         {paginaAtual === 'membros' && <Membros usuarioEmail={usuario.email} />}
-        {paginaAtual === 'reconciliacao' && (
-          <div style={{ padding: '40px', textAlign: 'center', backgroundColor: '#f8f9fa', margin: '20px', borderRadius: '8px' }}>
-            <h2>⚖️ Página de Reconciliação</h2>
-            <p style={{ color: '#666', marginBottom: '20px' }}>Esta página será implementada na Fase 3 com:</p>
-            <ul style={{ textAlign: 'left', maxWidth: '400px', margin: '0 auto', color: '#555' }}>
-              <li>📅 Filtros avançados por período</li>
-              <li>📊 Histórico completo de reconciliações</li>
-              <li>💾 Funcionalidade de salvar reconciliações</li>
-              <li>📄 Exportação para PDF</li>
-              <li>📈 Gráficos de evolução</li>
-            </ul>
-            <p style={{ marginTop: '30px', fontSize: '0.9rem', color: '#888' }}>
-              Por enquanto, use o widget de reconciliação no Dashboard.
-            </p>
-          </div>
-        )}
+        {paginaAtual === 'reconciliacao' && <Reconciliacao />}
         {paginaAtual === 'backup' && <Backup />}
         {paginaAtual === 'relatorios' && <Relatorios />}
         {paginaAtual === 'diagnostico' && <DiagnosticoFirebase />}

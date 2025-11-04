@@ -3,7 +3,7 @@ import { buscarResumoFinanceiro, buscarDespesasPendentes, buscarMetaMissoes, atu
 import { marcarComoPago } from '../services/despesas';
 import { formatarMoeda } from '../utils/formatacao';
 
-function Dashboard() {
+function Dashboard({ onNavigate }) {
   const [resumo, setResumo] = useState(null);
   const [despesas, setDespesas] = useState(null);
   const [missoes, setMissoes] = useState(null);
@@ -749,8 +749,12 @@ function Dashboard() {
           </div>
           <button
             onClick={() => {
-              // TODO: Navegar para página de reconciliação completa
-              alert('🚧 Página de Reconciliação Completa - Em desenvolvimento!');
+              if (onNavigate) {
+                onNavigate('reconciliacao');
+              } else {
+                // Fallback caso não tenha a função de navegação
+                window.location.hash = 'reconciliacao';
+              }
             }}
             style={{
               padding: '8px 16px',
@@ -766,7 +770,7 @@ function Dashboard() {
             onMouseEnter={(e) => e.target.style.backgroundColor = '#e65100'}
             onMouseLeave={(e) => e.target.style.backgroundColor = '#ff6f00'}
           >
-            Ver Detalhes →
+            📊 Ver Reconciliação Completa
           </button>
         </div>
 

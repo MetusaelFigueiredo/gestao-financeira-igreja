@@ -562,201 +562,224 @@ function Despesas({ usuarioEmail }) {
             }
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {despesasOrdenadas.map(despesa => (
-              <div key={despesa.id} style={{
-                padding: '16px',
-                backgroundColor: '#f8f9fa',
-                borderRadius: '8px',
-                border: '1px solid #e8eaed',
-                transition: 'all 0.2s ease'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#ffffff';
-                e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = '#f8f9fa';
-                e.currentTarget.style.boxShadow = 'none';
+          <div style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '12px',
+            padding: '24px',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+            border: '1px solid #e8eaed'
+          }}>
+            <h3 style={{
+              fontSize: '1.125rem',
+              fontWeight: '600',
+              color: '#202124',
+              margin: '0 0 20px 0',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              📋 TODAS AS DESPESAS
+              <span style={{
+                fontSize: '0.875rem',
+                color: '#5f6368',
+                fontWeight: '400'
               }}>
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  justifyContent: 'space-between',
-                  gap: '16px'
-                }}>
-                  {/* Informações principais */}
-                  <div style={{ flex: 1 }}>
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      marginBottom: '8px'
+                ({despesasOrdenadas.length} despesa{despesasOrdenadas.length !== 1 ? 's' : ''})
+              </span>
+            </h3>
+            
+            <div style={{
+              overflowX: 'auto',
+              border: '1px solid #e8eaed',
+              borderRadius: '8px'
+            }}>
+              <table style={{
+                width: '100%',
+                borderCollapse: 'collapse',
+                fontSize: '0.875rem'
+              }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#f8f9fa' }}>
+                    <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e8eaed', fontWeight: '600' }}>
+                      📅 Vencimento
+                    </th>
+                    <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e8eaed', fontWeight: '600' }}>
+                      📝 Descrição
+                    </th>
+                    <th style={{ padding: '12px', textAlign: 'center', borderBottom: '1px solid #e8eaed', fontWeight: '600' }}>
+                      🏷️ Status
+                    </th>
+                    <th style={{ padding: '12px', textAlign: 'center', borderBottom: '1px solid #e8eaed', fontWeight: '600' }}>
+                      💳 Forma
+                    </th>
+                    <th style={{ padding: '12px', textAlign: 'right', borderBottom: '1px solid #e8eaed', fontWeight: '600' }}>
+                      💰 Valor
+                    </th>
+                    <th style={{ padding: '12px', textAlign: 'center', borderBottom: '1px solid #e8eaed', fontWeight: '600' }}>
+                      ⚙️ Ações
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {despesasOrdenadas.map((despesa, index) => (
+                    <tr key={despesa.id} style={{
+                      backgroundColor: index % 2 === 0 ? '#ffffff' : '#f8f9fa'
                     }}>
-                      <span style={{
-                        fontSize: '0.75rem',
-                        color: '#5f6368',
-                        fontWeight: '500'
-                      }}>
+                      <td style={{ padding: '12px', borderBottom: '1px solid #e8eaed' }}>
                         {new Date(despesa.vencimento).toLocaleDateString('pt-BR')}
-                      </span>
-                      <span style={{
-                        padding: '2px 8px',
-                        backgroundColor: despesa.status === 'Paga' ? '#e8f5e8' : despesa.status === 'Vencida' ? '#fce8e6' : '#fff3cd',
-                        color: despesa.status === 'Paga' ? '#34a853' : despesa.status === 'Vencida' ? '#ea4335' : '#f9ab00',
-                        borderRadius: '12px',
-                        fontSize: '0.75rem',
-                        fontWeight: '500'
+                      </td>
+                      <td style={{ padding: '12px', borderBottom: '1px solid #e8eaed', maxWidth: '250px' }}>
+                        <div style={{ 
+                          fontWeight: '500',
+                          color: '#202124',
+                          marginBottom: '2px'
+                        }}>
+                          {despesa.descricao}
+                        </div>
+                        {despesa.categoria && (
+                          <div style={{ 
+                            fontSize: '0.75rem', 
+                            color: '#5f6368',
+                            marginBottom: '2px'
+                          }}>
+                            📂 {despesa.categoria}
+                          </div>
+                        )}
+                        {despesa.observacoes && (
+                          <div style={{ 
+                            fontSize: '0.75rem', 
+                            color: '#5f6368',
+                            fontStyle: 'italic'
+                          }}>
+                            {despesa.observacoes}
+                          </div>
+                        )}
+                        {despesa.parcelado && (
+                          <div style={{ 
+                            fontSize: '0.75rem', 
+                            color: '#1a73e8',
+                            fontWeight: '500'
+                          }}>
+                            📊 Parcela {despesa.parcelaAtual || 1}/{despesa.numeroParcelas}
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ 
+                        padding: '12px', 
+                        borderBottom: '1px solid #e8eaed',
+                        textAlign: 'center'
                       }}>
-                        {despesa.status}
-                      </span>
-                      {despesa.categoria && (
                         <span style={{
+                          padding: '4px 8px',
+                          borderRadius: '12px',
                           fontSize: '0.75rem',
+                          fontWeight: '500',
+                          backgroundColor: despesa.status === 'Paga' ? '#e8f5e8' : despesa.status === 'Vencida' ? '#fce8e6' : '#fff3cd',
+                          color: despesa.status === 'Paga' ? '#34a853' : despesa.status === 'Vencida' ? '#ea4335' : '#f9ab00'
+                        }}>
+                          {despesa.status}
+                        </span>
+                      </td>
+                      <td style={{ 
+                        padding: '12px', 
+                        borderBottom: '1px solid #e8eaed',
+                        textAlign: 'center'
+                      }}>
+                        <span style={{
+                          padding: '4px 8px',
+                          borderRadius: '12px',
+                          fontSize: '0.75rem',
+                          fontWeight: '500',
+                          backgroundColor: '#f1f3f4',
                           color: '#5f6368'
                         }}>
-                          • {despesa.categoria}
+                          {despesa.formaPagamento}
                         </span>
-                      )}
-                    </div>
-                    
-                    <div style={{
-                      fontSize: '0.875rem',
-                      fontWeight: '500',
-                      color: '#202124',
-                      marginBottom: '4px'
-                    }}>
-                      {despesa.descricao}
-                    </div>
-                    
-                    <div style={{
-                      fontSize: '0.75rem',
-                      color: '#5f6368'
-                    }}>
-                      {despesa.formaPagamento}
-                      {despesa.observacoes && ` • ${despesa.observacoes}`}
-                      {despesa.parcelado && ` • Parcela ${despesa.parcelaAtual || 1}/${despesa.numeroParcelas}`}
-                    </div>
-
-                    {/* Auditoria */}
-                    <div style={{
-                      fontSize: '0.6875rem',
-                      color: '#5f6368',
-                      paddingTop: '8px',
-                      borderTop: '1px solid #e8eaed',
-                      textAlign: 'left'
-                    }}>
-                      <div>Criado por: {despesa.criadoPor || 'N/A'}</div>
-                      {despesa.createdAt && (
-                        <div>em {despesa.createdAt?.toLocaleDateString?.('pt-BR') || 'Data inválida'}</div>
-                      )}
-                      {despesa.editadoPor && despesa.updatedAt && (
-                        <div style={{ marginTop: '2px' }}>
-                          Editado por: {despesa.editadoPor} em {despesa.updatedAt?.toLocaleDateString?.('pt-BR') || 'Data inválida'}
+                      </td>
+                      <td style={{ 
+                        padding: '12px', 
+                        borderBottom: '1px solid #e8eaed',
+                        textAlign: 'right',
+                        fontWeight: '600',
+                        color: despesa.status === 'Paga' ? '#34a853' : '#ea4335',
+                        fontSize: '1rem'
+                      }}>
+                        {formatarMoeda(despesa.valor)}
+                      </td>
+                      <td style={{ 
+                        padding: '12px', 
+                        borderBottom: '1px solid #e8eaed',
+                        textAlign: 'center'
+                      }}>
+                        <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
+                          {/* Botão Pagar */}
+                          {despesa.status !== 'Paga' && despesa.status !== 'Cancelado' && (
+                            <button
+                              onClick={() => handleMarcarPago(despesa.id, despesa.formaPagamento)}
+                              title="Marcar como Paga"
+                              style={{
+                                padding: '6px 8px',
+                                backgroundColor: '#34a853',
+                                color: '#ffffff',
+                                border: 'none',
+                                borderRadius: '6px',
+                                fontSize: '0.75rem',
+                                cursor: 'pointer',
+                                fontWeight: '500'
+                              }}
+                              onMouseEnter={(e) => e.target.style.backgroundColor = '#2d8f3f'}
+                              onMouseLeave={(e) => e.target.style.backgroundColor = '#34a853'}
+                            >
+                              ✓
+                            </button>
+                          )}
+                          
+                          {/* Botão Editar */}
+                          <button
+                            onClick={() => handleEditarDespesa(despesa)}
+                            title="Editar"
+                            style={{
+                              padding: '6px 8px',
+                              backgroundColor: '#1a73e8',
+                              color: '#ffffff',
+                              border: 'none',
+                              borderRadius: '6px',
+                              fontSize: '0.75rem',
+                              cursor: 'pointer',
+                              fontWeight: '500'
+                            }}
+                            onMouseEnter={(e) => e.target.style.backgroundColor = '#1557b0'}
+                            onMouseLeave={(e) => e.target.style.backgroundColor = '#1a73e8'}
+                          >
+                            ✏️
+                          </button>
+                          
+                          {/* Botão Excluir */}
+                          <button
+                            onClick={() => handleExcluirDespesa(despesa.id, despesa.descricao)}
+                            title="Excluir"
+                            style={{
+                              padding: '6px 8px',
+                              backgroundColor: '#ea4335',
+                              color: '#ffffff',
+                              border: 'none',
+                              borderRadius: '6px',
+                              fontSize: '0.75rem',
+                              cursor: 'pointer',
+                              fontWeight: '500'
+                            }}
+                            onMouseEnter={(e) => e.target.style.backgroundColor = '#d33b2c'}
+                            onMouseLeave={(e) => e.target.style.backgroundColor = '#ea4335'}
+                          >
+                            🗑️
+                          </button>
                         </div>
-                      )}
-                      {despesa.status === 'Paga' && despesa.dataPagamento && (
-                        <div style={{ marginTop: '2px', color: '#34a853', fontWeight: '500' }}>
-                          Pago em: {despesa.dataPagamento?.toLocaleDateString?.('pt-BR') || 'Data inválida'}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Valor e Ações */}
-                  <div style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'flex-end',
-                    gap: '8px'
-                  }}>
-                    <div style={{
-                      fontSize: '1.125rem',
-                      fontWeight: '600',
-                      color: despesa.status === 'Paga' ? '#34a853' : '#202124'
-                    }}>
-                      {formatarMoeda(despesa.valor)}
-                    </div>
-                    
-                    <div style={{
-                      display: 'flex',
-                      gap: '6px'
-                    }}>
-                      {despesa.status !== 'Paga' && despesa.status !== 'Cancelado' && (
-                        <button
-                          onClick={() => handleMarcarPago(despesa.id, despesa.formaPagamento)}
-                          style={{
-                            padding: '6px 12px',
-                            backgroundColor: '#34a853',
-                            color: '#ffffff',
-                            border: 'none',
-                            borderRadius: '4px',
-                            fontSize: '0.75rem',
-                            fontWeight: '500',
-                            cursor: 'pointer',
-                            transition: 'background-color 0.2s ease'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = '#2d8e47';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = '#34a853';
-                          }}
-                        >
-                          ✓ Pagar
-                        </button>
-                      )}
-                      
-                      <button
-                        onClick={() => handleEditarDespesa(despesa)}
-                        style={{
-                          padding: '6px 12px',
-                          backgroundColor: '#1a73e8',
-                          color: '#ffffff',
-                          border: 'none',
-                          borderRadius: '4px',
-                          fontSize: '0.75rem',
-                          fontWeight: '500',
-                          cursor: 'pointer',
-                          transition: 'background-color 0.2s ease'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = '#1557b0';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = '#1a73e8';
-                        }}
-                      >
-                        ✏️ Editar
-                      </button>
-
-                      <button
-                        onClick={() => handleExcluirDespesa(despesa.id, despesa.descricao)}
-                        style={{
-                          padding: '6px 12px',
-                          backgroundColor: '#ea4335',
-                          color: '#ffffff',
-                          border: 'none',
-                          borderRadius: '4px',
-                          fontSize: '0.75rem',
-                          fontWeight: '500',
-                          cursor: 'pointer',
-                          transition: 'background-color 0.2s ease'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = '#d33b2c';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = '#ea4335';
-                        }}
-                      >
-                        🗑️ Excluir
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>

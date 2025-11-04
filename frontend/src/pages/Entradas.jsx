@@ -192,14 +192,21 @@ function Entradas({ usuarioEmail }) {
   const aceitarDadosComprovante = async (entrada) => {
     try {
       
+      // Validar dados obrigatórios
+      if (!entrada.tipo) {
+        throw new Error('Tipo da entrada não encontrado');
+      }
+
+      const novoValor = entrada.dadosComprovante.valor || entrada.valor;
+      
       const dadosAtualizados = {
         // Usar dados do comprovante
-        valor: entrada.dadosComprovante.valor || entrada.valor,
+        valor: novoValor,
         descricao: entrada.dadosComprovante.nome || entrada.descricao,
         data: entrada.dadosComprovante.data || entrada.data,
         
         // Recalcular rateio com novo valor
-        rateio: calcularRateio(entrada.tipo, entrada.dadosComprovante.valor || entrada.valor),
+        rateio: calcularRateio(entrada.tipo, novoValor),
         
         // Marcar como resolvido
         divergenciaResolvida: true,
@@ -208,7 +215,13 @@ function Entradas({ usuarioEmail }) {
         statusValidacao: 'VALIDADO'
       };
 
-      const resultado = await atualizarEntrada(entrada.id, dadosAtualizados);
+      // Filtrar campos undefined para evitar erro do Firebase
+      const dadosLimpos = Object.fromEntries(
+        Object.entries(dadosAtualizados).filter(([_, v]) => v !== undefined)
+      );
+
+      // Usar atualizarCamposControle para evitar problemas com processamento de data
+      const resultado = await atualizarCamposControle(entrada.id, dadosLimpos);
       
       if (resultado.success) {
         setEntradaComDivergencia(null);

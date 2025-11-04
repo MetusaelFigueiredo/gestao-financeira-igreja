@@ -39,7 +39,8 @@ service cloud.firestore {
     // Regras para coleção de membros
     match /membros/{membroId} {
       allow read: if isAuthenticated();
-      allow create, update, delete: if isAdmin();
+      allow create: if isAuthenticated();  // Qualquer usuário logado pode criar membro
+      allow update, delete: if isAdmin();  // Apenas admin pode editar/excluir
     }
 
     // Regras para coleção de backup

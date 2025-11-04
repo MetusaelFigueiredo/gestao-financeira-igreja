@@ -4,7 +4,7 @@ import { db } from '../services/firebase';
 /**
  * Calcula o rateio baseado no tipo de entrada
  */
-const calcularRateio = (tipo, valor) => {
+export const calcularRateio = (tipo, valor) => {
   const valorNum = parseFloat(valor) || 0;
   
   if (tipo === 'santa_ceia') {

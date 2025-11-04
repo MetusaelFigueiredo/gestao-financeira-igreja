@@ -5,6 +5,7 @@ function FormMembro({ onSucesso, usuarioEmail }) {
   const [nome, setNome] = useState('');
   const [telefone, setTelefone] = useState('');
   const [email, setEmail] = useState('');
+  const [funcao, setFuncao] = useState('membro'); // 🆕 Campo função
   
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState('');
@@ -25,7 +26,8 @@ function FormMembro({ onSucesso, usuarioEmail }) {
     const resultado = await adicionarMembro({
       nome: nome.trim(),
       telefone: telefone.trim(),
-      email: email.trim()
+      email: email.trim(),
+      funcao: funcao // 🆕 Incluir função
     }, usuarioEmail);
     
     setCarregando(false);
@@ -36,6 +38,7 @@ function FormMembro({ onSucesso, usuarioEmail }) {
       setNome('');
       setTelefone('');
       setEmail('');
+      setFuncao('membro'); // 🆕 Resetar função
       
       if (onSucesso) onSucesso();
       
@@ -152,6 +155,42 @@ function FormMembro({ onSucesso, usuarioEmail }) {
             onFocus={(e) => e.target.style.borderColor = '#1a73e8'}
             onBlur={(e) => e.target.style.borderColor = '#dadce0'}
           />
+        </div>
+
+        {/* 🆕 Campo Função */}
+        <div style={{ marginBottom: '20px' }}>
+          <label style={{
+            display: 'block',
+            marginBottom: '8px',
+            fontSize: '0.875rem',
+            fontWeight: '500',
+            color: '#5f6368'
+          }}>
+            Função na Igreja
+          </label>
+          <select
+            value={funcao}
+            onChange={(e) => setFuncao(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '10px 12px',
+              border: '1px solid #dadce0',
+              borderRadius: '6px',
+              fontSize: '0.9375rem',
+              color: '#202124',
+              backgroundColor: '#ffffff',
+              transition: 'border-color 0.2s ease',
+              outline: 'none'
+            }}
+            onFocus={(e) => e.target.style.borderColor = '#1a73e8'}
+            onBlur={(e) => e.target.style.borderColor = '#dadce0'}
+          >
+            <option value="membro">Membro</option>
+            <option value="cooperador">Cooperador</option>
+            <option value="diacono">Diácono</option>
+            <option value="presbitero">Presbítero</option>
+            <option value="pastor">Pastor</option>
+          </select>
         </div>
 
         {erro && (

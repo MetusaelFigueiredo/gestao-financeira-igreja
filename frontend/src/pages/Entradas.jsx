@@ -5,6 +5,7 @@ import { buscarEntradas, excluirEntrada, atualizarEntrada, atualizarCamposContro
 import { formatarMoeda } from '../utils/formatacao';
 import { calcularResumoMes } from '../utils/entradasUtils';
 import { calcularRateio } from '../utils/migracaoRateio';
+import { Timestamp } from 'firebase/firestore';
 
 function Entradas({ usuarioEmail }) {
   const [entradas, setEntradas] = useState([]);
@@ -199,18 +200,30 @@ function Entradas({ usuarioEmail }) {
 
       const novoValor = entrada.dadosComprovante.valor || entrada.valor;
       
+      // Processar a data corretamente
+      let dataProcessada = entrada.data; // usar data atual por padrão
+      if (entrada.dadosComprovante.data) {
+        // Converter string DD/MM/YYYY para Date e depois para Timestamp
+        const dataString = entrada.dadosComprovante.data;
+        if (dataString.includes('/')) {
+          const [dia, mes, ano] = dataString.split('/');
+          const dataDate = new Date(parseInt(ano), parseInt(mes) - 1, parseInt(dia));
+          dataProcessada = Timestamp.fromDate(dataDate);
+        }
+      }
+      
       const dadosAtualizados = {
         // Usar dados do comprovante
         valor: novoValor,
         descricao: entrada.dadosComprovante.nome || entrada.descricao,
-        data: entrada.dadosComprovante.data || entrada.data,
+        data: dataProcessada,
         
         // Recalcular rateio com novo valor
         rateio: calcularRateio(entrada.tipo, novoValor),
         
         // Marcar como resolvido
         divergenciaResolvida: true,
-        resolucaoEm: new Date(),
+        resolucaoEm: Timestamp.now(),
         resolucaoTipo: 'ACEITAR_COMPROVANTE',
         statusValidacao: 'VALIDADO'
       };

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Rápido</title>
+</head>
+<body>
+    <h1>Debug Rápido - Cards</h1>
+    <div id="output"></div>
+    
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.11.1/firebase-app.js';
+        import { getFirestore, collection, getDocs, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.11.1/firebase-firestore.js';
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyDepZ-TIohTepKgJgPQLlICWhPc4eihpIw",
+            authDomain: "gestao-financeira-igreja.firebaseapp.com",
+            projectId: "gestao-financeira-igreja",
+            storageBucket: "gestao-financeira-igreja.firebasestorage.app",
+            messagingSenderId: "533633071808",
+            appId: "1:533633071808:web:27b14e0bcd3e4f3a8efeca"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const output = document.getElementById('output');
+        
+        async function debugEntradas() {
+            try {
+                const entradasRef = collection(db, 'entradas');
+                const q = query(entradasRef, orderBy('data', 'desc'));
+                const snapshot = await getDocs(q);
+                
+                output.innerHTML = `<h2>Total de entradas: ${snapshot.size}</h2>`;
+                
+                let html = '';
+                let count = 0;
+                
+                snapshot.forEach((doc) => {
+                    if (count < 10) { // Mostrar apenas as 10 primeiras
+                        const entrada = doc.data();
+                        const data = entrada.data ? entrada.data.toDate() : 'Sem data';
+                        
+                        html += `
+                            <div style="border: 1px solid #ccc; margin: 10px; padding: 10px;">
+                                <h3>${entrada.descricao || 'Sem descrição'}</h3>
+                                <p><strong>Data:</strong> ${data}</p>
+                                <p><strong>Valor:</strong> R$ ${entrada.valor || 0}</p>
+                                <p><strong>Tipo:</strong> ${entrada.tipo || 'N/A'}</p>
+                                <p><strong>Rateio:</strong> ${JSON.stringify(entrada.rateio || {})}</p>
+                            </div>
+                        `;
+                        count++;
+                    }
+                });
+                
+                output.innerHTML += html;
+                
+            } catch (error) {
+                output.innerHTML = `<h2>Erro: ${error.message}</h2>`;
+            }
+        }
+        
+        debugEntradas();
+    </script>
+</body>
+</html>

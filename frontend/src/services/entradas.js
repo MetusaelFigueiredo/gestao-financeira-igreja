@@ -135,10 +135,22 @@ export const buscarEntradas = async () => {
       entradas.push({
         id: doc.id,
         ...dataDoc,
-        // converter timestamp para Date no frontend
-        data: dataDoc.data ? dataDoc.data.toDate() : null,
-        vencimento: dataDoc.vencimento ? dataDoc.vencimento.toDate() : null,
-        pagoEm: dataDoc.pagoEm ? dataDoc.pagoEm.toDate() : null
+        // converter timestamp para Date no frontend com verificação de tipo
+        data: dataDoc.data ? (
+          typeof dataDoc.data.toDate === 'function' 
+            ? dataDoc.data.toDate() 
+            : new Date(dataDoc.data)
+        ) : null,
+        vencimento: dataDoc.vencimento ? (
+          typeof dataDoc.vencimento.toDate === 'function' 
+            ? dataDoc.vencimento.toDate() 
+            : new Date(dataDoc.vencimento)
+        ) : null,
+        pagoEm: dataDoc.pagoEm ? (
+          typeof dataDoc.pagoEm.toDate === 'function' 
+            ? dataDoc.pagoEm.toDate() 
+            : new Date(dataDoc.pagoEm)
+        ) : null
       });
     });
     
@@ -173,9 +185,21 @@ export const buscarEntradasPorMembro = async (membroId) => {
       entradas.push({
         id: doc.id,
         ...dataDoc,
-        data: dataDoc.data ? dataDoc.data.toDate() : null,
-        vencimento: dataDoc.vencimento ? dataDoc.vencimento.toDate() : null,
-        pagoEm: dataDoc.pagoEm ? dataDoc.pagoEm.toDate() : null
+        data: dataDoc.data ? (
+          typeof dataDoc.data.toDate === 'function' 
+            ? dataDoc.data.toDate() 
+            : new Date(dataDoc.data)
+        ) : null,
+        vencimento: dataDoc.vencimento ? (
+          typeof dataDoc.vencimento.toDate === 'function' 
+            ? dataDoc.vencimento.toDate() 
+            : new Date(dataDoc.vencimento)
+        ) : null,
+        pagoEm: dataDoc.pagoEm ? (
+          typeof dataDoc.pagoEm.toDate === 'function' 
+            ? dataDoc.pagoEm.toDate() 
+            : new Date(dataDoc.pagoEm)
+        ) : null
       });
     });
     

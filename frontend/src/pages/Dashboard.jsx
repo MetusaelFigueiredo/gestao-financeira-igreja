@@ -76,13 +76,17 @@ function Dashboard() {
         resumoCalculado.quantidadeEntradas = resumoCalculado.totalCount || 0;
         resumoCalculado.despesasPagas = resumoDespesas && resumoDespesas.pagas ? resumoDespesas.pagas : 0;
         
+        // 📻 Calcular 1% da Igreja Local para Rádio Nazareno
+        resumoCalculado.radioNazareno = Math.round((resumoCalculado.local || 0) * 0.01 * 100) / 100;
+        
         console.log('💸 Despesas pagas:', resumoCalculado.despesasPagas);
+        console.log('📻 Rádio Nazareno (1% local):', resumoCalculado.radioNazareno);
         
         setResumo(resumoCalculado);
         console.log('✅ Resumo calculado:', resumoCalculado);
       } else {
         console.error('❌ Erro ao carregar entradas:', resultadoEntradas.error);
-        setResumo({ total: 0, central: 0, local: 0, missoes: 0 });
+        setResumo({ total: 0, central: 0, local: 0, missoes: 0, radioNazareno: 0 });
       }
       
       if (resultadoDespesas.success) {
@@ -105,7 +109,7 @@ function Dashboard() {
     } catch (error) {
       console.error('❌ Erro geral ao carregar dados:', error);
       // Definir valores padrão em caso de erro
-      setResumo({ total: 0, central: 0, local: 0, missoes: 0 });
+      setResumo({ total: 0, central: 0, local: 0, missoes: 0, radioNazareno: 0 });
       setDespesas({ vencidas: [], proximos7Dias: [], de8a15Dias: [], totais: { geral: 0 } });
       setMissoes({ arrecadado: 0, meta: 0, falta: 0, progresso: 0 });
     }
@@ -545,6 +549,39 @@ function Dashboard() {
             color: '#5f6368'
           }}>
             100% santa ceia
+          </div>
+        </div>
+
+        {/* Rádio Nazareno */}
+        <div style={{
+          backgroundColor: '#ffffff',
+          borderRadius: '12px',
+          padding: '24px',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+          border: '3px solid #9c27b0'
+        }}>
+          <div style={{
+            fontSize: '0.875rem',
+            color: '#9c27b0',
+            fontWeight: '700',
+            marginBottom: '8px',
+            letterSpacing: '0.5px'
+          }}>
+            📻 RÁDIO NAZARENO
+          </div>
+          <div style={{
+            fontSize: '2rem',
+            fontWeight: '700',
+            color: '#9c27b0',
+            marginBottom: '8px'
+          }}>
+            {formatarMoeda(resumo?.radioNazareno || 0)}
+          </div>
+          <div style={{
+            fontSize: '0.875rem',
+            color: '#5f6368'
+          }}>
+            1% da Igreja Local
           </div>
         </div>
       </div>

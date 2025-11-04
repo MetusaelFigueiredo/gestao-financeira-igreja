@@ -1,0 +1,56 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Função auxiliar para verificar se usuário está autenticado
+    function isAuthenticated() {
+      return request.auth != null && request.auth.uid != null;
+    }
+    
+    // Função auxiliar para verificar se é administrador
+    function isAdmin() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isAdmin == true;
+    }
+
+    // Regras para coleção de usuários
+    match /usuarios/{userId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Regras para coleção de entradas
+    match /entradas/{entradaId} {
+      allow read: if isAuthenticated();    // Permitir leitura para usuários logados
+      allow create: if isAuthenticated();  // Permitir criação para usuários logados
+      allow update: if isAuthenticated();  // Permitir atualização para usuários logados
+      allow delete: if isAuthenticated();  // Permitir exclusão para usuários logados
+    }
+
+    // Regras para coleção de despesas
+    match /despesas/{despesaId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated();  // Permitir exclusão para usuários logados
+    }
+
+    // Regras para coleção de membros
+    match /membros/{membroId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Regras para coleção de backup
+    match /backup/{backupId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Regra padrão: negar tudo que não foi especificado
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { adicionarEntrada, atualizarEntrada } from '../services/entradas';
 import { buscarMembros } from '../services/membros';
 import { formatarMoeda, dataParaString } from '../utils/formatacao';
+import UploadComprovante from './UploadComprovante';
 
 function FormEntrada({ onSucesso, usuarioEmail, entradaParaEdicao = null }) {
   const hoje = dataParaString(new Date());
@@ -23,6 +24,10 @@ function FormEntrada({ onSucesso, usuarioEmail, entradaParaEdicao = null }) {
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState('');
   const [sucesso, setSucesso] = useState('');
+  
+  // Estados para comprovante PIX
+  const [comprovante, setComprovante] = useState(null);
+  const [uploadandoComprovante, setUploadandoComprovante] = useState(false);
   
   // Estados para modo de edição
   const [modoEdicao, setModoEdicao] = useState(false);
@@ -59,7 +64,10 @@ function FormEntrada({ onSucesso, usuarioEmail, entradaParaEdicao = null }) {
   if (tipo === 'santa_ceia') {
     rateioPreview = { central: 0, local: 0, missoes: valorNum };
   } else if (tipo === 'dizimo' || tipo === 'oferta') {
-    rateioPreview = { central: valorNum * 0.60, local: valorNum * 0.40, missoes: 0 };
+    // 🔧 CORREÇÃO: Usar Math.round para evitar problemas de ponto flutuante
+    const central = Math.round(valorNum * 0.60 * 100) / 100;
+    const local = Math.round(valorNum * 0.40 * 100) / 100;
+    rateioPreview = { central: central, local: local, missoes: 0 };
   } else {
     rateioPreview = { central: 0, local: valorNum, missoes: 0 };
   }
@@ -94,6 +102,11 @@ function FormEntrada({ onSucesso, usuarioEmail, entradaParaEdicao = null }) {
       descricao
     };
 
+    // Adicionar comprovante se for PIX e houver comprovante
+    if (formaRecebimento === 'pix' && comprovante) {
+      dadosEntrada.comprovante = comprovante;
+    }
+
     if (tipo === 'dizimo' && membroId) {
       const membro = membros.find(m => m.id === membroId);
       dadosEntrada.membroId = membroId;
@@ -123,6 +136,7 @@ function FormEntrada({ onSucesso, usuarioEmail, entradaParaEdicao = null }) {
         setDescricao('');
         setMembroId('');
         setData(hoje);
+        setComprovante(null);
       }
       
       if (onSucesso) onSucesso();
@@ -131,6 +145,11 @@ function FormEntrada({ onSucesso, usuarioEmail, entradaParaEdicao = null }) {
     } else {
       setErro('Erro ao salvar: ' + resultado.error);
     }
+  };
+
+  const handleUploadComprovante = (comprovanteData) => {
+    setComprovante(comprovanteData);
+    console.log('✅ Comprovante carregado:', comprovanteData);
   };
 
   const cancelarEdicao = () => {
@@ -142,6 +161,7 @@ function FormEntrada({ onSucesso, usuarioEmail, entradaParaEdicao = null }) {
     setFormaRecebimento('pix');
     setDescricao('');
     setMembroId('');
+    setComprovante(null);
     setErro('');
     setSucesso('');
   };
@@ -426,6 +446,35 @@ function FormEntrada({ onSucesso, usuarioEmail, entradaParaEdicao = null }) {
             </label>
           </div>
         </div>
+
+        {/* Upload de Comprovante PIX */}
+        {formaRecebimento === 'pix' && (
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{
+              display: 'block',
+              marginBottom: '8px',
+              fontSize: '0.875rem',
+              fontWeight: '500',
+              color: '#5f6368'
+            }}>
+              Comprovante PIX (opcional)
+            </label>
+            <UploadComprovante onUploadComplete={handleUploadComprovante} />
+            {comprovante && (
+              <div style={{
+                marginTop: '8px',
+                padding: '8px 12px',
+                backgroundColor: '#e8f5e8',
+                border: '1px solid #4caf50',
+                borderRadius: '6px',
+                fontSize: '0.875rem',
+                color: '#2e7d32'
+              }}>
+                ✅ Comprovante carregado: {comprovante.nome}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Descrição */}
         <div style={{ marginBottom: '20px' }}>

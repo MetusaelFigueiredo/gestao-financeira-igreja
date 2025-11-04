@@ -18,7 +18,12 @@ function Dashboard() {
 
   useEffect(() => {
     carregarDados();
-  }, [anoSelecionado, mesSelecionado]); // Recarrega quando filtros mudarem
+    
+    // ✨ SOLUÇÃO DEFINITIVA: Recarregar a cada 30 segundos
+    const interval = setInterval(carregarDados, 30000);
+    
+    return () => clearInterval(interval);
+  }, [anoSelecionado, mesSelecionado]);
 
   const carregarDados = async () => {
     console.log('🔄 Iniciando carregamento dos dados do Dashboard...');
@@ -26,21 +31,43 @@ function Dashboard() {
     setCarregando(true);
     
     try {
-      const [resultadoResumo, resultadoDespesas, resultadoMissoes] = await Promise.all([
-        buscarResumoFinanceiro(anoSelecionado, mesSelecionado),
+      // Usar o mesmo método que a página Entradas
+      const { buscarEntradas } = await import('../services/entradas');
+      const { calcularResumoMes } = await import('../utils/entradasUtils');
+      
+      const [resultadoEntradas, resultadoDespesas, resultadoMissoes, resumoDespesas] = await Promise.all([
+        buscarEntradas(),
         buscarDespesasPendentes(),
-        buscarMetaMissoes(anoSelecionado, mesSelecionado)
+        buscarMetaMissoes(anoSelecionado, mesSelecionado),
+        import('../services/despesas').then(module => module.calcularResumoDespesas())
       ]);
       
-      console.log('📊 Resultado resumo:', resultadoResumo);
+      console.log('📊 Resultado entradas:', resultadoEntradas);
       console.log('💸 Resultado despesas:', resultadoDespesas);
       console.log('🎯 Resultado missões:', resultadoMissoes);
       
-      if (resultadoResumo.success) {
-        setResumo(resultadoResumo.resumo);
-        console.log('✅ Resumo carregado com sucesso');
+      if (resultadoEntradas.success) {
+        // Filtrar entradas do período selecionado
+        const entradasFiltradas = resultadoEntradas.entradas.filter(entrada => {
+          const dataEntrada = new Date(entrada.data);
+          return dataEntrada.getMonth() === mesSelecionado && 
+                 dataEntrada.getFullYear() === anoSelecionado;
+        });
+        
+        // Calcular resumo usando a mesma função da página Entradas
+        const resumoCalculado = calcularResumoMes(entradasFiltradas);
+        
+        // Adicionar informações adicionais
+        resumoCalculado.quantidadeEntradas = resumoCalculado.totalCount || 0;
+        resumoCalculado.despesasPagas = resumoDespesas && resumoDespesas.pagas ? resumoDespesas.pagas : 0;
+        
+        console.log('💸 Despesas pagas:', resumoCalculado.despesasPagas);
+        
+        setResumo(resumoCalculado);
+        console.log('✅ Resumo calculado:', resumoCalculado);
       } else {
-        console.error('❌ Erro ao carregar resumo:', resultadoResumo.error);
+        console.error('❌ Erro ao carregar entradas:', resultadoEntradas.error);
+        setResumo({ total: 0, central: 0, local: 0, missoes: 0 });
       }
       
       if (resultadoDespesas.success) {
@@ -48,6 +75,7 @@ function Dashboard() {
         console.log('✅ Despesas carregadas com sucesso');
       } else {
         console.error('❌ Erro ao carregar despesas:', resultadoDespesas.error);
+        setDespesas({ vencidas: [], proximos7Dias: [], de8a15Dias: [], totais: { geral: 0 } });
       }
       
       if (resultadoMissoes.success) {
@@ -56,10 +84,15 @@ function Dashboard() {
         console.log('✅ Missões carregadas com sucesso');
       } else {
         console.error('❌ Erro ao carregar missões:', resultadoMissoes.error);
+        setMissoes({ arrecadado: 0, meta: 0, falta: 0, progresso: 0 });
       }
       
     } catch (error) {
       console.error('❌ Erro geral ao carregar dados:', error);
+      // Definir valores padrão em caso de erro
+      setResumo({ total: 0, central: 0, local: 0, missoes: 0 });
+      setDespesas({ vencidas: [], proximos7Dias: [], de8a15Dias: [], totais: { geral: 0 } });
+      setMissoes({ arrecadado: 0, meta: 0, falta: 0, progresso: 0 });
     }
     
     setCarregando(false);
@@ -71,30 +104,49 @@ function Dashboard() {
       return;
     }
 
-    const resultado = await marcarComoPago(despesaId, formaPagamento);
-    
-    if (resultado.success) {
-      alert('✅ Despesa marcada como paga!');
-      carregarDados();
-    } else {
-      alert('❌ Erro ao marcar despesa como paga: ' + resultado.error);
+    try {
+      const resultado = await marcarComoPago(despesaId, formaPagamento);
+      
+      if (resultado.success) {
+        alert('✅ Despesa marcada como paga!');
+        // Recarregar despesas
+        const resultadoDespesas = await buscarDespesasPendentes();
+        if (resultadoDespesas.success) {
+          setDespesas(resultadoDespesas.despesas);
+        }
+      } else {
+        alert('❌ Erro ao marcar despesa como paga: ' + resultado.error);
+      }
+    } catch (error) {
+      console.error('❌ Erro ao marcar despesa como paga:', error);
+      alert('❌ Erro ao marcar despesa como paga');
     }
   };
 
-  const handleSalvarNovaMeta = async () => {
-    if (!novaMeta || novaMeta <= 0) {
-      alert('❌ Meta inválida!');
+  const handleAtualizarMeta = async () => {
+    if (!novaMeta || parseFloat(novaMeta) <= 0) {
+      alert('❌ Digite uma meta válida');
       return;
     }
 
-    const resultado = await atualizarMetaMissoes(novaMeta);
-    
-    if (resultado.success) {
-      alert('✅ Meta atualizada com sucesso!');
-      setModoEdicaoMeta(false);
-      carregarDados();
-    } else {
-      alert('❌ Erro ao atualizar meta: ' + resultado.error);
+    try {
+      const resultado = await atualizarMetaMissoes(anoSelecionado, mesSelecionado, parseFloat(novaMeta));
+      
+      if (resultado.success) {
+        alert('✅ Meta atualizada com sucesso!');
+        setModoEdicaoMeta(false);
+        
+        // Recarregar dados das missões
+        const resultadoMissoes = await buscarMetaMissoes(anoSelecionado, mesSelecionado);
+        if (resultadoMissoes.success) {
+          setMissoes(resultadoMissoes.missoes);
+        }
+      } else {
+        alert('❌ Erro ao atualizar meta: ' + resultado.error);
+      }
+    } catch (error) {
+      console.error('❌ Erro ao atualizar meta:', error);
+      alert('❌ Erro ao atualizar meta');
     }
   };
 
@@ -104,28 +156,35 @@ function Dashboard() {
         maxWidth: '1400px',
         margin: '0 auto',
         padding: '40px 24px',
+        backgroundColor: '#fafafa',
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
-        minHeight: '400px'
+        minHeight: '60vh'
       }}>
         <div style={{
-          fontSize: '1.125rem',
-          color: '#5f6368',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          fontWeight: '500'
+          textAlign: 'center',
+          padding: '40px',
+          backgroundColor: '#ffffff',
+          borderRadius: '16px',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.12)'
         }}>
           <div style={{
-            width: '28px',
-            height: '28px',
-            border: '4px solid #e0e0e0',
-            borderTop: '4px solid #1a73e8',
+            width: '60px',
+            height: '60px',
+            border: '4px solid #1a73e8',
+            borderTop: '4px solid transparent',
             borderRadius: '50%',
+            margin: '0 auto 20px',
             animation: 'spin 1s linear infinite'
-          }} />
-          Carregando dados financeiros...
+          }}></div>
+          <p style={{
+            fontSize: '1.125rem',
+            color: '#5f6368',
+            margin: '0'
+          }}>
+            Carregando dados do dashboard...
+          </p>
         </div>
         <style>{`
           @keyframes spin {
@@ -299,28 +358,61 @@ function Dashboard() {
             color: '#1a73e8',
             marginBottom: '8px'
           }}>
-            {formatarMoeda(resumo.totalCentral + resumo.totalLocal + resumo.totalMissoes)}
+            {formatarMoeda(resumo?.total || 0)}
           </div>
           <div style={{
-            fontSize: '0.75rem',
+            fontSize: '0.875rem',
             color: '#5f6368'
           }}>
-            {resumo.quantidadeEntradas} {resumo.quantidadeEntradas === 1 ? 'entrada' : 'entradas'} registradas
+            {resumo?.quantidadeEntradas || 0} entrada{(resumo?.quantidadeEntradas || 0) !== 1 ? 's' : ''} registrada{(resumo?.quantidadeEntradas || 0) !== 1 ? 's' : ''}
           </div>
         </div>
 
-        {/* Card Entrada Local */}
+        {/* Igreja Central */}
         <div style={{
           backgroundColor: '#ffffff',
           borderRadius: '12px',
           padding: '24px',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
-          border: '2px solid #34a853'
+          boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+          border: '3px solid #1a73e8'
         }}>
           <div style={{
             fontSize: '0.875rem',
-            color: '#5f6368',
-            fontWeight: '600',
+            color: '#1a73e8',
+            fontWeight: '700',
+            marginBottom: '8px',
+            letterSpacing: '0.5px'
+          }}>
+            🏛️ PARA CENTRAL
+          </div>
+          <div style={{
+            fontSize: '2rem',
+            fontWeight: '700',
+            color: '#1a73e8',
+            marginBottom: '8px'
+          }}>
+            {formatarMoeda(resumo?.central || 0)}
+          </div>
+          <div style={{
+            fontSize: '0.875rem',
+            color: '#5f6368'
+          }}>
+            60% dízimos/ofertas
+          </div>
+        </div>
+
+        {/* Entrada Local */}
+        <div style={{
+          backgroundColor: '#ffffff',
+          borderRadius: '12px',
+          padding: '24px',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+          border: '3px solid #34a853'
+        }}>
+          <div style={{
+            fontSize: '0.875rem',
+            color: '#34a853',
+            fontWeight: '700',
             marginBottom: '8px',
             letterSpacing: '0.5px'
           }}>
@@ -332,28 +424,28 @@ function Dashboard() {
             color: '#34a853',
             marginBottom: '8px'
           }}>
-            {formatarMoeda(resumo.totalLocal)}
+            {formatarMoeda(resumo?.local || 0)}
           </div>
           <div style={{
-            fontSize: '0.75rem',
+            fontSize: '0.875rem',
             color: '#5f6368'
           }}>
             40% dízimos/ofertas + outras entradas
           </div>
         </div>
 
-        {/* Card Despesas Pagas */}
+        {/* Despesas Pagas */}
         <div style={{
           backgroundColor: '#ffffff',
           borderRadius: '12px',
           padding: '24px',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
-          border: '2px solid #ea4335'
+          boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+          border: '3px solid #ea4335'
         }}>
           <div style={{
             fontSize: '0.875rem',
-            color: '#5f6368',
-            fontWeight: '600',
+            color: '#ea4335',
+            fontWeight: '700',
             marginBottom: '8px',
             letterSpacing: '0.5px'
           }}>
@@ -365,323 +457,106 @@ function Dashboard() {
             color: '#ea4335',
             marginBottom: '8px'
           }}>
-            {formatarMoeda(resumo.totalDespesasPagas)}
+            {formatarMoeda(resumo?.despesasPagas || 0)}
           </div>
           <div style={{
-            fontSize: '0.75rem',
+            fontSize: '0.875rem',
             color: '#5f6368'
           }}>
             Despesas pagas no período selecionado
           </div>
         </div>
 
-        {/* Card Saldo do Mês */}
+        {/* Saldo do Mês */}
         <div style={{
           backgroundColor: '#ffffff',
           borderRadius: '12px',
           padding: '24px',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
-          border: `2px solid ${resumo.saldoMes >= 0 ? '#34a853' : '#ea4335'}`
+          boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+          border: `3px solid ${(resumo?.local || 0) - (resumo?.despesasPagas || 0) >= 0 ? '#34a853' : '#ea4335'}`
         }}>
           <div style={{
             fontSize: '0.875rem',
-            color: '#5f6368',
-            fontWeight: '600',
+            color: (resumo?.local || 0) - (resumo?.despesasPagas || 0) >= 0 ? '#34a853' : '#ea4335',
+            fontWeight: '700',
             marginBottom: '8px',
             letterSpacing: '0.5px'
           }}>
-            💰 SALDO DO MÊS {resumo.saldoMes >= 0 ? '✅' : '⚠️'}
+            💰 SALDO DO MÊS {(resumo?.local || 0) - (resumo?.despesasPagas || 0) >= 0 ? '✅' : '⚠️'}
           </div>
           <div style={{
             fontSize: '2rem',
             fontWeight: '700',
-            color: resumo.saldoMes >= 0 ? '#34a853' : '#ea4335',
+            color: (resumo?.local || 0) - (resumo?.despesasPagas || 0) >= 0 ? '#34a853' : '#ea4335',
             marginBottom: '8px'
           }}>
-            {formatarMoeda(resumo.saldoMes)}
+            {formatarMoeda((resumo?.local || 0) - (resumo?.despesasPagas || 0))}
           </div>
           <div style={{
-            fontSize: '0.75rem',
+            fontSize: '0.875rem',
             color: '#5f6368'
           }}>
-            {resumo.saldoMes >= 0 ? 'Positivo' : 'Negativo'}
+            {(resumo?.local || 0) - (resumo?.despesasPagas || 0) >= 0 ? 'Positivo' : 'Negativo'}
           </div>
         </div>
-      </div>
 
-      {/* SEÇÃO 2: Detalhamento de Entradas (3 cards - SEM PIX E DINHEIRO SEPARADOS) */}
-      <div style={{
-        backgroundColor: '#ffffff',
-        borderRadius: '16px',
-        padding: '24px',
-        marginBottom: '32px',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
-        border: '2px solid #e8eaed'
-      }}>
-        <h2 style={{
-          fontSize: '1.25rem',
-          fontWeight: '700',
-          color: '#202124',
-          marginBottom: '20px'
-        }}>
-          📊 DETALHAMENTO DOS RATEIOS
-        </h2>
+        {/* Missões */}
         <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-          gap: '16px'
+          backgroundColor: '#ffffff',
+          borderRadius: '12px',
+          padding: '24px',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+          border: '3px solid #fbbc04'
         }}>
-          {/* Para Central COM cards PIX/Dinheiro DENTRO */}
           <div style={{
-            backgroundColor: '#e8f0fe',
-            borderRadius: '10px',
-            padding: '20px',
-            border: '2px solid #1a73e8'
+            fontSize: '0.875rem',
+            color: '#f9ab00',
+            fontWeight: '700',
+            marginBottom: '8px',
+            letterSpacing: '0.5px'
           }}>
-            <div style={{
-              fontSize: '0.875rem',
-              color: '#5f6368',
-              fontWeight: '600',
-              marginBottom: '8px'
-            }}>
-              🏛️ PARA CENTRAL
-            </div>
-            <div style={{
-              fontSize: '1.5rem',
-              fontWeight: '700',
-              color: '#1a73e8',
-              marginBottom: '12px'
-            }}>
-              {formatarMoeda(resumo.totalCentral)}
-            </div>
-            <div style={{
-              fontSize: '0.75rem',
-              color: '#5f6368',
-              marginBottom: '12px'
-            }}>
-              60% dízimos/ofertas
-            </div>
-
-            {/* Cards menores PIX/Dinheiro DENTRO */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: '8px',
-              marginTop: '12px'
-            }}>
-              <div style={{
-                backgroundColor: 'rgba(255,255,255,0.7)',
-                borderRadius: '6px',
-                padding: '8px',
-                textAlign: 'center'
-              }}>
-                <div style={{ fontSize: '0.7rem', color: '#5f6368', marginBottom: '4px' }}>💳 PIX</div>
-                <div style={{ fontSize: '0.9rem', fontWeight: '600', color: '#1a73e8' }}>
-                  {formatarMoeda(resumo.totalPixCentral)}
-                </div>
-              </div>
-              <div style={{
-                backgroundColor: 'rgba(255,255,255,0.7)',
-                borderRadius: '6px',
-                padding: '8px',
-                textAlign: 'center'
-              }}>
-                <div style={{ fontSize: '0.7rem', color: '#5f6368', marginBottom: '4px' }}>💵 Dinheiro</div>
-                <div style={{ fontSize: '0.9rem', fontWeight: '600', color: '#1a73e8' }}>
-                  {formatarMoeda(resumo.totalDinheiroCentral)}
-                </div>
-              </div>
-            </div>
+            ⛪ MISSÕES
           </div>
-
-          {/* Fica Local COM cards PIX/Dinheiro DENTRO */}
           <div style={{
-            backgroundColor: '#e6f4ea',
-            borderRadius: '10px',
-            padding: '20px',
-            border: '2px solid #34a853'
+            fontSize: '2rem',
+            fontWeight: '700',
+            color: '#f9ab00',
+            marginBottom: '8px'
           }}>
-            <div style={{
-              fontSize: '0.875rem',
-              color: '#5f6368',
-              fontWeight: '600',
-              marginBottom: '8px'
-            }}>
-              🏠 FICA LOCAL
-            </div>
-            <div style={{
-              fontSize: '1.5rem',
-              fontWeight: '700',
-              color: '#34a853',
-              marginBottom: '12px'
-            }}>
-              {formatarMoeda(resumo.totalLocal)}
-            </div>
-            <div style={{
-              fontSize: '0.75rem',
-              color: '#5f6368',
-              marginBottom: '12px'
-            }}>
-              40% dízimos + outros
-            </div>
-
-            {/* Cards menores PIX/Dinheiro DENTRO */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: '8px',
-              marginTop: '12px'
-            }}>
-              <div style={{
-                backgroundColor: 'rgba(255,255,255,0.7)',
-                borderRadius: '6px',
-                padding: '8px',
-                textAlign: 'center'
-              }}>
-                <div style={{ fontSize: '0.7rem', color: '#5f6368', marginBottom: '4px' }}>💳 PIX</div>
-                <div style={{ fontSize: '0.9rem', fontWeight: '600', color: '#34a853' }}>
-                  {formatarMoeda(resumo.totalPixLocal)}
-                </div>
-              </div>
-              <div style={{
-                backgroundColor: 'rgba(255,255,255,0.7)',
-                borderRadius: '6px',
-                padding: '8px',
-                textAlign: 'center'
-              }}>
-                <div style={{ fontSize: '0.7rem', color: '#5f6368', marginBottom: '4px' }}>💵 Dinheiro</div>
-                <div style={{ fontSize: '0.9rem', fontWeight: '600', color: '#34a853' }}>
-                  {formatarMoeda(resumo.totalDinheiroLocal)}
-                </div>
-              </div>
-            </div>
+            {formatarMoeda(resumo?.missoes || 0)}
           </div>
-
-          {/* Missões */}
           <div style={{
-            backgroundColor: '#fef7e0',
-            borderRadius: '10px',
-            padding: '20px',
-            border: '2px solid #fbbc04'
+            fontSize: '0.875rem',
+            color: '#5f6368'
           }}>
-            <div style={{
-              fontSize: '0.875rem',
-              color: '#5f6368',
-              fontWeight: '600',
-              marginBottom: '8px'
-            }}>
-              ⛪ MISSÕES
-            </div>
-            <div style={{
-              fontSize: '1.5rem',
-              fontWeight: '700',
-              color: '#fbbc04'
-            }}>
-              {formatarMoeda(resumo.totalMissoes)}
-            </div>
-            <div style={{
-              fontSize: '0.75rem',
-              color: '#5f6368',
-              marginTop: '4px'
-            }}>
-              100% santa ceia
-            </div>
+            100% santa ceia
           </div>
         </div>
       </div>
 
-      {/* SEÇÃO 3: Meta de Missões COM EDIÇÃO */}
+      {/* SEÇÃO 2: Meta de Missões */}
       <div style={{
         backgroundColor: '#ffffff',
         borderRadius: '16px',
-        padding: '24px',
+        padding: '32px',
         marginBottom: '32px',
         boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
         border: '2px solid #fbbc04'
       }}>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '16px',
-          flexWrap: 'wrap',
-          gap: '12px'
+        <h2 style={{
+          fontSize: '1.5rem',
+          fontWeight: '700',
+          color: '#f9ab00',
+          marginBottom: '24px'
         }}>
-          <h2 style={{
-            fontSize: '1.25rem',
-            fontWeight: '700',
-            color: '#202124',
-            margin: 0
-          }}>
-            🎯 META DE MISSÕES - {mesNome.toUpperCase()}
-          </h2>
-          <button
-            onClick={() => setModoEdicaoMeta(!modoEdicaoMeta)}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: modoEdicaoMeta ? '#ea4335' : '#1a73e8',
-              color: '#ffffff',
-              border: 'none',
-              borderRadius: '6px',
-              fontSize: '0.875rem',
-              fontWeight: '600',
-              cursor: 'pointer',
-              transition: 'background-color 0.3s'
-            }}
-          >
-            {modoEdicaoMeta ? '✖️ Cancelar' : '✏️ Editar Meta'}
-          </button>
-        </div>
-
-        {modoEdicaoMeta && (
-          <div style={{
-            backgroundColor: '#f1f3f4',
-            borderRadius: '8px',
-            padding: '16px',
-            marginBottom: '16px',
-            display: 'flex',
-            gap: '12px',
-            alignItems: 'center',
-            flexWrap: 'wrap'
-          }}>
-            <label style={{ fontSize: '0.875rem', fontWeight: '600', color: '#202124' }}>
-              Nova Meta (R$):
-            </label>
-            <input
-              type="number"
-              value={novaMeta}
-              onChange={(e) => setNovaMeta(e.target.value)}
-              style={{
-                padding: '8px 12px',
-                fontSize: '1rem',
-                border: '2px solid #e8eaed',
-                borderRadius: '6px',
-                width: '150px'
-              }}
-            />
-            <button
-              onClick={handleSalvarNovaMeta}
-              style={{
-                padding: '8px 20px',
-                backgroundColor: '#34a853',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: '6px',
-                fontSize: '0.875rem',
-                fontWeight: '600',
-                cursor: 'pointer'
-              }}
-            >
-              💾 Salvar
-            </button>
-          </div>
-        )}
-
+          🎯 META DE MISSÕES - {mesNome.toUpperCase()}
+        </h2>
+        
         <div style={{
           display: 'grid',
-          gridTemplateColumns: '1fr 1fr 1fr',
-          gap: '20px',
-          marginBottom: '16px'
+          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+          gap: '24px',
+          marginBottom: '24px'
         }}>
           <div>
             <div style={{
@@ -696,7 +571,7 @@ function Dashboard() {
               fontWeight: '700',
               color: '#34a853'
             }}>
-              {formatarMoeda(missoes.arrecadado)}
+              {formatarMoeda(missoes?.arrecadado || 0)}
             </div>
           </div>
           <div>
@@ -712,7 +587,7 @@ function Dashboard() {
               fontWeight: '700',
               color: '#1a73e8'
             }}>
-              {formatarMoeda(missoes.meta)}
+              {formatarMoeda(missoes?.meta || 0)}
             </div>
           </div>
           <div>
@@ -726,9 +601,9 @@ function Dashboard() {
             <div style={{
               fontSize: '1.5rem',
               fontWeight: '700',
-              color: missoes.falta > 0 ? '#ea4335' : '#34a853'
+              color: (missoes?.falta || 0) > 0 ? '#ea4335' : '#34a853'
             }}>
-              {formatarMoeda(missoes.falta)}
+              {formatarMoeda(missoes?.falta || 0)}
             </div>
           </div>
         </div>
@@ -744,8 +619,8 @@ function Dashboard() {
         }}>
           <div style={{
             height: '100%',
-            width: `${missoes.progresso}%`,
-            backgroundColor: parseFloat(missoes.progresso) >= 100 ? '#34a853' : '#fbbc04',
+            width: `${missoes?.progresso || 0}%`,
+            backgroundColor: parseFloat(missoes?.progresso || 0) >= 100 ? '#34a853' : '#fbbc04',
             transition: 'width 1s ease',
             borderRadius: '10px'
           }} />
@@ -756,32 +631,177 @@ function Dashboard() {
             transform: 'translate(-50%, -50%)',
             fontSize: '0.875rem',
             fontWeight: '700',
-            color: parseFloat(missoes.progresso) > 50 ? '#ffffff' : '#202124'
+            color: '#202124'
           }}>
-            {missoes.progresso}%
+            {missoes?.progresso || 0}%
           </div>
+        </div>
+
+        {/* Botão Editar Meta */}
+        <div style={{ marginTop: '20px', textAlign: 'center' }}>
+          {!modoEdicaoMeta ? (
+            <button
+              onClick={() => setModoEdicaoMeta(true)}
+              style={{
+                padding: '12px 24px',
+                backgroundColor: '#fbbc04',
+                color: '#000000',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '0.875rem',
+                fontWeight: '600',
+                cursor: 'pointer'
+              }}
+            >
+              ✏️ Editar Meta
+            </button>
+          ) : (
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', alignItems: 'center' }}>
+              <input
+                type="number"
+                placeholder="Nova meta"
+                value={novaMeta}
+                onChange={(e) => setNovaMeta(e.target.value)}
+                style={{
+                  padding: '12px',
+                  border: '1px solid #dadce0',
+                  borderRadius: '6px',
+                  fontSize: '0.875rem',
+                  width: '150px'
+                }}
+              />
+              <button
+                onClick={handleAtualizarMeta}
+                style={{
+                  padding: '12px 20px',
+                  backgroundColor: '#34a853',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '0.875rem',
+                  cursor: 'pointer'
+                }}
+              >
+                ✅ Salvar
+              </button>
+              <button
+                onClick={() => setModoEdicaoMeta(false)}
+                style={{
+                  padding: '12px 20px',
+                  backgroundColor: '#ea4335',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '0.875rem',
+                  cursor: 'pointer'
+                }}
+              >
+                ❌ Cancelar
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* SEÇÃO 4: Despesas Pendentes COM SALDO APÓS PAGAR */}
+      {/* SEÇÃO 3: Despesas Pendentes */}
       <div style={{
         backgroundColor: '#ffffff',
         borderRadius: '16px',
-        padding: '24px',
+        padding: '32px',
         boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
-        border: '2px solid #e8eaed'
+        border: '2px solid #ea4335'
       }}>
         <h2 style={{
-          fontSize: '1.25rem',
+          fontSize: '1.5rem',
           fontWeight: '700',
-          color: '#202124',
-          marginBottom: '20px'
+          color: '#ea4335',
+          marginBottom: '24px'
         }}>
           ⚠️ DESPESAS PENDENTES - PRÓXIMOS 15 DIAS
         </h2>
 
+        {/* Resumo das Despesas */}
+        <div style={{
+          backgroundColor: (resumo?.local || 0) >= (despesas?.totais?.geral || 0) ? '#e8f5e8' : '#fce8e6',
+          borderRadius: '12px',
+          padding: '20px',
+          marginBottom: '24px',
+          border: `2px solid ${(resumo?.local || 0) >= (despesas?.totais?.geral || 0) ? '#34a853' : '#ea4335'}`
+        }}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+            gap: '16px',
+            marginBottom: '16px'
+          }}>
+            <div>
+              <div style={{ fontSize: '0.875rem', color: '#5f6368', marginBottom: '4px' }}>
+                � SALDO DISPONÍVEL
+              </div>
+              <div style={{ fontSize: '1.25rem', fontWeight: '700', color: '#34a853' }}>
+                {formatarMoeda((resumo?.local || 0) - (resumo?.despesasPagas || 0))}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: '0.875rem', color: '#5f6368', marginBottom: '4px' }}>
+                💸 TOTAL A PAGAR
+              </div>
+              <div style={{ fontSize: '1.25rem', fontWeight: '700', color: '#ea4335' }}>
+                {formatarMoeda(despesas?.totais?.geral || 0)}
+              </div>
+            </div>
+          </div>
+          
+          {((resumo?.local || 0) - (resumo?.despesasPagas || 0)) >= (despesas?.totais?.geral || 0) ? (
+            <div style={{
+              backgroundColor: '#d1e7dd',
+              borderRadius: '8px',
+              padding: '16px',
+              border: '2px solid #34a853'
+            }}>
+              <div style={{
+                fontSize: '1.125rem',
+                fontWeight: '700',
+                color: '#0f5132',
+                marginBottom: '4px'
+              }}>
+                ✅ SALDO APÓS PAGAR: {formatarMoeda(((resumo?.local || 0) - (resumo?.despesasPagas || 0)) - (despesas?.totais?.geral || 0))}
+              </div>
+              <div style={{
+                fontSize: '0.875rem',
+                color: '#5f6368'
+              }}>
+                Saldo suficiente para cobrir todas as despesas pendentes
+              </div>
+            </div>
+          ) : (
+            <div style={{
+              backgroundColor: '#fce8e6',
+              borderRadius: '8px',
+              padding: '16px',
+              border: '2px solid #ea4335'
+            }}>
+              <div style={{
+                fontSize: '1.125rem',
+                fontWeight: '700',
+                color: '#c5221f',
+                marginBottom: '4px'
+              }}>
+                ⚠️ FALTAM: {formatarMoeda((despesas?.totais?.geral || 0) - ((resumo?.local || 0) - (resumo?.despesasPagas || 0)))}
+              </div>
+              <div style={{
+                fontSize: '0.875rem',
+                color: '#5f6368'
+              }}>
+                Saldo insuficiente para cobrir todas as despesas pendentes
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Lista de Despesas por Categoria */}
         {/* Grupo: Vencidas */}
-        {despesas.vencidas.length > 0 && (
+        {(despesas?.vencidas?.length || 0) > 0 && (
           <div style={{
             marginBottom: '24px',
             backgroundColor: '#fce8e6',
@@ -795,9 +815,9 @@ function Dashboard() {
               color: '#c5221f',
               marginBottom: '16px'
             }}>
-              🔴 VENCIDAS ({despesas.vencidas.length})
+              🔴 VENCIDAS ({despesas?.vencidas?.length || 0})
             </h3>
-            {despesas.vencidas.map(d => (
+            {(despesas?.vencidas || []).map(d => (
               <div key={d.id} style={{
                 backgroundColor: '#ffffff',
                 borderRadius: '8px',
@@ -837,39 +857,27 @@ function Dashboard() {
                   onClick={() => handlePagarDespesa(d.id)}
                   style={{
                     padding: '10px 20px',
-                    backgroundColor: '#34a853',
+                    backgroundColor: '#ea4335',
                     color: '#ffffff',
                     border: 'none',
                     borderRadius: '8px',
                     fontSize: '0.875rem',
                     fontWeight: '600',
-                    cursor: 'pointer',
-                    transition: 'background-color 0.3s'
+                    cursor: 'pointer'
                   }}
-                  onMouseEnter={(e) => e.target.style.backgroundColor = '#2d8e47'}
-                  onMouseLeave={(e) => e.target.style.backgroundColor = '#34a853'}
                 >
-                  Pagar
+                  💸 Pagar
                 </button>
               </div>
             ))}
-            <div style={{
-              fontSize: '1rem',
-              fontWeight: '700',
-              color: '#c5221f',
-              marginTop: '12px',
-              textAlign: 'right'
-            }}>
-              Total: {formatarMoeda(despesas.totais.vencidas)}
-            </div>
           </div>
         )}
 
-        {/* Grupo: Próximos 7 Dias */}
-        {despesas.proximos7Dias.length > 0 && (
+        {/* Grupo: Próximos 7 dias */}
+        {(despesas?.proximos7Dias?.length || 0) > 0 && (
           <div style={{
             marginBottom: '24px',
-            backgroundColor: '#fef7e0',
+            backgroundColor: '#fff3cd',
             borderRadius: '12px',
             padding: '20px',
             border: '2px solid #fbbc04'
@@ -880,9 +888,9 @@ function Dashboard() {
               color: '#f9ab00',
               marginBottom: '16px'
             }}>
-              🟡 VENCE EM 7 DIAS ({despesas.proximos7Dias.length})
+              🟡 VENCE EM 7 DIAS ({despesas?.proximos7Dias?.length || 0})
             </h3>
-            {despesas.proximos7Dias.map(d => (
+            {(despesas?.proximos7Dias || []).map(d => (
               <div key={d.id} style={{
                 backgroundColor: '#ffffff',
                 borderRadius: '8px',
@@ -928,33 +936,21 @@ function Dashboard() {
                     borderRadius: '8px',
                     fontSize: '0.875rem',
                     fontWeight: '600',
-                    cursor: 'pointer',
-                    transition: 'background-color 0.3s'
+                    cursor: 'pointer'
                   }}
-                  onMouseEnter={(e) => e.target.style.backgroundColor = '#2d8e47'}
-                  onMouseLeave={(e) => e.target.style.backgroundColor = '#34a853'}
                 >
-                  Pagar
+                  💸 Pagar
                 </button>
               </div>
             ))}
-            <div style={{
-              fontSize: '1rem',
-              fontWeight: '700',
-              color: '#f9ab00',
-              marginTop: '12px',
-              textAlign: 'right'
-            }}>
-              Total: {formatarMoeda(despesas.totais.proximos7)}
-            </div>
           </div>
         )}
 
-        {/* Grupo: 8-15 Dias */}
-        {despesas.de8a15Dias.length > 0 && (
+        {/* Grupo: 8-15 dias */}
+        {(despesas?.de8a15Dias?.length || 0) > 0 && (
           <div style={{
             marginBottom: '24px',
-            backgroundColor: '#e6f4ea',
+            backgroundColor: '#d1e7dd',
             borderRadius: '12px',
             padding: '20px',
             border: '2px solid #34a853'
@@ -965,9 +961,9 @@ function Dashboard() {
               color: '#137333',
               marginBottom: '16px'
             }}>
-              🟢 VENCE EM 8-15 DIAS ({despesas.de8a15Dias.length})
+              🟢 VENCE EM 8-15 DIAS ({despesas?.de8a15Dias?.length || 0})
             </h3>
-            {despesas.de8a15Dias.map(d => (
+            {(despesas?.de8a15Dias || []).map(d => (
               <div key={d.id} style={{
                 backgroundColor: '#ffffff',
                 borderRadius: '8px',
@@ -1013,124 +1009,32 @@ function Dashboard() {
                     borderRadius: '8px',
                     fontSize: '0.875rem',
                     fontWeight: '600',
-                    cursor: 'pointer',
-                    transition: 'background-color 0.3s'
+                    cursor: 'pointer'
                   }}
-                  onMouseEnter={(e) => e.target.style.backgroundColor = '#2d8e47'}
-                  onMouseLeave={(e) => e.target.style.backgroundColor = '#34a853'}
                 >
-                  Pagar
+                  💸 Pagar
                 </button>
               </div>
             ))}
-            <div style={{
-              fontSize: '1rem',
-              fontWeight: '700',
-              color: '#137333',
-              marginTop: '12px',
-              textAlign: 'right'
-            }}>
-              Total: {formatarMoeda(despesas.totais.de8a15)}
-            </div>
           </div>
         )}
 
-        {/* Totais e SALDO APÓS PAGAR */}
-        <div style={{
-          backgroundColor: '#f1f3f4',
-          borderRadius: '12px',
-          padding: '20px',
-          border: '2px solid #e8eaed'
-        }}>
+        {/* Mensagem quando não há despesas */}
+        {(despesas?.vencidas?.length || 0) === 0 && (despesas?.proximos7Dias?.length || 0) === 0 && (despesas?.de8a15Dias?.length || 0) === 0 && (
           <div style={{
-            fontSize: '1.125rem',
-            fontWeight: '700',
-            color: '#202124',
-            marginBottom: '8px'
+            textAlign: 'center',
+            padding: '40px',
+            color: '#5f6368'
           }}>
-            💰 TOTAL A PAGAR: {formatarMoeda(despesas.totais.geral)}
+            <div style={{ fontSize: '3rem', marginBottom: '16px' }}>✅</div>
+            <p style={{ fontSize: '1.125rem', fontWeight: '500' }}>
+              ✅ Nenhuma despesa pendente nos próximos 15 dias
+            </p>
+            <p style={{ fontSize: '0.875rem' }}>
+              Todas as contas estão em dia!
+            </p>
           </div>
-          
-          <div style={{
-            fontSize: '1rem',
-            fontWeight: '600',
-            color: '#5f6368',
-            marginBottom: '12px'
-          }}>
-            💵 SALDO DISPONÍVEL: {formatarMoeda(resumo.totalLocal)}
-          </div>
-
-          <div style={{
-            height: '2px',
-            backgroundColor: '#e8eaed',
-            margin: '12px 0'
-          }} />
-          
-          {resumo.totalLocal >= despesas.totais.geral ? (
-            <div style={{
-              backgroundColor: '#e6f4ea',
-              borderRadius: '8px',
-              padding: '16px',
-              border: '2px solid #34a853'
-            }}>
-              <div style={{
-                fontSize: '1.125rem',
-                fontWeight: '700',
-                color: '#137333',
-                marginBottom: '4px'
-              }}>
-                ✅ SALDO APÓS PAGAR: {formatarMoeda(resumo.totalLocal - despesas.totais.geral)}
-              </div>
-              <div style={{
-                fontSize: '0.875rem',
-                color: '#5f6368'
-              }}>
-                Saldo suficiente para cobrir todas as despesas pendentes
-              </div>
-            </div>
-          ) : (
-            <div style={{
-              backgroundColor: '#fce8e6',
-              borderRadius: '8px',
-              padding: '16px',
-              border: '2px solid #ea4335'
-            }}>
-              <div style={{
-                fontSize: '1.125rem',
-                fontWeight: '700',
-                color: '#c5221f',
-                marginBottom: '4px'
-              }}>
-                ⚠️ FALTAM: {formatarMoeda(despesas.totais.geral - resumo.totalLocal)}
-              </div>
-              <div style={{
-                fontSize: '0.875rem',
-                color: '#5f6368'
-              }}>
-                Saldo insuficiente para cobrir todas as despesas pendentes
-              </div>
-            </div>
-          )}
-
-          {despesas.vencidas.length === 0 && despesas.proximos7Dias.length === 0 && despesas.de8a15Dias.length === 0 && (
-            <div style={{
-              backgroundColor: '#e6f4ea',
-              borderRadius: '8px',
-              padding: '16px',
-              border: '2px solid #34a853',
-              textAlign: 'center',
-              marginTop: '12px'
-            }}>
-              <div style={{
-                fontSize: '1rem',
-                fontWeight: '600',
-                color: '#137333'
-              }}>
-                ✅ Nenhuma despesa pendente nos próximos 15 dias
-              </div>
-            </div>
-          )}
-        </div>
+        )}
       </div>
     </div>
   );

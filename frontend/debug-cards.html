@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug - Cards Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .card { background: #f5f5f5; padding: 15px; margin: 10px 0; border-radius: 8px; }
+        .valor { font-size: 24px; font-weight: bold; color: #1a73e8; }
+        .log { background: #000; color: #0f0; padding: 10px; margin: 10px 0; border-radius: 4px; height: 300px; overflow-y: auto; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Debug - Cards Dashboard</h1>
+    
+    <div class="card">
+        <h3>💰 Total Geral</h3>
+        <div class="valor" id="total">Carregando...</div>
+    </div>
+    
+    <div class="card">
+        <h3>🏛️ Igreja Central</h3>
+        <div class="valor" id="central">Carregando...</div>
+    </div>
+    
+    <div class="card">
+        <h3>🏠 Igreja Local</h3>
+        <div class="valor" id="local">Carregando...</div>
+    </div>
+    
+    <div class="card">
+        <h3>🌍 Missões</h3>
+        <div class="valor" id="missoes">Carregando...</div>
+    </div>
+    
+    <div class="log" id="log"></div>
+    
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.11.1/firebase-app.js';
+        import { getFirestore, collection, onSnapshot, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.11.1/firebase-firestore.js';
+        
+        // Configuração do Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyDmu2ZUGsM7_XLu_QKa5-pKXcKbwVgZcrU",
+            authDomain: "gestao-financeira-igreja.firebaseapp.com",
+            projectId: "gestao-financeira-igreja",
+            storageBucket: "gestao-financeira-igreja.firebasestorage.app",
+            messagingSenderId: "533633071808",
+            appId: "1:533633071808:web:27b14e0bcd3e4f3a8efeca"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        
+        const log = document.getElementById('log');
+        
+        function addLog(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            log.innerHTML += `[${timestamp}] ${message}<br>`;
+            log.scrollTop = log.scrollHeight;
+        }
+        
+        function formatMoney(value) {
+            return new Intl.NumberFormat('pt-BR', {
+                style: 'currency',
+                currency: 'BRL'
+            }).format(value || 0);
+        }
+        
+        // Escutar mudanças nas entradas
+        addLog('🔄 Configurando listener das entradas...');
+        
+        const entradasRef = collection(db, 'entradas');
+        const q = query(entradasRef, orderBy('data', 'desc'));
+        
+        onSnapshot(q, (snapshot) => {
+            addLog(`📊 Entradas recebidas: ${snapshot.size}`);
+            
+            // Filtrar por novembro 2025
+            const dataAtual = new Date();
+            const mes = dataAtual.getMonth(); // novembro = 10
+            const ano = dataAtual.getFullYear(); // 2025
+            
+            let totalGeral = 0;
+            let totalCentral = 0;
+            let totalLocal = 0;
+            let totalMissoes = 0;
+            let countPeriodo = 0;
+            
+            snapshot.forEach((doc) => {
+                const entrada = doc.data();
+                
+                if (entrada.data) {
+                    const dataEntrada = entrada.data.toDate();
+                    
+                    if (dataEntrada.getMonth() === mes && dataEntrada.getFullYear() === ano) {
+                        countPeriodo++;
+                        const valor = parseFloat(entrada.valor) || 0;
+                        totalGeral += valor;
+                        
+                        addLog(`💰 Entrada: ${entrada.descricao || 'Sem descrição'} - Valor: ${valor}`);
+                        
+                        if (entrada.rateio) {
+                            const central = parseFloat(entrada.rateio['Igreja Central'] || 0);
+                            const local = parseFloat(entrada.rateio['Igreja Local'] || 0);
+                            const missoes = parseFloat(entrada.rateio['Missões'] || 0);
+                            
+                            totalCentral += central;
+                            totalLocal += local;
+                            totalMissoes += missoes;
+                            
+                            addLog(`   📊 Rateio - Central: ${central}, Local: ${local}, Missões: ${missoes}`);
+                        } else {
+                            addLog('   ⚠️ Entrada sem rateio!');
+                        }
+                    }
+                }
+            });
+            
+            addLog(`📈 TOTAIS - Período: ${mes+1}/${ano} (${countPeriodo} entradas)`);
+            addLog(`   💰 Total: ${totalGeral}`);
+            addLog(`   🏛️ Central: ${totalCentral}`);
+            addLog(`   🏠 Local: ${totalLocal}`);
+            addLog(`   🌍 Missões: ${totalMissoes}`);
+            
+            // Atualizar interface
+            document.getElementById('total').textContent = formatMoney(totalGeral);
+            document.getElementById('central').textContent = formatMoney(totalCentral);
+            document.getElementById('local').textContent = formatMoney(totalLocal);
+            document.getElementById('missoes').textContent = formatMoney(totalMissoes);
+            
+        }, (error) => {
+            addLog(`❌ Erro no listener: ${error.message}`);
+        });
+        
+        addLog('✅ Listener configurado! Aguardando dados...');
+    </script>
+</body>
+</html>

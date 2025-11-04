@@ -1,7 +1,7 @@
-import { buscarEntradas } from './entradas';
+import { buscarEntradas, escutarEntradas } from './entradas';
 import { buscarDespesas } from './despesas';
 import { db } from './firebase';
-import { doc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, Timestamp, onSnapshot, collection, query, orderBy } from 'firebase/firestore';
 
 // Configuração da meta de missões (pode ser alterada conforme necessário)
 const META_MISSOES = 5000;
@@ -370,7 +370,10 @@ export const buscarResumoFinanceiro = async (ano = null, mes = null) => {
 export const buscarDespesasPendentes = async () => {
   try {
     const despesas = await buscarDespesas();
-    const hoje = new Date();
+    
+    // 🕐 CORREÇÃO: Usar fuso horário de Cuiabá-MT (UTC-4)
+    const agora = new Date();
+    const hoje = new Date(agora.toLocaleString("en-US", {timeZone: "America/Cuiaba"}));
     hoje.setHours(0, 0, 0, 0);
 
     const data15Dias = new Date(hoje);
@@ -383,7 +386,9 @@ export const buscarDespesasPendentes = async () => {
     const despesasPendentes = despesas.filter(d => {
       if (d.status === 'Paga') return false;
       
-      const vencimento = new Date(d.vencimento);
+      // 🕐 CORREÇÃO: Usar fuso horário de Cuiabá-MT para filtragem
+      const vencimentoOriginal = new Date(d.vencimento);
+      const vencimento = new Date(vencimentoOriginal.toLocaleString("en-US", {timeZone: "America/Cuiaba"}));
       vencimento.setHours(0, 0, 0, 0);
       
       return vencimento <= data15Dias;
@@ -395,7 +400,9 @@ export const buscarDespesasPendentes = async () => {
     const de8a15Dias = [];
 
     despesasPendentes.forEach(d => {
-      const vencimento = new Date(d.vencimento);
+      // 🕐 CORREÇÃO: Usar fuso horário de Cuiabá-MT para vencimento
+      const vencimentoOriginal = new Date(d.vencimento);
+      const vencimento = new Date(vencimentoOriginal.toLocaleString("en-US", {timeZone: "America/Cuiaba"}));
       vencimento.setHours(0, 0, 0, 0);
 
       if (vencimento < hoje || d.status === 'Vencida') {
@@ -488,5 +495,92 @@ export const buscarMetaMissoes = async (ano = null, mes = null) => {
   } catch (error) {
     console.error('Erro ao buscar meta de missões:', error);
     return { success: false, error: error.message };
+  }
+};
+
+/**
+ * Escuta mudanças nos dados em tempo real para o Dashboard
+ * Recalcula o resumo financeiro automaticamente quando entradas mudam
+ */
+export const escutarResumoFinanceiro = (ano, mes, callback) => {
+  try {
+    console.log('🔄 Configurando listener do resumo financeiro...');
+    
+    // Escutar mudanças nas entradas
+    const unsubscribe = escutarEntradas((resultado) => {
+      if (resultado.success) {
+        console.log('🔄 Recalculando resumo financeiro...');
+        
+        // Recalcular o resumo com os novos dados
+        calcularResumoComEntradas(resultado.entradas, ano, mes)
+          .then(resumo => {
+            callback({ success: true, resumo });
+          })
+          .catch(error => {
+            console.error('❌ Erro ao recalcular resumo:', error);
+            callback({ success: false, error: error.message });
+          });
+      } else {
+        callback(resultado);
+      }
+    });
+    
+    return unsubscribe;
+  } catch (error) {
+    console.error('❌ Erro ao configurar listener do resumo:', error);
+    return null;
+  }
+};
+
+/**
+ * Calcula o resumo financeiro com dados de entradas já obtidos
+ */
+const calcularResumoComEntradas = async (entradas, ano, mes) => {
+  try {
+    console.log('📊 Calculando resumo para:', { ano, mes });
+    
+    // Filtrar entradas do período
+    const entradasPeriodo = entradas.filter(entrada => {
+      if (!entrada.data) return false;
+      const dataEntrada = new Date(entrada.data);
+      return dataEntrada.getMonth() === mes && dataEntrada.getFullYear() === ano;
+    });
+    
+    console.log('📊 Entradas do período:', entradasPeriodo.length);
+    
+    // Calcular totais usando o rateio atual de cada entrada
+    let totalGeral = 0;
+    let totalCentral = 0;
+    let totalLocal = 0;
+    let totalMissoes = 0;
+    
+    entradasPeriodo.forEach(entrada => {
+      const valor = parseFloat(entrada.valor) || 0;
+      totalGeral += valor;
+      
+      // Usar rateio salvo na entrada (já calculado pela Cloud Function ou frontend)
+      if (entrada.rateio) {
+        totalCentral += parseFloat(entrada.rateio['Igreja Central'] || 0);
+        totalLocal += parseFloat(entrada.rateio['Igreja Local'] || 0);
+        totalMissoes += parseFloat(entrada.rateio['Missões'] || 0);
+      } else {
+        // Fallback: calcular rateio baseado no tipo
+        const rateio = calcularRateio(entrada.tipo, valor);
+        totalCentral += rateio.central;
+        totalLocal += rateio.local;
+        totalMissoes += rateio.missoes;
+      }
+    });
+    
+    return {
+      total: totalGeral,
+      central: totalCentral,
+      local: totalLocal,
+      missoes: totalMissoes,
+      periodo: `${mes + 1}/${ano}`
+    };
+  } catch (error) {
+    console.error('❌ Erro ao calcular resumo:', error);
+    throw error;
   }
 };

@@ -14,9 +14,12 @@ const calcularRateio = (tipo, valor) => {
       missoes: valorNum
     };
   } else if (tipo === 'dizimo' || tipo === 'oferta') {
+    // 🔧 CORREÇÃO: Usar Math.round para evitar problemas de ponto flutuante
+    const central = Math.round(valorNum * 0.60 * 100) / 100;
+    const local = Math.round(valorNum * 0.40 * 100) / 100;
     return {
-      central: valorNum * 0.60,
-      local: valorNum * 0.40,
+      central: central,
+      local: local,
       missoes: 0
     };
   } else {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import FormEntrada from '../components/FormEntrada';
-import { buscarEntradas } from '../services/entradas';
+import AlertaDivergencia from '../components/AlertaDivergencia';
+import { buscarEntradas, excluirEntrada, atualizarEntrada, atualizarCamposControle } from '../services/entradas';
 import { formatarMoeda } from '../utils/formatacao';
 import { calcularResumoMes } from '../utils/entradasUtils';
 
@@ -8,6 +9,9 @@ function Entradas({ usuarioEmail }) {
   const [entradas, setEntradas] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [entradaParaEdicao, setEntradaParaEdicao] = useState(null);
+  const [entradaComDivergencia, setEntradaComDivergencia] = useState(null);
+  const [processandoIA, setProcessandoIA] = useState(false);
+  const [entradaProcessando, setEntradaProcessando] = useState(null);
   
   // Estados para filtros de data
   const dataAtual = new Date();
@@ -16,6 +20,11 @@ function Entradas({ usuarioEmail }) {
 
   useEffect(() => {
     carregarEntradas();
+    
+    // Recarregar a cada 30 segundos para pegar atualizações da Cloud Function
+    const interval = setInterval(carregarEntradas, 30000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   const carregarEntradas = async () => {
@@ -24,6 +33,41 @@ function Entradas({ usuarioEmail }) {
     
     if (resultado.success) {
       setEntradas(resultado.entradas);
+      
+      // 🆕 Verificar se há entradas sendo processadas pela IA
+      const entradaEmProcessamento = resultado.entradas.find(entrada => 
+        entrada.comprovanteUrl && 
+        !entrada.processadoPorGeminiAI &&
+        !entrada.divergenciasDetectadas
+      );
+      
+      if (entradaEmProcessamento && !processandoIA) {
+        console.log('🤖 Detectada entrada em processamento:', entradaEmProcessamento);
+        setProcessandoIA(true);
+        setEntradaProcessando(entradaEmProcessamento);
+      }
+      
+      // 🆕 Verificar se há entradas com divergências não resolvidas
+      const entradaComDivergenciaNaoResolvida = resultado.entradas.find(entrada => 
+        entrada.divergenciasDetectadas && 
+        entrada.statusValidacao === 'DIVERGENTE' &&
+        !entrada.divergenciaResolvida
+      );
+      
+      if (entradaComDivergenciaNaoResolvida) {
+        console.log('⚠️ Divergência detectada:', entradaComDivergenciaNaoResolvida);
+        setProcessandoIA(false); // Parar loading se houver divergência
+        setEntradaComDivergencia(entradaComDivergenciaNaoResolvida);
+      }
+      
+      // Se estava processando e agora tem resultado, parar loading
+      if (processandoIA && entradaProcessando) {
+        const entradaAtualizada = resultado.entradas.find(e => e.id === entradaProcessando.id);
+        if (entradaAtualizada && entradaAtualizada.processadoPorGeminiAI) {
+          setProcessandoIA(false);
+          setEntradaProcessando(null);
+        }
+      }
     }
     
     setCarregando(false);
@@ -118,6 +162,91 @@ function Entradas({ usuarioEmail }) {
     setEntradaParaEdicao(entrada);
     // Scroll para o formulário
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const verComprovante = (comprovanteUrl) => {
+    if (comprovanteUrl) {
+      window.open(comprovanteUrl, '_blank');
+    }
+  };
+
+  const confirmarExclusao = async (entradaId, valorEntrada) => {
+    const confirmacao = window.confirm(
+      `Você tem certeza que deseja excluir este lançamento de ${formatarMoeda(valorEntrada)}?\n\nEsta ação não pode ser desfeita.`
+    );
+    
+    if (confirmacao) {
+      const resultado = await excluirEntrada(entradaId);
+      
+      if (resultado.success) {
+        // Atualizar lista após exclusão
+        carregarEntradas();
+      } else {
+        alert('Erro ao excluir entrada: ' + resultado.error);
+      }
+    }
+  };
+
+  // 🆕 Função para aceitar dados do comprovante
+  const aceitarDadosComprovante = async (entrada) => {
+    try {
+      const { calcularRateio } = await import('../utils/migracaoRateio');
+      
+      const dadosAtualizados = {
+        // Usar dados do comprovante
+        valor: entrada.dadosComprovante.valor || entrada.valor,
+        descricao: entrada.dadosComprovante.nome || entrada.descricao,
+        data: entrada.dadosComprovante.data || entrada.data,
+        
+        // Recalcular rateio com novo valor
+        rateio: calcularRateio(entrada.dadosComprovante.valor || entrada.valor, entrada.tipo),
+        
+        // Marcar como resolvido
+        divergenciaResolvida: true,
+        resolucaoEm: new Date(),
+        resolucaoTipo: 'ACEITAR_COMPROVANTE',
+        statusValidacao: 'VALIDADO'
+      };
+
+      const resultado = await atualizarEntrada(entrada.id, dadosAtualizados);
+      
+      if (resultado.success) {
+        setEntradaComDivergencia(null);
+        carregarEntradas();
+        alert('✅ Dados do comprovante aceitos com sucesso!');
+      } else {
+        alert('❌ Erro ao atualizar entrada: ' + resultado.error);
+      }
+    } catch (error) {
+      console.error('Erro ao aceitar comprovante:', error);
+      alert('❌ Erro ao processar solicitação');
+    }
+  };
+
+  // 🆕 Função para manter dados originais
+  const manterDadosOriginais = async (entrada) => {
+    try {
+      const dadosAtualizados = {
+        // Marcar como resolvido mantendo dados originais
+        divergenciaResolvida: true,
+        resolucaoEm: new Date(),
+        resolucaoTipo: 'MANTER_ORIGINAL',
+        statusValidacao: 'MANUAL'
+      };
+
+      const resultado = await atualizarCamposControle(entrada.id, dadosAtualizados);
+      
+      if (resultado.success) {
+        setEntradaComDivergencia(null);
+        carregarEntradas();
+        alert('✅ Dados originais mantidos!');
+      } else {
+        alert('❌ Erro ao atualizar entrada: ' + resultado.error);
+      }
+    } catch (error) {
+      console.error('Erro ao manter dados originais:', error);
+      alert('❌ Erro ao processar solicitação');
+    }
   };
 
   return (
@@ -480,31 +609,91 @@ function Entradas({ usuarioEmail }) {
                       {formatarMoeda(entrada.valor)}
                     </div>
                     
-                    {/* Botão Editar */}
-                    <button
-                      onClick={() => editarEntrada(entrada)}
-                      style={{
-                        padding: '6px 10px',
-                        backgroundColor: '#1a73e8',
-                        color: '#ffffff',
-                        border: 'none',
-                        borderRadius: '6px',
-                        fontSize: '0.75rem',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        fontWeight: '500'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#1557b0';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = '#1a73e8';
-                      }}
-                    >
-                      ✏️ Editar
-                    </button>
+                    {/* Botões de Ação */}
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      {/* Botão Ver Comprovante */}
+                      {entrada.comprovanteUrl && (
+                        <button
+                          onClick={() => verComprovante(entrada.comprovanteUrl)}
+                          title="Ver Comprovante"
+                          style={{
+                            padding: '6px 8px',
+                            backgroundColor: '#34a853',
+                            color: '#ffffff',
+                            border: 'none',
+                            borderRadius: '6px',
+                            fontSize: '0.75rem',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            fontWeight: '500'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = '#2d8f3f';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = '#34a853';
+                          }}
+                        >
+                          📎
+                        </button>
+                      )}
+                      
+                      {/* Botão Editar */}
+                      <button
+                        onClick={() => editarEntrada(entrada)}
+                        title="Editar"
+                        style={{
+                          padding: '6px 8px',
+                          backgroundColor: '#1a73e8',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '0.75rem',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          fontWeight: '500'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#1557b0';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = '#1a73e8';
+                        }}
+                      >
+                        ✏️
+                      </button>
+                      
+                      {/* Botão Excluir */}
+                      <button
+                        onClick={() => confirmarExclusao(entrada.id, entrada.valor)}
+                        title="Excluir"
+                        style={{
+                          padding: '6px 8px',
+                          backgroundColor: '#ea4335',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '0.75rem',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          fontWeight: '500'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#d33b2c';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = '#ea4335';
+                        }}
+                      >
+                        🗑️
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -557,6 +746,89 @@ function Entradas({ usuarioEmail }) {
           </div>
         )}
       </div>
+
+      {/* 🆕 LOADING DE PROCESSAMENTO IA */}
+      {processandoIA && entradaProcessando && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '16px',
+            padding: '40px',
+            textAlign: 'center',
+            maxWidth: '400px',
+            width: '90%',
+            boxShadow: '0 10px 40px rgba(0,0,0,0.3)'
+          }}>
+            {/* Animação de loading */}
+            <div style={{
+              width: '80px',
+              height: '80px',
+              border: '4px solid #e3f2fd',
+              borderTop: '4px solid #1a73e8',
+              borderRadius: '50%',
+              margin: '0 auto 24px',
+              animation: 'spin 1s linear infinite'
+            }}></div>
+            
+            <h3 style={{
+              fontSize: '1.25rem',
+              fontWeight: '600',
+              color: '#202124',
+              margin: '0 0 12px 0'
+            }}>
+              🤖 Processando Comprovante
+            </h3>
+            
+            <p style={{
+              fontSize: '0.875rem',
+              color: '#5f6368',
+              margin: '0 0 16px 0',
+              lineHeight: '1.4'
+            }}>
+              Nossa IA está analisando o comprovante PIX e validando os dados...
+            </p>
+            
+            <div style={{
+              backgroundColor: '#f8f9fa',
+              borderRadius: '8px',
+              padding: '12px',
+              fontSize: '0.75rem',
+              color: '#5f6368'
+            }}>
+              📄 <strong>{entradaProcessando.descricao}</strong><br/>
+              💰 <strong>{formatarMoeda(entradaProcessando.valor)}</strong>
+            </div>
+            
+            <style>{`
+              @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+              }
+            `}</style>
+          </div>
+        </div>
+      )}
+
+      {/* 🆕 ALERTA DE DIVERGÊNCIA */}
+      {entradaComDivergencia && (
+        <AlertaDivergencia
+          entrada={entradaComDivergencia}
+          onAceitarComprovante={aceitarDadosComprovante}
+          onManterOriginal={manterDadosOriginais}
+          onFechar={() => setEntradaComDivergencia(null)}
+        />
+      )}
     </div>
   );
 }

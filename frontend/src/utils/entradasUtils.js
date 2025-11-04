@@ -91,24 +91,27 @@ export const calcularResumoMes = (entradas = [], referencia = new Date()) => {
     resumo.totalCount += 1;
     resumo.totalByForma[fKey] = (resumo.totalByForma[fKey] || 0) + valor;
 
-    // Central
-    const centralVal = e.rateio && Number(e.rateio.central) ? Number(e.rateio.central) : 0;
+    // Central - suporta tanto formato antigo quanto novo
+    const centralVal = e.rateio && (Number(e.rateio.central) || Number(e.rateio['Igreja Central'])) ? 
+                      (Number(e.rateio.central) || Number(e.rateio['Igreja Central'])) : 0;
     if (centralVal > 0) {
       resumo.central += centralVal;
       resumo.centralCount += 1;
       resumo.centralByForma[fKey] = (resumo.centralByForma[fKey] || 0) + centralVal;
     }
 
-    // Local
-    const localVal = e.rateio && Number(e.rateio.local) ? Number(e.rateio.local) : 0;
+    // Local - suporta tanto formato antigo quanto novo
+    const localVal = e.rateio && (Number(e.rateio.local) || Number(e.rateio['Igreja Local'])) ? 
+                    (Number(e.rateio.local) || Number(e.rateio['Igreja Local'])) : 0;
     if (localVal > 0) {
       resumo.local += localVal;
       resumo.localCount += 1;
       resumo.localByForma[fKey] = (resumo.localByForma[fKey] || 0) + localVal;
     }
 
-    // Missoes
-    const missoesVal = e.rateio && Number(e.rateio.missoes) ? Number(e.rateio.missoes) : 0;
+    // Missoes - suporta tanto formato antigo quanto novo
+    const missoesVal = e.rateio && (Number(e.rateio.missoes) || Number(e.rateio['Missões'])) ? 
+                      (Number(e.rateio.missoes) || Number(e.rateio['Missões'])) : 0;
     if (missoesVal > 0) {
       resumo.missoes += missoesVal;
       resumo.missoesCount += 1;

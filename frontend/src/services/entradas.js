@@ -7,7 +7,9 @@ import {
   where,
   Timestamp,
   doc,
-  updateDoc
+  updateDoc,
+  deleteDoc,
+  onSnapshot
 } from 'firebase/firestore';
 import { db, auth } from './firebase';
 
@@ -24,9 +26,12 @@ const calcularRateio = (tipo, valor) => {
       missoes: valorNum
     };
   } else if (tipo === 'dizimo' || tipo === 'oferta') {
+    // 🔧 CORREÇÃO: Usar Math.round para evitar problemas de ponto flutuante
+    const central = Math.round(valorNum * 0.60 * 100) / 100;
+    const local = Math.round(valorNum * 0.40 * 100) / 100;
     return {
-      central: valorNum * 0.60,
-      local: valorNum * 0.40,
+      central: central,
+      local: local,
       missoes: 0
     };
   } else {
@@ -37,6 +42,8 @@ const calcularRateio = (tipo, valor) => {
     };
   }
 };
+
+
 
 /**
  * Adiciona uma nova entrada
@@ -69,6 +76,17 @@ export const adicionarEntrada = async (dados, usuarioEmail) => {
         membroNome: dados.membroNome
       }),
       
+      // Se tiver comprovante PIX, salva os dados
+      ...(dados.comprovante && {
+        comprovanteUrl: dados.comprovante.url,
+        comprovante: {
+          url: dados.comprovante.url,
+          nome: dados.comprovante.nome,
+          tipo: dados.comprovante.tipo,
+          tamanho: dados.comprovante.tamanho
+        }
+      }),
+      
       // Marcar como recebido por padrão (o formulário atual registra recebimento)
       pago: dados.pago === undefined ? true : !!dados.pago,
       pagoEm: dados.pago === undefined ? Timestamp.now() : (dados.pago ? (dados.pagoEm ? Timestamp.fromDate(new Date(dados.pagoEm)) : Timestamp.now()) : null),
@@ -80,6 +98,7 @@ export const adicionarEntrada = async (dados, usuarioEmail) => {
     const docRef = await addDoc(entradasRef, documento);
     
     console.log('✅ Entrada adicionada:', docRef.id);
+    
     return { success: true, id: docRef.id };
   } catch (error) {
     console.error('❌ Erro ao adicionar entrada:', error);
@@ -194,6 +213,17 @@ export const atualizarEntrada = async (id, dados, usuarioEmail) => {
         membroNome: dados.membroNome
       }),
       
+      // Se tiver comprovante PIX, salva os dados
+      ...(dados.comprovante && {
+        comprovanteUrl: dados.comprovante.url,
+        comprovante: {
+          url: dados.comprovante.url,
+          nome: dados.comprovante.nome,
+          tipo: dados.comprovante.tipo,
+          tamanho: dados.comprovante.tamanho
+        }
+      }),
+      
       // Atualiza pagamento quando informado
       ...(typeof dados.pago !== 'undefined' && {
         pago: !!dados.pago,
@@ -211,5 +241,77 @@ export const atualizarEntrada = async (id, dados, usuarioEmail) => {
   } catch (error) {
     console.error('❌ Erro ao atualizar entrada:', error);
     return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Atualiza apenas campos de controle de uma entrada (para divergências)
+ */
+export const atualizarCamposControle = async (id, dados) => {
+  try {
+    const entradaRef = doc(db, 'entradas', id);
+    
+    const dadosAtualizados = {
+      ...dados,
+      atualizadoEm: new Date()
+    };
+
+    await updateDoc(entradaRef, dadosAtualizados);
+    return { success: true };
+  } catch (error) {
+    console.error('Erro ao atualizar campos de controle:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Exclui uma entrada do Firestore
+ */
+export const excluirEntrada = async (entradaId) => {
+  try {
+    if (!auth.currentUser) {
+      return { success: false, error: 'Usuário não autenticado' };
+    }
+
+    const entradaRef = doc(db, 'entradas', entradaId);
+    await deleteDoc(entradaRef);
+    
+    console.log('✅ Entrada excluída:', entradaId);
+    return { success: true };
+  } catch (error) {
+    console.error('❌ Erro ao excluir entrada:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * Escuta mudanças nas entradas em tempo real
+ * Retorna uma função para cancelar o listener
+ */
+export const escutarEntradas = (callback) => {
+  try {
+    const entradasRef = collection(db, 'entradas');
+    const q = query(entradasRef, orderBy('data', 'desc'));
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const entradas = [];
+      snapshot.forEach((doc) => {
+        entradas.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+      
+      console.log('🔄 Entradas atualizadas em tempo real:', entradas.length);
+      callback({ success: true, entradas });
+    }, (error) => {
+      console.error('❌ Erro no listener de entradas:', error);
+      callback({ success: false, error: error.message });
+    });
+    
+    return unsubscribe;
+  } catch (error) {
+    console.error('❌ Erro ao configurar listener de entradas:', error);
+    return null;
   }
 };

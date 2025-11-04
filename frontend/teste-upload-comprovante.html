@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste - Upload de Comprovante PIX</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background-color: #f8f9fa;
+            color: #202124;
+            line-height: 1.5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #202124;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: #5f6368;
+            font-size: 0.875rem;
+        }
+
+        .form-section {
+            margin-bottom: 24px;
+        }
+
+        .section-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #202124;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .form-label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #5f6368;
+            margin-bottom: 8px;
+        }
+
+        .form-input, .form-select {
+            padding: 10px 12px;
+            border: 1px solid #dadce0;
+            border-radius: 6px;
+            font-size: 0.9375rem;
+            color: #202124;
+            outline: none;
+            transition: border-color 0.2s ease;
+        }
+
+        .form-input:focus, .form-select:focus {
+            border-color: #1a73e8;
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 16px;
+            margin-top: 8px;
+        }
+
+        .radio-label {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            font-size: 0.875rem;
+            color: #5f6368;
+        }
+
+        .radio-label input[type="radio"] {
+            margin-right: 6px;
+        }
+
+        /* Upload Area */
+        .upload-area {
+            border: 2px dashed #dadce0;
+            border-radius: 8px;
+            padding: 24px;
+            text-align: center;
+            background-color: #f8f9fa;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-area:hover {
+            border-color: #1a73e8;
+            background-color: #f1f7ff;
+        }
+
+        .upload-area.dragover {
+            border-color: #1a73e8;
+            background-color: #e8f0fe;
+        }
+
+        .upload-icon {
+            font-size: 2rem;
+            margin-bottom: 12px;
+        }
+
+        .upload-text {
+            font-size: 0.875rem;
+            color: #5f6368;
+            margin-bottom: 8px;
+        }
+
+        .upload-hint {
+            font-size: 0.75rem;
+            color: #9aa0a6;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .uploaded-file {
+            margin-top: 12px;
+            padding: 12px;
+            background-color: #e8f5e8;
+            border: 1px solid #4caf50;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .uploaded-file-info {
+            flex: 1;
+            font-size: 0.875rem;
+            color: #2e7d32;
+        }
+
+        .remove-file {
+            background: none;
+            border: none;
+            color: #d32f2f;
+            cursor: pointer;
+            font-size: 1rem;
+            padding: 4px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background-color: #e0e0e0;
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background-color: #1a73e8;
+            transition: width 0.3s ease;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background-color: #1a73e8;
+            color: #ffffff;
+        }
+
+        .btn-primary:hover {
+            background-color: #1557b0;
+        }
+
+        .btn-primary:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        /* Responsividade */
+        @media (max-width: 768px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="title">💰 Nova Entrada com Comprovante PIX</h1>
+            <p class="subtitle">Demonstração da funcionalidade de upload de comprovantes</p>
+        </div>
+
+        <form id="entradaForm">
+            <!-- Informações Básicas -->
+            <div class="form-section">
+                <h2 class="section-title">📋 Informações da Entrada</h2>
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label">Tipo</label>
+                        <select class="form-select" id="tipo">
+                            <option value="dizimo">Dízimo</option>
+                            <option value="oferta">Oferta</option>
+                            <option value="santa_ceia">Oferta Santa Ceia</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Valor</label>
+                        <input type="number" class="form-input" id="valor" placeholder="0,00" step="0.01" />
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Data</label>
+                        <input type="date" class="form-input" id="data" />
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Forma de Recebimento</label>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="formaRecebimento" value="pix" checked />
+                                PIX/Transferência
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="formaRecebimento" value="dinheiro" />
+                                Dinheiro
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Upload de Comprovante -->
+            <div class="form-section" id="comprovanteSection">
+                <h2 class="section-title">📎 Comprovante PIX</h2>
+                
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📤</div>
+                    <div class="upload-text">Clique para selecionar ou arraste o comprovante aqui</div>
+                    <div class="upload-hint">Formatos aceitos: JPG, PNG, PDF (máx. 5MB)</div>
+                    <input type="file" class="file-input" id="fileInput" accept=".jpg,.jpeg,.png,.pdf" />
+                </div>
+                
+                <div class="progress-bar hidden" id="progressBar">
+                    <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                </div>
+                
+                <div class="uploaded-file hidden" id="uploadedFile">
+                    <div class="uploaded-file-info" id="fileInfo">
+                        <div><strong>📄 Arquivo:</strong> <span id="fileName"></span></div>
+                        <div><strong>📏 Tamanho:</strong> <span id="fileSize"></span></div>
+                    </div>
+                    <button type="button" class="remove-file" id="removeFile">🗑️</button>
+                </div>
+            </div>
+
+            <!-- Ações -->
+            <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                <button type="button" class="btn btn-primary" id="saveBtn">
+                    💾 Salvar Entrada
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        // Elementos DOM
+        const formaRecebimentoRadios = document.querySelectorAll('input[name="formaRecebimento"]');
+        const comprovanteSection = document.getElementById('comprovanteSection');
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const progressBar = document.getElementById('progressBar');
+        const progressFill = document.getElementById('progressFill');
+        const uploadedFile = document.getElementById('uploadedFile');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const removeFile = document.getElementById('removeFile');
+        const saveBtn = document.getElementById('saveBtn');
+
+        let selectedFile = null;
+
+        // Definir data atual
+        document.getElementById('data').value = new Date().toISOString().split('T')[0];
+
+        // Controlar visibilidade do comprovante
+        formaRecebimentoRadios.forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                if (e.target.value === 'pix') {
+                    comprovanteSection.style.display = 'block';
+                } else {
+                    comprovanteSection.style.display = 'none';
+                    resetUpload();
+                }
+            });
+        });
+
+        // Upload de arquivo
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('dragover', handleDragOver);
+        uploadArea.addEventListener('drop', handleDrop);
+        uploadArea.addEventListener('dragleave', handleDragLeave);
+        fileInput.addEventListener('change', handleFileSelect);
+        removeFile.addEventListener('click', resetUpload);
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                processFile(files[0]);
+            }
+        }
+
+        function handleFileSelect(e) {
+            const files = e.target.files;
+            if (files.length > 0) {
+                processFile(files[0]);
+            }
+        }
+
+        function processFile(file) {
+            // Validar tipo
+            const tiposPermitidos = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+            if (!tiposPermitidos.includes(file.type)) {
+                alert('Apenas arquivos JPG, PNG ou PDF são permitidos');
+                return;
+            }
+
+            // Validar tamanho (5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                alert('Arquivo muito grande. Máximo: 5MB');
+                return;
+            }
+
+            selectedFile = file;
+            simulateUpload(file);
+        }
+
+        function simulateUpload(file) {
+            // Esconder área de upload e mostrar progresso
+            uploadArea.style.display = 'none';
+            progressBar.classList.remove('hidden');
+
+            // Simular progresso
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.random() * 20;
+                if (progress > 100) progress = 100;
+                
+                progressFill.style.width = progress + '%';
+                
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        showUploadedFile(file);
+                    }, 500);
+                }
+            }, 200);
+        }
+
+        function showUploadedFile(file) {
+            progressBar.classList.add('hidden');
+            
+            fileName.textContent = file.name;
+            fileSize.textContent = formatFileSize(file.size);
+            uploadedFile.classList.remove('hidden');
+        }
+
+        function resetUpload() {
+            selectedFile = null;
+            fileInput.value = '';
+            uploadArea.style.display = 'block';
+            progressBar.classList.add('hidden');
+            uploadedFile.classList.add('hidden');
+            progressFill.style.width = '0%';
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Salvar entrada
+        saveBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            
+            const formData = {
+                tipo: document.getElementById('tipo').value,
+                valor: document.getElementById('valor').value,
+                data: document.getElementById('data').value,
+                formaRecebimento: document.querySelector('input[name="formaRecebimento"]:checked').value,
+                comprovante: selectedFile ? {
+                    nome: selectedFile.name,
+                    tipo: selectedFile.type,
+                    tamanho: selectedFile.size,
+                    url: 'https://firebase-storage-url/' + selectedFile.name // Simulado
+                } : null
+            };
+
+            console.log('📊 Dados da entrada:', formData);
+            
+            alert('✅ Entrada salva com sucesso!\n\n' + 
+                  `Tipo: ${formData.tipo}\n` +
+                  `Valor: R$ ${formData.valor}\n` +
+                  `Forma: ${formData.formaRecebimento}\n` +
+                  `Comprovante: ${formData.comprovante ? formData.comprovante.nome : 'Nenhum'}`);
+        });
+    </script>
+</body>
+</html>

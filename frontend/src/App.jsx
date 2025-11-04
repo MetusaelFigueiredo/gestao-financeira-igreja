@@ -6,7 +6,8 @@ import { logout, observarAutenticacao } from './services/auth';
 import Dashboard from './pages/Dashboard';
 import Despesas from './pages/Despesas';
 import Relatorios from './pages/Relatorios';
-import Backup from './pages/Backup'; // ✨ ADICIONAR AQUI
+import Backup from './pages/Backup';
+// import Reconciliacao from './pages/Reconciliacao'; // 🔄 SERÁ CRIADA EM BREVE
 import DiagnosticoFirebase from './components/DiagnosticoFirebase'; // 🔍 Diagnóstico
 import './styles/responsive.css'; // 📱 CSS Responsivo
 
@@ -30,13 +31,14 @@ function App() {
   };
 
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-    { id: 'membros', label: 'Membros', icon: '👥' },
-    { id: 'entradas', label: 'Entradas', icon: '💰' },
-    { id: 'despesas', label: 'Despesas', icon: '💳' },
-    { id: 'relatorios', label: 'Relatórios', icon: '📊' },
+    { id: 'entradas', label: 'Entradas', icon: '�' },
+    { id: 'despesas', label: 'Despesas', icon: '�' },
+    { id: 'dashboard', label: 'Dashboard', icon: '�' },
+    { id: 'membros', label: 'Membros', icon: '�' },
+    { id: 'reconciliacao', label: 'Reconciliação', icon: '⚖️' },
     { id: 'backup', label: 'Backup', icon: '🗓️' },
-    { id: 'diagnostico', label: 'Diagnóstico', icon: '🔍' }
+    { id: 'relatorios', label: 'Relatórios', icon: '📊' }
+    // { id: 'diagnostico', label: 'Diagnóstico', icon: '🔍' } // 🔍 Mantido no código mas oculto da UI
   ];
 
   const handleMenuClick = (pagina) => {
@@ -360,14 +362,28 @@ function App() {
       </div>
 
       <main>
-        {paginaAtual === 'dashboard' && <Dashboard />}
-        {paginaAtual === 'membros' && <Membros usuarioEmail={usuario.email} />}
         {paginaAtual === 'entradas' && <Entradas usuarioEmail={usuario.email} />}
         {paginaAtual === 'despesas' && <Despesas usuarioEmail={usuario.email} />}
-        {paginaAtual === 'relatorios' && <Relatorios />}
-        {/* ✨ NOVA PÁGINA BACKUP */}
+        {paginaAtual === 'dashboard' && <Dashboard />}
+        {paginaAtual === 'membros' && <Membros usuarioEmail={usuario.email} />}
+        {paginaAtual === 'reconciliacao' && (
+          <div style={{ padding: '40px', textAlign: 'center', backgroundColor: '#f8f9fa', margin: '20px', borderRadius: '8px' }}>
+            <h2>⚖️ Página de Reconciliação</h2>
+            <p style={{ color: '#666', marginBottom: '20px' }}>Esta página será implementada na Fase 3 com:</p>
+            <ul style={{ textAlign: 'left', maxWidth: '400px', margin: '0 auto', color: '#555' }}>
+              <li>📅 Filtros avançados por período</li>
+              <li>📊 Histórico completo de reconciliações</li>
+              <li>💾 Funcionalidade de salvar reconciliações</li>
+              <li>📄 Exportação para PDF</li>
+              <li>📈 Gráficos de evolução</li>
+            </ul>
+            <p style={{ marginTop: '30px', fontSize: '0.9rem', color: '#888' }}>
+              Por enquanto, use o widget de reconciliação no Dashboard.
+            </p>
+          </div>
+        )}
         {paginaAtual === 'backup' && <Backup />}
-        {/* 🔍 PÁGINA DIAGNÓSTICO */}
+        {paginaAtual === 'relatorios' && <Relatorios />}
         {paginaAtual === 'diagnostico' && <DiagnosticoFirebase />}
       </main>
     </div>

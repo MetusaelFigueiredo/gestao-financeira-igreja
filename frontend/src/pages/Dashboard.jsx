@@ -79,14 +79,92 @@ function Dashboard() {
         // 📻 Calcular 1% da Igreja Local para Rádio Nazareno
         resumoCalculado.radioNazareno = Math.round((resumoCalculado.local || 0) * 0.01 * 100) / 100;
         
+        // �💵 Calcular totais GERAIS por forma de pagamento (TODAS as entradas)
+        let totalGeralPix = 0;
+        let totalGeralDinheiro = 0;
+        let centralPix = 0;
+        let centralDinheiro = 0;
+        let localPix = 0;
+        let localDinheiro = 0;
+        
+        entradasFiltradas.forEach(entrada => {
+          const valor = parseFloat(entrada.valor) || 0;
+          const rateio = entrada.rateio || {};
+          
+          if (entrada.formaRecebimento === 'pix') {
+            totalGeralPix += valor;
+            centralPix += (rateio.central || 0);
+            localPix += (rateio.local || 0);
+          } else if (entrada.formaRecebimento === 'dinheiro') {
+            totalGeralDinheiro += valor;
+            centralDinheiro += (rateio.central || 0);
+            localDinheiro += (rateio.local || 0);
+          }
+        });
+        
+        // Adicionar totais por forma de pagamento ao resumo
+        resumoCalculado.formasPagamento = {
+          totalPix: Math.round(totalGeralPix * 100) / 100,
+          totalDinheiro: Math.round(totalGeralDinheiro * 100) / 100,
+          central: {
+            pix: Math.round(centralPix * 100) / 100,
+            dinheiro: Math.round(centralDinheiro * 100) / 100
+          },
+          local: {
+            pix: Math.round(localPix * 100) / 100,
+            dinheiro: Math.round(localDinheiro * 100) / 100
+          }
+        };
+        
+        // �💰 Calcular Reconciliação Física vs Contábil
+        // ⚠️ APENAS para categorias que seguem rateio 60/40: Dízimo e Oferta
+        // ❌ Excluir: Missão, Cantina, Outros (não têm reconciliação)
+        let totalPix = 0;
+        let totalDinheiro = 0;
+        
+        entradasFiltradas.forEach(entrada => {
+          const valor = parseFloat(entrada.valor) || 0;
+          const tipo = entrada.tipo?.toLowerCase() || '';
+          
+          // ✅ Incluir apenas Dízimo e Oferta no cálculo de reconciliação
+          if (tipo === 'dizimo' || tipo === 'oferta') {
+            if (entrada.formaRecebimento === 'pix') {
+              totalPix += valor;
+            } else if (entrada.formaRecebimento === 'dinheiro') {
+              totalDinheiro += valor;
+            }
+          }
+        });
+        
+        const centralDeveDevolver = Math.round(totalPix * 0.40 * 100) / 100;  // 40% dos PIX
+        const localDeveRepassar = Math.round(totalDinheiro * 0.60 * 100) / 100; // 60% do dinheiro
+        const saldoFinal = Math.round((centralDeveDevolver - localDeveRepassar) * 100) / 100;
+        
+        resumoCalculado.reconciliacao = {
+          totalPix,
+          totalDinheiro,
+          centralDeveDevolver,
+          localDeveRepassar,
+          saldoFinal: Math.abs(saldoFinal),
+          favorecido: saldoFinal >= 0 ? 'local' : 'central',
+          descricao: saldoFinal >= 0 
+            ? `Local tem a receber R$ ${Math.abs(saldoFinal).toFixed(2)}`
+            : `Local tem a devolver R$ ${Math.abs(saldoFinal).toFixed(2)}`
+        };
+        
         console.log('💸 Despesas pagas:', resumoCalculado.despesasPagas);
         console.log('📻 Rádio Nazareno (1% local):', resumoCalculado.radioNazareno);
+        console.log('💰 Reconciliação calculada:', resumoCalculado.reconciliacao);
         
         setResumo(resumoCalculado);
         console.log('✅ Resumo calculado:', resumoCalculado);
       } else {
         console.error('❌ Erro ao carregar entradas:', resultadoEntradas.error);
-        setResumo({ total: 0, central: 0, local: 0, missoes: 0, radioNazareno: 0 });
+        setResumo({ 
+          total: 0, central: 0, local: 0, missoes: 0, radioNazareno: 0,
+          formasPagamento: { totalPix: 0, totalDinheiro: 0, central: { pix: 0, dinheiro: 0 }, local: { pix: 0, dinheiro: 0 } },
+          reconciliacao: { totalPix: 0, totalDinheiro: 0, centralDeveDevolver: 0, localDeveRepassar: 0, saldoFinal: 0, favorecido: 'local', descricao: 'Sem dados' }
+        });
       }
       
       if (resultadoDespesas.success) {
@@ -109,7 +187,11 @@ function Dashboard() {
     } catch (error) {
       console.error('❌ Erro geral ao carregar dados:', error);
       // Definir valores padrão em caso de erro
-      setResumo({ total: 0, central: 0, local: 0, missoes: 0, radioNazareno: 0 });
+      setResumo({ 
+        total: 0, central: 0, local: 0, missoes: 0, radioNazareno: 0,
+        formasPagamento: { totalPix: 0, totalDinheiro: 0, central: { pix: 0, dinheiro: 0 }, local: { pix: 0, dinheiro: 0 } },
+        reconciliacao: { totalPix: 0, totalDinheiro: 0, centralDeveDevolver: 0, localDeveRepassar: 0, saldoFinal: 0, favorecido: 'local', descricao: 'Sem dados' }
+      });
       setDespesas({ vencidas: [], proximos7Dias: [], de8a15Dias: [], totais: { geral: 0 } });
       setMissoes({ arrecadado: 0, meta: 0, falta: 0, progresso: 0 });
     }
@@ -380,10 +462,19 @@ function Dashboard() {
             {formatarMoeda(resumo?.total || 0)}
           </div>
           <div style={{
-            fontSize: '0.875rem',
-            color: '#5f6368'
+            fontSize: '0.75rem',
+            color: '#5f6368',
+            lineHeight: '1.4',
+            marginBottom: '4px'
           }}>
-            {resumo?.quantidadeEntradas || 0} entrada{(resumo?.quantidadeEntradas || 0) !== 1 ? 's' : ''} registrada{(resumo?.quantidadeEntradas || 0) !== 1 ? 's' : ''}
+            💳 PIX: {formatarMoeda(resumo?.formasPagamento?.totalPix || 0)}
+          </div>
+          <div style={{
+            fontSize: '0.75rem',
+            color: '#5f6368',
+            lineHeight: '1.4'
+          }}>
+            💵 Dinheiro: {formatarMoeda(resumo?.formasPagamento?.totalDinheiro || 0)}
           </div>
         </div>
 
@@ -413,8 +504,25 @@ function Dashboard() {
             {formatarMoeda(resumo?.central || 0)}
           </div>
           <div style={{
-            fontSize: '0.875rem',
-            color: '#5f6368'
+            fontSize: '0.75rem',
+            color: '#5f6368',
+            lineHeight: '1.4',
+            marginBottom: '4px'
+          }}>
+            💳 PIX: {formatarMoeda(resumo?.formasPagamento?.central?.pix || 0)}
+          </div>
+          <div style={{
+            fontSize: '0.75rem',
+            color: '#5f6368',
+            lineHeight: '1.4',
+            marginBottom: '8px'
+          }}>
+            💵 Dinheiro: {formatarMoeda(resumo?.formasPagamento?.central?.dinheiro || 0)}
+          </div>
+          <div style={{
+            fontSize: '0.75rem',
+            color: '#5f6368',
+            fontStyle: 'italic'
           }}>
             60% dízimos/ofertas
           </div>
@@ -446,8 +554,25 @@ function Dashboard() {
             {formatarMoeda(resumo?.local || 0)}
           </div>
           <div style={{
-            fontSize: '0.875rem',
-            color: '#5f6368'
+            fontSize: '0.75rem',
+            color: '#5f6368',
+            lineHeight: '1.4',
+            marginBottom: '4px'
+          }}>
+            💳 PIX: {formatarMoeda(resumo?.formasPagamento?.local?.pix || 0)}
+          </div>
+          <div style={{
+            fontSize: '0.75rem',
+            color: '#5f6368',
+            lineHeight: '1.4',
+            marginBottom: '8px'
+          }}>
+            💵 Dinheiro: {formatarMoeda(resumo?.formasPagamento?.local?.dinheiro || 0)}
+          </div>
+          <div style={{
+            fontSize: '0.75rem',
+            color: '#5f6368',
+            fontStyle: 'italic'
           }}>
             40% dízimos/ofertas + outras entradas
           </div>
@@ -584,6 +709,174 @@ function Dashboard() {
             1% da Igreja Local
           </div>
         </div>
+      </div>
+
+      {/* SEÇÃO 1.5: Widget Reconciliação Física vs Contábil */}
+      <div style={{
+        backgroundColor: '#ffffff',
+        borderRadius: '16px',
+        padding: '32px',
+        marginBottom: '32px',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
+        border: '2px solid #ff6f00'
+      }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '24px'
+        }}>
+          <div>
+            <h2 style={{
+              fontSize: '1.5rem',
+              fontWeight: '700',
+              color: '#ff6f00',
+              margin: '0',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px'
+            }}>
+              💰 RECONCILIAÇÃO FÍSICA
+            </h2>
+            <p style={{
+              fontSize: '0.875rem',
+              color: '#666',
+              margin: '4px 0 0 0',
+              fontStyle: 'italic'
+            }}>
+              Apenas Dízimo e Oferta (rateio 60/40) • Exclui: Missão, Cantina, Outros
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              // TODO: Navegar para página de reconciliação completa
+              alert('🚧 Página de Reconciliação Completa - Em desenvolvimento!');
+            }}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: '#ff6f00',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '0.875rem',
+              fontWeight: '500',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseEnter={(e) => e.target.style.backgroundColor = '#e65100'}
+            onMouseLeave={(e) => e.target.style.backgroundColor = '#ff6f00'}
+          >
+            Ver Detalhes →
+          </button>
+        </div>
+
+        {resumo?.reconciliacao ? (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '16px',
+            marginBottom: '20px'
+          }}>
+            {/* PIX → Central */}
+            <div style={{
+              padding: '16px',
+              backgroundColor: '#e3f2fd',
+              borderRadius: '8px',
+              border: '1px solid #2196f3'
+            }}>
+              <div style={{ fontSize: '0.75rem', color: '#1565c0', fontWeight: '600', marginBottom: '4px' }}>
+                💳 PIX → CENTRAL
+              </div>
+              <div style={{ fontSize: '1.25rem', fontWeight: '600', color: '#1565c0' }}>
+                {formatarMoeda(resumo.reconciliacao.totalPix)}
+              </div>
+            </div>
+
+            {/* Central deve devolver */}
+            <div style={{
+              padding: '16px',
+              backgroundColor: '#fff3e0',
+              borderRadius: '8px',
+              border: '1px solid #ff9800'
+            }}>
+              <div style={{ fontSize: '0.75rem', color: '#e65100', fontWeight: '600', marginBottom: '4px' }}>
+                ↩️ CENTRAL DEVE DEVOLVER
+              </div>
+              <div style={{ fontSize: '1.25rem', fontWeight: '600', color: '#e65100' }}>
+                {formatarMoeda(resumo.reconciliacao.centralDeveDevolver)}
+              </div>
+              <div style={{ fontSize: '0.625rem', color: '#e65100' }}>40% dos PIX</div>
+            </div>
+
+            {/* Dinheiro → Local */}
+            <div style={{
+              padding: '16px',
+              backgroundColor: '#e8f5e8',
+              borderRadius: '8px',
+              border: '1px solid #4caf50'
+            }}>
+              <div style={{ fontSize: '0.75rem', color: '#2e7d32', fontWeight: '600', marginBottom: '4px' }}>
+                💵 DINHEIRO → LOCAL
+              </div>
+              <div style={{ fontSize: '1.25rem', fontWeight: '600', color: '#2e7d32' }}>
+                {formatarMoeda(resumo.reconciliacao.totalDinheiro)}
+              </div>
+            </div>
+
+            {/* Local deve repassar */}
+            <div style={{
+              padding: '16px',
+              backgroundColor: '#fce4ec',
+              borderRadius: '8px',
+              border: '1px solid #e91e63'
+            }}>
+              <div style={{ fontSize: '0.75rem', color: '#c2185b', fontWeight: '600', marginBottom: '4px' }}>
+                ↪️ LOCAL DEVE REPASSAR
+              </div>
+              <div style={{ fontSize: '1.25rem', fontWeight: '600', color: '#c2185b' }}>
+                {formatarMoeda(resumo.reconciliacao.localDeveRepassar)}
+              </div>
+              <div style={{ fontSize: '0.625rem', color: '#c2185b' }}>60% do dinheiro</div>
+            </div>
+          </div>
+        ) : null}
+
+        {/* Resultado Final */}
+        {resumo?.reconciliacao && (
+          <div style={{
+            padding: '20px',
+            backgroundColor: resumo.reconciliacao.favorecido === 'local' ? '#e8f5e8' : '#fff3e0',
+            borderRadius: '12px',
+            border: `2px solid ${resumo.reconciliacao.favorecido === 'local' ? '#4caf50' : '#ff9800'}`,
+            textAlign: 'center'
+          }}>
+            <div style={{
+              fontSize: '0.875rem',
+              color: resumo.reconciliacao.favorecido === 'local' ? '#2e7d32' : '#e65100',
+              fontWeight: '600',
+              marginBottom: '8px'
+            }}>
+              {resumo.reconciliacao.favorecido === 'local' ? '✅ RESULTADO FINAL' : '⚠️ RESULTADO FINAL'}
+            </div>
+            <div style={{
+              fontSize: '1.5rem',
+              fontWeight: '700',
+              color: resumo.reconciliacao.favorecido === 'local' ? '#2e7d32' : '#e65100',
+              marginBottom: '4px'
+            }}>
+              {resumo.reconciliacao.descricao}
+            </div>
+            <div style={{
+              fontSize: '0.75rem',
+              color: '#5f6368'
+            }}>
+              {resumo.reconciliacao.saldoFinal > 0 
+                ? `Diferença de ${formatarMoeda(resumo.reconciliacao.saldoFinal)}`
+                : 'Valores equilibrados'
+              }
+            </div>
+          </div>
+        )}
       </div>
 
       {/* SEÇÃO 2: Meta de Missões */}

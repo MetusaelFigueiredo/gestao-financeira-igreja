@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import FormMembro from '../components/FormMembro';
-import { buscarMembros } from '../services/membros';
+import { buscarMembros, excluirMembro } from '../services/membros';
 
 function Membros({ usuarioEmail }) {
   const [membros, setMembros] = useState([]);
   const [carregando, setCarregando] = useState(true);
+  const [membroEditando, setMembroEditando] = useState(null);
 
   useEffect(() => {
     carregarMembros();
@@ -19,6 +20,22 @@ function Membros({ usuarioEmail }) {
     }
     
     setCarregando(false);
+  };
+
+  const handleEditar = (membro) => {
+    setMembroEditando(membro);
+  };
+
+  const handleExcluir = async (membro) => {
+    if (window.confirm(`Tem certeza que deseja excluir o membro "${membro.nome}"?`)) {
+      const resultado = await excluirMembro(membro.id);
+      if (resultado.success) {
+        await carregarMembros();
+        alert('Membro excluído com sucesso!');
+      } else {
+        alert('Erro ao excluir membro: ' + resultado.error);
+      }
+    }
   };
 
   return (
@@ -46,9 +63,17 @@ function Membros({ usuarioEmail }) {
         </p>
       </div>
       
-      {/* Formulário de Cadastro */}
+      {/* Formulário de Cadastro/Edição */}
       <div style={{ marginBottom: '32px' }}>
-        <FormMembro onSucesso={carregarMembros} usuarioEmail={usuarioEmail} />
+        <FormMembro 
+          onSucesso={() => {
+            carregarMembros();
+            setMembroEditando(null);
+          }} 
+          usuarioEmail={usuarioEmail}
+          membroEditando={membroEditando}
+          onCancelarEdicao={() => setMembroEditando(null)}
+        />
       </div>
       
       {/* Lista de Membros */}
@@ -124,13 +149,67 @@ function Membros({ usuarioEmail }) {
                 e.currentTarget.style.boxShadow = 'none';
               }}>
                 <div style={{
-                  fontWeight: '500',
-                  marginBottom: '8px',
-                  color: '#202124',
-                  fontSize: '0.9375rem'
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  marginBottom: '8px'
                 }}>
-                  {membro.nome}
+                  <div style={{
+                    fontWeight: '500',
+                    color: '#202124',
+                    fontSize: '0.9375rem'
+                  }}>
+                    {membro.nome}
+                  </div>
+                  <div style={{ display: 'flex', gap: '4px' }}>
+                    <button
+                      onClick={() => handleEditar(membro)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: '4px',
+                        borderRadius: '4px',
+                        fontSize: '14px',
+                        color: '#1976d2'
+                      }}
+                      title="Editar membro"
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      onClick={() => handleExcluir(membro)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: '4px',
+                        borderRadius: '4px',
+                        fontSize: '14px',
+                        color: '#d32f2f'
+                      }}
+                      title="Excluir membro"
+                    >
+                      🗑️
+                    </button>
+                  </div>
                 </div>
+                
+                {membro.funcao && (
+                  <div style={{
+                    fontSize: '0.8125rem',
+                    color: '#1976d2',
+                    marginBottom: '6px',
+                    fontWeight: '500',
+                    backgroundColor: '#e3f2fd',
+                    padding: '2px 8px',
+                    borderRadius: '12px',
+                    display: 'inline-block'
+                  }}>
+                    👤 {membro.funcao}
+                  </div>
+                )}
+                
                 {membro.telefone && (
                   <div style={{
                     fontSize: '0.8125rem',

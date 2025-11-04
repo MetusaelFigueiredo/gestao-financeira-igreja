@@ -1,15 +1,31 @@
-import React, { useState } from 'react';
-import { adicionarMembro } from '../services/membros';
+import React, { useState, useEffect } from 'react';
+import { adicionarMembro, atualizarMembro } from '../services/membros';
 
-function FormMembro({ onSucesso, usuarioEmail }) {
+function FormMembro({ onSucesso, usuarioEmail, membroEditando, onCancelarEdicao }) {
   const [nome, setNome] = useState('');
   const [telefone, setTelefone] = useState('');
   const [email, setEmail] = useState('');
-  const [funcao, setFuncao] = useState('membro'); // 🆕 Campo função
+  const [funcao, setFuncao] = useState('Membro'); // 🆕 Campo função
   
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState('');
   const [sucesso, setSucesso] = useState('');
+
+  // Preencher o formulário quando estiver editando
+  useEffect(() => {
+    if (membroEditando) {
+      setNome(membroEditando.nome || '');
+      setTelefone(membroEditando.telefone || '');
+      setEmail(membroEditando.email || '');
+      setFuncao(membroEditando.funcao || 'Membro');
+    } else {
+      // Limpar formulário quando não estiver editando
+      setNome('');
+      setTelefone('');
+      setEmail('');
+      setFuncao('Membro');
+    }
+  }, [membroEditando]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -23,28 +39,42 @@ function FormMembro({ onSucesso, usuarioEmail }) {
     
     setCarregando(true);
     
-    const resultado = await adicionarMembro({
-      nome: nome.trim(),
-      telefone: telefone.trim(),
-      email: email.trim(),
-      funcao: funcao // 🆕 Incluir função
-    }, usuarioEmail);
+    let resultado;
+    if (membroEditando) {
+      // Modo edição
+      resultado = await atualizarMembro(membroEditando.id, {
+        nome: nome.trim(),
+        telefone: telefone.trim(),
+        email: email.trim(),
+        funcao: funcao
+      }, usuarioEmail);
+    } else {
+      // Modo criação
+      resultado = await adicionarMembro({
+        nome: nome.trim(),
+        telefone: telefone.trim(),
+        email: email.trim(),
+        funcao: funcao
+      }, usuarioEmail);
+    }
     
     setCarregando(false);
     
     if (resultado.success) {
-      setSucesso(`Membro ${nome} cadastrado com sucesso!`);
+      const acao = membroEditando ? 'atualizado' : 'cadastrado';
+      setSucesso(`Membro ${nome} ${acao} com sucesso!`);
       
       setNome('');
       setTelefone('');
       setEmail('');
-      setFuncao('membro'); // 🆕 Resetar função
+      setFuncao('Membro');
       
       if (onSucesso) onSucesso();
       
       setTimeout(() => setSucesso(''), 3000);
     } else {
-      setErro('Erro ao cadastrar: ' + resultado.error);
+      const acao = membroEditando ? 'atualizar' : 'cadastrar';
+      setErro(`Erro ao ${acao}: ` + resultado.error);
     }
   };
 
@@ -56,14 +86,38 @@ function FormMembro({ onSucesso, usuarioEmail }) {
       boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
       border: '1px solid #e8eaed'
     }}>
-      <h2 style={{
-        fontSize: '1.125rem',
-        fontWeight: '500',
-        color: '#202124',
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
         marginBottom: '20px'
       }}>
-        Cadastrar Novo Membro
-      </h2>
+        <h2 style={{
+          fontSize: '1.125rem',
+          fontWeight: '500',
+          color: '#202124',
+          margin: 0
+        }}>
+          {membroEditando ? `Editar Membro: ${membroEditando.nome}` : 'Cadastrar Novo Membro'}
+        </h2>
+        {membroEditando && (
+          <button
+            type="button"
+            onClick={onCancelarEdicao}
+            style={{
+              background: 'none',
+              border: '1px solid #dadce0',
+              borderRadius: '6px',
+              padding: '8px 12px',
+              fontSize: '0.875rem',
+              color: '#5f6368',
+              cursor: 'pointer'
+            }}
+          >
+            Cancelar
+          </button>
+        )}
+      </div>
       
       <form onSubmit={handleSubmit}>
         <div style={{ marginBottom: '20px' }}>
@@ -185,11 +239,11 @@ function FormMembro({ onSucesso, usuarioEmail }) {
             onFocus={(e) => e.target.style.borderColor = '#1a73e8'}
             onBlur={(e) => e.target.style.borderColor = '#dadce0'}
           >
-            <option value="membro">Membro</option>
-            <option value="cooperador">Cooperador</option>
-            <option value="diacono">Diácono</option>
-            <option value="presbitero">Presbítero</option>
-            <option value="pastor">Pastor</option>
+            <option value="Membro">Membro</option>
+            <option value="Cooperador">Cooperador</option>
+            <option value="Diácono">Diácono</option>
+            <option value="Presbítero">Presbítero</option>
+            <option value="Pastor">Pastor</option>
           </select>
         </div>
 
@@ -243,7 +297,10 @@ function FormMembro({ onSucesso, usuarioEmail }) {
             if (!carregando) e.currentTarget.style.backgroundColor = '#1a73e8';
           }}
         >
-          {carregando ? 'Cadastrando...' : 'Cadastrar Membro'}
+          {carregando 
+            ? (membroEditando ? 'Atualizando...' : 'Cadastrando...') 
+            : (membroEditando ? 'Atualizar Membro' : 'Cadastrar Membro')
+          }
         </button>
       </form>
     </div>

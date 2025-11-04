@@ -6,7 +6,8 @@ import {
   orderBy,
   Timestamp,
   doc,
-  updateDoc
+  updateDoc,
+  deleteDoc
 } from 'firebase/firestore';
 import { db } from './firebase';
 
@@ -21,6 +22,7 @@ export const adicionarMembro = async (dados, usuarioEmail) => {
       nome: dados.nome,
       telefone: dados.telefone || '',
       email: dados.email || '',
+      funcao: dados.funcao || 'Membro',
       ativo: true,
       criadoPor: usuarioEmail,
       criadoEm: Timestamp.now()
@@ -74,6 +76,7 @@ export const atualizarMembro = async (id, dados, usuarioEmail) => {
       nome: dados.nome,
       telefone: dados.telefone || '',
       email: dados.email || '',
+      funcao: dados.funcao || 'Membro',
       editadoPor: usuarioEmail,
       updatedAt: Timestamp.now()
     };
@@ -84,6 +87,22 @@ export const atualizarMembro = async (id, dados, usuarioEmail) => {
     return { success: true };
   } catch (error) {
     console.error('❌ Erro ao atualizar membro:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * Exclui um membro
+ */
+export const excluirMembro = async (id) => {
+  try {
+    const membroRef = doc(db, 'membros', id);
+    await deleteDoc(membroRef);
+    
+    console.log('✅ Membro excluído:', id);
+    return { success: true };
+  } catch (error) {
+    console.error('❌ Erro ao excluir membro:', error);
     return { success: false, error: error.message };
   }
 };

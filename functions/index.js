@@ -217,7 +217,7 @@ JSON APENAS:`;
         console.log('🔍 Divergências detectadas:', divergencias);
       }
       
-      // 🚨 CORREÇÃO: Só atualizar dados principais se NÃO houver divergências
+      // 🚨 CORREÇÃO v2: Só atualizar dados principais se NÃO houver divergências
       if (divergencias.length === 0 && dadosExtraidos.data) {
         const dataTimestamp = converterDataParaTimestamp(dadosExtraidos.data);
         if (dataTimestamp) {
@@ -225,7 +225,7 @@ JSON APENAS:`;
           console.log('📅 Atualizando data (sem divergências):', dadosExtraidos.data, '→', dataTimestamp.toDate());
         }
       } else if (divergencias.length > 0) {
-        console.log('⚠️ Dados principais preservados devido a divergências detectadas');
+        console.log('⚠️ Dados principais preservados devido a divergências detectadas - v2');
       }
 
       promises.push(doc.ref.update(updateData));

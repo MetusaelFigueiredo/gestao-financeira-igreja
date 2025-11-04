@@ -37,9 +37,9 @@ function Dashboard() {
       
       const [resultadoEntradas, resultadoDespesas, resultadoMissoes, resumoDespesas] = await Promise.all([
         buscarEntradas(),
-        buscarDespesasPendentes(),
+        buscarDespesasPendentes(anoSelecionado, mesSelecionado),
         buscarMetaMissoes(anoSelecionado, mesSelecionado),
-        import('../services/despesas').then(module => module.calcularResumoDespesas())
+        import('../services/despesas').then(module => module.calcularResumoDespesas(anoSelecionado, mesSelecionado))
       ]);
       
       console.log('📊 Resultado entradas:', resultadoEntradas);

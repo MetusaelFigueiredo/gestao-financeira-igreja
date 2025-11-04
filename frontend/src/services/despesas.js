@@ -154,6 +154,44 @@ export const buscarDespesas = async () => {
 };
 
 /**
+ * Busca despesas por período específico
+ */
+export const buscarDespesasPorPeriodo = async (ano, mes) => {
+  try {
+    const primeiroDiaMes = new Date(ano, mes, 1);
+    const ultimoDiaMes = new Date(ano, mes + 1, 0);
+    
+    const q = query(
+      collection(db, 'despesas'),
+      where('vencimento', '>=', Timestamp.fromDate(primeiroDiaMes)),
+      where('vencimento', '<=', Timestamp.fromDate(ultimoDiaMes)),
+      orderBy('vencimento', 'asc')
+    );
+    
+    const snapshot = await getDocs(q);
+    
+    const despesas = snapshot.docs.map(docSnap => {
+      const data = docSnap.data();
+      return {
+        id: docSnap.id,
+        ...data,
+        vencimento: data.vencimento?.toDate().toISOString().split('T')[0],
+        createdAt: data.createdAt?.toDate(),
+        updatedAt: data.updatedAt?.toDate(),
+        dataPagamento: data.dataPagamento?.toDate()
+      };
+    });
+    
+    console.log(`✅ Despesas de ${mes+1}/${ano} carregadas:`, despesas.length);
+    return despesas;
+    
+  } catch (error) {
+    console.error('❌ Erro ao buscar despesas do período:', error);
+    throw error;
+  }
+};
+
+/**
  * Busca despesas do mês atual
  */
 export const buscarDespesasMesAtual = async () => {
@@ -303,9 +341,11 @@ export const atualizarStatusVencidas = async () => {
 /**
  * Calcula resumo de despesas
  */
-export const calcularResumoDespesas = async () => {
+export const calcularResumoDespesas = async (ano = null, mes = null) => {
   try {
-    const despesas = await buscarDespesasMesAtual();
+    const despesas = ano !== null && mes !== null 
+      ? await buscarDespesasPorPeriodo(ano, mes)
+      : await buscarDespesasMesAtual();
     
     const resumo = {
       total: 0,

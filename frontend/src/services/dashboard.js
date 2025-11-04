@@ -1,5 +1,5 @@
 import { buscarEntradas, escutarEntradas } from './entradas';
-import { buscarDespesas } from './despesas';
+import { buscarDespesas, buscarDespesasPorPeriodo } from './despesas';
 import { db } from './firebase';
 import { doc, getDoc, setDoc, Timestamp, onSnapshot, collection, query, orderBy } from 'firebase/firestore';
 
@@ -367,9 +367,12 @@ export const buscarResumoFinanceiro = async (ano = null, mes = null) => {
  * Busca despesas pendentes dos próximos 15 dias agrupadas por urgência
  * Grupos: vencidas, próximos 7 dias, 8-15 dias
  */
-export const buscarDespesasPendentes = async () => {
+export const buscarDespesasPendentes = async (ano = null, mes = null) => {
   try {
-    const despesas = await buscarDespesas();
+    // Se ano e mês foram especificados, buscar apenas do período
+    const despesas = ano !== null && mes !== null 
+      ? await buscarDespesasPorPeriodo(ano, mes)
+      : await buscarDespesas();
     
     // 🕐 CORREÇÃO: Usar fuso horário de Cuiabá-MT (UTC-4)
     const agora = new Date();

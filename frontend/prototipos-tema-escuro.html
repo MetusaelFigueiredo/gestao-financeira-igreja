@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Novos Protótipos - Tema Escuro Elegante</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #2c3e50;
+            margin: 0;
+            padding: 20px;
+            color: #ecf0f1;
+        }
+        
+        .prototipo {
+            max-width: 1200px;
+            margin: 0 auto 60px auto;
+            background: #34495e;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+        }
+        
+        .titulo-prototipo {
+            text-align: center;
+            color: #ecf0f1;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            border-radius: 15px;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        
+        /* PROTÓTIPO A: Dashboard Elegante */
+        .dashboard-elegante {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .saldo-principal {
+            grid-column: 1 / -1;
+            background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .saldo-principal::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%);
+            border-radius: 50%;
+        }
+        
+        .saldo-valor {
+            font-size: 3.5rem;
+            font-weight: 900;
+            margin-bottom: 10px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .saldo-descricao {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .composicao-mini {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 20px;
+            font-size: 0.9rem;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .cards-secundarios {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        
+        /* PROTÓTIPO B: Minimalista Premium */
+        .minimalista-premium {
+            background: #2c3e50;
+            border: 2px solid #34495e;
+            border-radius: 25px;
+            padding: 40px;
+        }
+        
+        .header-minimal {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .data-minimal {
+            font-size: 0.9rem;
+            color: #95a5a6;
+            margin-bottom: 10px;
+        }
+        
+        .saldo-minimal {
+            font-size: 4rem;
+            font-weight: 300;
+            color: #2ecc71;
+            margin-bottom: 10px;
+        }
+        
+        .status-minimal {
+            display: inline-block;
+            background: rgba(46, 204, 113, 0.2);
+            color: #2ecc71;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 700;
+        }
+        
+        .grid-minimal {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+        }
+        
+        /* PROTÓTIPO C: Painel Executivo */
+        .painel-executivo {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            border-radius: 25px;
+            padding: 0;
+            overflow: hidden;
+        }
+        
+        .header-executivo {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            padding: 30px;
+            color: white;
+            text-align: center;
+        }
+        
+        .conteudo-executivo {
+            padding: 30px;
+        }
+        
+        .metricas-executivo {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .metrica-item {
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        /* Estilos dos Cards */
+        .card-dark {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 25px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+        
+        .card-dark:hover {
+            background: rgba(255,255,255,0.08);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .card-header-dark {
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            opacity: 0.8;
+        }
+        
+        .card-value-dark {
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        
+        .card-description-dark {
+            font-size: 0.85rem;
+            opacity: 0.7;
+            line-height: 1.4;
+        }
+        
+        /* Cores específicas */
+        .verde { color: #2ecc71; }
+        .azul { color: #3498db; }
+        .vermelho { color: #e74c3c; }
+        .laranja { color: #f39c12; }
+        .roxo { color: #9b59b6; }
+        
+        /* Responsivo */
+        @media (max-width: 768px) {
+            .dashboard-elegante {
+                grid-template-columns: 1fr;
+            }
+            
+            .saldo-valor {
+                font-size: 2.5rem;
+            }
+            
+            .saldo-minimal {
+                font-size: 3rem;
+            }
+            
+            .composicao-mini {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- PROTÓTIPO A: DASHBOARD ELEGANTE -->
+    <div class="prototipo">
+        <div class="titulo-prototipo">
+            💎 PROTÓTIPO A: Dashboard Elegante com Saldo Destacado
+        </div>
+        
+        <!-- Saldo Principal em Destaque -->
+        <div class="saldo-principal">
+            <div class="saldo-valor">R$ 2.350,00</div>
+            <div class="saldo-descricao">💰 Saldo Disponível da Igreja</div>
+            <div class="composicao-mini">
+                <span>💵 R$ 750,00</span>
+                <span>+</span>
+                <span>🔄 R$ 2.800,00</span>
+                <span>-</span>
+                <span>💸 R$ 1.200,00</span>
+            </div>
+        </div>
+        
+        <!-- Cards Secundários -->
+        <div class="cards-secundarios">
+            <div class="card-dark">
+                <div class="card-header-dark verde">💵 ENTRADAS LOCAIS</div>
+                <div class="card-value-dark verde">R$ 750,00</div>
+                <div class="card-description-dark">4 lançamentos este mês<br>📈 +15% vs anterior</div>
+            </div>
+            
+            <div class="card-dark">
+                <div class="card-header-dark azul">🏛️ REPASSE CENTRAL</div>
+                <div class="card-value-dark azul">R$ 750,00</div>
+                <div class="card-description-dark">Envio programado 30/11<br>✅ Pagamentos em dia</div>
+            </div>
+            
+            <div class="card-dark">
+                <div class="card-header-dark laranja">⛪ MISSÕES</div>
+                <div class="card-value-dark laranja">R$ 250,00</div>
+                <div class="card-description-dark">Meta: R$ 300,00<br>📊 83% alcançado</div>
+            </div>
+            
+            <div class="card-dark">
+                <div class="card-header-dark vermelho">💸 DESPESAS</div>
+                <div class="card-value-dark vermelho">R$ 1.200,00</div>
+                <div class="card-description-dark">✅ Pagas: R$ 1.200,00<br>⏳ Pendentes: R$ 250,00</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- PROTÓTIPO B: MINIMALISTA PREMIUM -->
+    <div class="prototipo">
+        <div class="titulo-prototipo">
+            ✨ PROTÓTIPO B: Minimalista Premium
+        </div>
+        
+        <div class="minimalista-premium">
+            <!-- Header Minimalista -->
+            <div class="header-minimal">
+                <div class="data-minimal">📅 Novembro 2025 • Igreja Local</div>
+                <div class="saldo-minimal">R$ 2.350,00</div>
+                <div class="status-minimal">💎 SITUAÇÃO EXCELENTE</div>
+            </div>
+            
+            <!-- Grid Minimalista -->
+            <div class="grid-minimal">
+                <div class="card-dark">
+                    <div class="card-header-dark verde">💵 ENTRADAS MENSAIS</div>
+                    <div class="card-value-dark verde">R$ 750,00</div>
+                    <div class="card-description-dark">
+                        Dízimos: R$ 500,00<br>
+                        Ofertas: R$ 250,00<br>
+                        <span style="color: #2ecc71;">📈 Crescimento de 15%</span>
+                    </div>
+                </div>
+                
+                <div class="card-dark">
+                    <div class="card-header-dark azul">🔄 SALDO ANTERIOR</div>
+                    <div class="card-value-dark azul">R$ 2.800,00</div>
+                    <div class="card-description-dark">
+                        Transferido de outubro<br>
+                        Reserva acumulada<br>
+                        <span style="color: #3498db;">💪 Base sólida</span>
+                    </div>
+                </div>
+                
+                <div class="card-dark">
+                    <div class="card-header-dark vermelho">💸 SAÍDAS MENSAIS</div>
+                    <div class="card-value-dark vermelho">R$ 1.200,00</div>
+                    <div class="card-description-dark">
+                        Despesas operacionais<br>
+                        Todas quitadas<br>
+                        <span style="color: #e74c3c;">✅ Em dia</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- PROTÓTIPO C: PAINEL EXECUTIVO -->
+    <div class="prototipo">
+        <div class="titulo-prototipo">
+            🏢 PROTÓTIPO C: Painel Executivo
+        </div>
+        
+        <div class="painel-executivo">
+            <!-- Header Executivo -->
+            <div class="header-executivo">
+                <h2 style="margin: 0; font-size: 1.8rem;">📊 Relatório Financeiro Executivo</h2>
+                <p style="margin: 10px 0 0 0; opacity: 0.9;">Novembro 2025 • Status: Excelente</p>
+            </div>
+            
+            <div class="conteudo-executivo">
+                <!-- Métricas Principais -->
+                <div class="metricas-executivo">
+                    <div class="metrica-item">
+                        <div style="font-size: 2.5rem; font-weight: 700; color: #2ecc71; margin-bottom: 5px;">R$ 2.350,00</div>
+                        <div style="opacity: 0.8;">💰 Saldo Total</div>
+                    </div>
+                    
+                    <div class="metrica-item">
+                        <div style="font-size: 1.8rem; font-weight: 700; color: #3498db; margin-bottom: 5px;">+168%</div>
+                        <div style="opacity: 0.8;">📈 vs Despesas</div>
+                    </div>
+                    
+                    <div class="metrica-item">
+                        <div style="font-size: 1.8rem; font-weight: 700; color: #f39c12; margin-bottom: 5px;">4 meses</div>
+                        <div style="opacity: 0.8;">⏱️ Reserva p/ gastos</div>
+                    </div>
+                    
+                    <div class="metrica-item">
+                        <div style="font-size: 1.8rem; font-weight: 700; color: #9b59b6; margin-bottom: 5px;">83%</div>
+                        <div style="opacity: 0.8;">🎯 Meta missões</div>
+                    </div>
+                </div>
+                
+                <!-- Cards Detalhados -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                    <div class="card-dark">
+                        <div class="card-header-dark verde">💵 RECEITAS</div>
+                        <div class="card-value-dark verde">R$ 750,00</div>
+                        <div class="card-description-dark">
+                            • Dízimos: R$ 500,00 (67%)<br>
+                            • Ofertas: R$ 250,00 (33%)<br>
+                            • Crescimento: +15% vs outubro
+                        </div>
+                    </div>
+                    
+                    <div class="card-dark">
+                        <div class="card-header-dark vermelho">💸 DESPESAS</div>
+                        <div class="card-value-dark vermelho">R$ 1.200,00</div>
+                        <div class="card-description-dark">
+                            • Operacionais: R$ 800,00<br>
+                            • Manutenção: R$ 400,00<br>
+                            • Status: Todas quitadas ✅
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Footer de Análise -->
+    <div style="max-width: 1200px; margin: 0 auto; background: #1a252f; color: #ecf0f1; padding: 30px; border-radius: 20px; text-align: center;">
+        <h2 style="margin-bottom: 20px;">🎨 Qual protótipo combina mais com você?</h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; text-align: left;">
+            <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 15px;">
+                <h3 style="color: #2ecc71;">💎 PROTÓTIPO A</h3>
+                <p>Saldo em máximo destaque + cards elegantes</p>
+            </div>
+            <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 15px;">
+                <h3 style="color: #3498db;">✨ PROTÓTIPO B</h3>
+                <p>Design minimalista premium com informações detalhadas</p>
+            </div>
+            <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 15px;">
+                <h3 style="color: #e74c3c;">🏢 PROTÓTIPO C</h3>
+                <p>Painel executivo com métricas e relatórios</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

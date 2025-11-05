@@ -31,139 +31,38 @@ function Dashboard({ onNavigate }) {
     setCarregando(true);
     
     try {
-      // Usar o mesmo método que a página Entradas
-      const { buscarEntradas } = await import('../services/entradas');
-      const { calcularResumoSemFiltro } = await import('../utils/entradasUtils');
-      
-      const [resultadoEntradas, resultadoDespesas, resultadoMissoes, resumoDespesas] = await Promise.all([
-        buscarEntradas(),
-        buscarDespesasPendentes(anoSelecionado, mesSelecionado),
-        buscarMetaMissoes(anoSelecionado, mesSelecionado),
-        import('../services/despesas').then(module => module.calcularResumoDespesas(anoSelecionado, mesSelecionado))
+      // 🎯 USAR FUNÇÃO CORRETA COM SALDO ROTATIVO
+      const [resultadoResumo, resultadoDespesas, resultadoMissoes] = await Promise.all([
+        buscarResumoFinanceiro(anoSelecionado, mesSelecionado),
+        buscarDespesasPendentes(), // 🎯 SEMPRE próximos 15 dias
+        buscarMetaMissoes(anoSelecionado, mesSelecionado)
       ]);
       
-      console.log('📊 Resultado entradas:', resultadoEntradas);
+      console.log('📊 Resultado resumo:', resultadoResumo);
       console.log('💸 Resultado despesas:', resultadoDespesas);
       console.log('🎯 Resultado missões:', resultadoMissoes);
       
-      if (resultadoEntradas.success) {
-        // Filtrar entradas do período selecionado
-        const entradasFiltradas = resultadoEntradas.entradas.filter(entrada => {
-          const dataEntrada = new Date(entrada.data);
-          return dataEntrada.getMonth() === mesSelecionado && 
-                 dataEntrada.getFullYear() === anoSelecionado;
-        });
-        
-        // Calcular resumo sem aplicar filtro novamente (entradas já filtradas)
-        const resumoCalculado = calcularResumoSemFiltro(entradasFiltradas);
-        
-        console.log('📊 Entradas filtradas para o período:', entradasFiltradas.length);
-        console.log('📊 Primeira entrada (exemplo):', entradasFiltradas[0]);
-        
-        // Debug detalhado das entradas
-        entradasFiltradas.forEach((entrada, index) => {
-          console.log(`📊 Entrada ${index + 1}:`, {
-            id: entrada.id,
-            descricao: entrada.descricao,
-            valor: entrada.valor,
-            data: entrada.data,
-            tipo: entrada.tipo,
-            rateio: entrada.rateio
-          });
-        });
-        
-        // Adicionar informações adicionais
-        resumoCalculado.quantidadeEntradas = resumoCalculado.totalCount || 0;
-        resumoCalculado.despesasPagas = resumoDespesas && resumoDespesas.pagas ? resumoDespesas.pagas : 0;
+      if (resultadoResumo.success) {
+        const resumoCompleto = resultadoResumo.resumo;
         
         // 📻 Calcular 1% da Igreja Local para Rádio Nazareno
-        resumoCalculado.radioNazareno = Math.round((resumoCalculado.local || 0) * 0.01 * 100) / 100;
+        resumoCompleto.radioNazareno = Math.round((resumoCompleto.totalLocal || 0) * 0.01 * 100) / 100;
         
-        // �💵 Calcular totais GERAIS por forma de pagamento (TODAS as entradas)
-        let totalGeralPix = 0;
-        let totalGeralDinheiro = 0;
-        let centralPix = 0;
-        let centralDinheiro = 0;
-        let localPix = 0;
-        let localDinheiro = 0;
+        // 🎯 SALDO ROTATIVO JÁ INCLUÍDO nos cálculos!
+        console.log('🔄 Saldo rotativo:', resumoCompleto.saldoRotativo);
+        console.log('💰 Saldo do mês COM rotativo:', resumoCompleto.saldoMes);
+        console.log('💵 Saldo do mês SEM rotativo:', resumoCompleto.saldoMesSemRotativo);
+        console.log('💸 Despesas pagas:', resumoCompleto.totalDespesasPagas);
+        console.log('📻 Rádio Nazareno (1% local):', resumoCompleto.radioNazareno);
         
-        entradasFiltradas.forEach(entrada => {
-          const valor = parseFloat(entrada.valor) || 0;
-          const rateio = entrada.rateio || {};
-          
-          if (entrada.formaRecebimento === 'pix') {
-            totalGeralPix += valor;
-            centralPix += (rateio.central || 0);
-            localPix += (rateio.local || 0);
-          } else if (entrada.formaRecebimento === 'dinheiro') {
-            totalGeralDinheiro += valor;
-            centralDinheiro += (rateio.central || 0);
-            localDinheiro += (rateio.local || 0);
-          }
-        });
-        
-        // Adicionar totais por forma de pagamento ao resumo
-        resumoCalculado.formasPagamento = {
-          totalPix: Math.round(totalGeralPix * 100) / 100,
-          totalDinheiro: Math.round(totalGeralDinheiro * 100) / 100,
-          central: {
-            pix: Math.round(centralPix * 100) / 100,
-            dinheiro: Math.round(centralDinheiro * 100) / 100
-          },
-          local: {
-            pix: Math.round(localPix * 100) / 100,
-            dinheiro: Math.round(localDinheiro * 100) / 100
-          }
-        };
-        
-        // �💰 Calcular Reconciliação Física vs Contábil
-        // ⚠️ APENAS para categorias que seguem rateio 60/40: Dízimo e Oferta
-        // ❌ Excluir: Missão, Cantina, Outros (não têm reconciliação)
-        let totalPix = 0;
-        let totalDinheiro = 0;
-        
-        entradasFiltradas.forEach(entrada => {
-          const valor = parseFloat(entrada.valor) || 0;
-          const tipo = entrada.tipo?.toLowerCase() || '';
-          
-          // ✅ Incluir apenas Dízimo e Oferta no cálculo de reconciliação
-          if (tipo === 'dizimo' || tipo === 'oferta') {
-            if (entrada.formaRecebimento === 'pix') {
-              totalPix += valor;
-            } else if (entrada.formaRecebimento === 'dinheiro') {
-              totalDinheiro += valor;
-            }
-          }
-        });
-        
-        const centralDeveDevolver = Math.round(totalPix * 0.40 * 100) / 100;  // 40% dos PIX
-        const localDeveRepassar = Math.round(totalDinheiro * 0.60 * 100) / 100; // 60% do dinheiro
-        const saldoFinal = Math.round((centralDeveDevolver - localDeveRepassar) * 100) / 100;
-        
-        resumoCalculado.reconciliacao = {
-          totalPix,
-          totalDinheiro,
-          centralDeveDevolver,
-          localDeveRepassar,
-          saldoFinal: Math.abs(saldoFinal),
-          favorecido: saldoFinal >= 0 ? 'local' : 'central',
-          descricao: saldoFinal >= 0 
-            ? `Local tem a receber R$ ${Math.abs(saldoFinal).toFixed(2)}`
-            : `Local tem a devolver R$ ${Math.abs(saldoFinal).toFixed(2)}`
-        };
-        
-        console.log('💸 Despesas pagas:', resumoCalculado.despesasPagas);
-        console.log('📻 Rádio Nazareno (1% local):', resumoCalculado.radioNazareno);
-        console.log('💰 Reconciliação calculada:', resumoCalculado.reconciliacao);
-        
-        setResumo(resumoCalculado);
-        console.log('✅ Resumo calculado:', resumoCalculado);
+        setResumo(resumoCompleto);
+        console.log('✅ Resumo carregado com saldo rotativo:', resumoCompleto);
       } else {
-        console.error('❌ Erro ao carregar entradas:', resultadoEntradas.error);
+        console.error('❌ Erro ao carregar resumo:', resultadoResumo.error);
         setResumo({ 
-          total: 0, central: 0, local: 0, missoes: 0, radioNazareno: 0,
-          formasPagamento: { totalPix: 0, totalDinheiro: 0, central: { pix: 0, dinheiro: 0 }, local: { pix: 0, dinheiro: 0 } },
-          reconciliacao: { totalPix: 0, totalDinheiro: 0, centralDeveDevolver: 0, localDeveRepassar: 0, saldoFinal: 0, favorecido: 'local', descricao: 'Sem dados' }
+          totalCentral: 0, totalLocal: 0, totalMissoes: 0,
+          saldoMes: 0, saldoRotativo: 0, saldoMesSemRotativo: 0,
+          totalDespesasPagas: 0, radioNazareno: 0
         });
       }
       
@@ -188,9 +87,9 @@ function Dashboard({ onNavigate }) {
       console.error('❌ Erro geral ao carregar dados:', error);
       // Definir valores padrão em caso de erro
       setResumo({ 
-        total: 0, central: 0, local: 0, missoes: 0, radioNazareno: 0,
-        formasPagamento: { totalPix: 0, totalDinheiro: 0, central: { pix: 0, dinheiro: 0 }, local: { pix: 0, dinheiro: 0 } },
-        reconciliacao: { totalPix: 0, totalDinheiro: 0, centralDeveDevolver: 0, localDeveRepassar: 0, saldoFinal: 0, favorecido: 'local', descricao: 'Sem dados' }
+        totalCentral: 0, totalLocal: 0, totalMissoes: 0,
+        saldoMes: 0, saldoRotativo: 0, saldoMesSemRotativo: 0,
+        totalDespesasPagas: 0, radioNazareno: 0
       });
       setDespesas({ vencidas: [], proximos7Dias: [], de8a15Dias: [], totais: { geral: 0 } });
       setMissoes({ arrecadado: 0, meta: 0, falta: 0, progresso: 0 });
@@ -298,310 +197,414 @@ function Dashboard({ onNavigate }) {
   }
 
   if (!resumo || !despesas || !missoes) {
-    return null;
-  }
-
-  // Gerar nome do período baseado nos filtros
-  const dataFiltro = new Date(anoSelecionado, mesSelecionado, 1);
-  const mesNome = dataFiltro.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-  
-  // Arrays para os seletores
-  const meses = [
-    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-  ];
-  
-  const anosDisponiveis = [];
-  for (let ano = 2020; ano <= new Date().getFullYear() + 1; ano++) {
-    anosDisponiveis.push(ano);
+    return (
+      <div style={{
+        maxWidth: '1400px',
+        margin: '0 auto',
+        padding: '40px 24px',
+        backgroundColor: '#fafafa',
+        textAlign: 'center'
+      }}>
+        <div style={{
+          backgroundColor: '#ffffff',
+          borderRadius: '16px',
+          padding: '60px 40px',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.12)'
+        }}>
+          <h2 style={{ color: '#ea4335', marginBottom: '16px' }}>
+            ⚠️ Erro ao Carregar Dados
+          </h2>
+          <p style={{ color: '#5f6368', marginBottom: '24px' }}>
+            Não foi possível carregar os dados do dashboard.
+          </p>
+          <button
+            onClick={carregarDados}
+            style={{
+              backgroundColor: '#1a73e8',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '12px 24px',
+              fontSize: '1rem',
+              cursor: 'pointer',
+              fontWeight: '500'
+            }}
+          >
+            🔄 Tentar Novamente
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div style={{
       maxWidth: '1400px',
       margin: '0 auto',
-      padding: '40px 24px',
+      padding: '20px 16px',
       backgroundColor: '#fafafa'
     }}>
-      {/* Cabeçalho */}
+      {/* Header com Filtros */}
       <div style={{
         backgroundColor: '#ffffff',
-        borderRadius: '16px',
-        padding: '32px',
-        marginBottom: '32px',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
-        border: '2px solid #e8eaed'
+        borderRadius: '12px',
+        padding: '20px 24px',
+        marginBottom: '24px',
+        boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '16px'
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
+        <h1 style={{
+          fontSize: '1.5rem',
+          fontWeight: '700',
+          color: '#202124',
+          margin: '0',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}>
+          📊 Dashboard Financeiro
+        </h1>
+        
+        {/* Filtros de Data */}
+        <div style={{
+          display: 'flex',
+          gap: '8px',
+          alignItems: 'end'
+        }}>
           <div>
-            <h1 style={{
-              fontSize: '2rem',
-              fontWeight: '700',
-              color: '#202124',
-              marginBottom: '8px',
-              letterSpacing: '-0.5px'
+            <label style={{
+              display: 'block',
+              fontSize: '0.75rem',
+              fontWeight: '500',
+              color: '#5f6368',
+              marginBottom: '2px'
             }}>
-              💰 FLUXO DE CAIXA COMPLETO
-            </h1>
-            <div style={{
-              height: '3px',
-              width: '120px',
-              background: 'linear-gradient(90deg, #1a73e8 0%, #34a853 100%)',
-              borderRadius: '2px'
-            }} />
-          </div>
-          
-          {/* Filtros de Data */}
-          <div className="filters-container" style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-            <label style={{ fontSize: '0.875rem', color: '#5f6368', fontWeight: '500' }}>
-              📅 Filtros:
+              Ano
             </label>
-            
-            <select
-              value={mesSelecionado}
-              onChange={(e) => setMesSelecionado(parseInt(e.target.value))}
-              style={{
-                padding: '8px 12px',
-                border: '1px solid #dadce0',
-                borderRadius: '6px',
-                fontSize: '0.875rem',
-                color: '#202124',
-                backgroundColor: '#ffffff',
-                cursor: 'pointer',
-                outline: 'none'
-              }}
-            >
-              {meses.map((mes, index) => (
-                <option key={index} value={index}>{mes}</option>
-              ))}
-            </select>
-            
             <select
               value={anoSelecionado}
               onChange={(e) => setAnoSelecionado(parseInt(e.target.value))}
               style={{
-                padding: '8px 12px',
+                padding: '6px 8px',
                 border: '1px solid #dadce0',
                 borderRadius: '6px',
                 fontSize: '0.875rem',
-                color: '#202124',
                 backgroundColor: '#ffffff',
                 cursor: 'pointer',
-                outline: 'none'
+                minWidth: '70px'
               }}
             >
-              {anosDisponiveis.map((ano) => (
+              {[2023, 2024, 2025, 2026].map(ano => (
                 <option key={ano} value={ano}>{ano}</option>
               ))}
             </select>
-            
-            <button
-              onClick={() => {
-                const hoje = new Date();
-                setAnoSelecionado(hoje.getFullYear());
-                setMesSelecionado(hoje.getMonth());
-              }}
+          </div>
+          
+          <div>
+            <label style={{
+              display: 'block',
+              fontSize: '0.75rem',
+              fontWeight: '500',
+              color: '#5f6368',
+              marginBottom: '2px'
+            }}>
+              Mês
+            </label>
+            <select
+              value={mesSelecionado}
+              onChange={(e) => setMesSelecionado(parseInt(e.target.value))}
               style={{
-                padding: '8px 12px',
-                backgroundColor: '#1a73e8',
-                color: '#ffffff',
-                border: 'none',
+                padding: '6px 8px',
+                border: '1px solid #dadce0',
                 borderRadius: '6px',
                 fontSize: '0.875rem',
+                backgroundColor: '#ffffff',
                 cursor: 'pointer',
-                fontWeight: '500'
+                minWidth: '100px'
               }}
             >
-              📅 Hoje
-            </button>
+              {[
+                'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+              ].map((mes, index) => (
+                <option key={index} value={index}>{mes}</option>
+              ))}
+            </select>
+          </div>
+          
+          <button
+            onClick={carregarDados}
+            style={{
+              backgroundColor: '#34a853',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '6px',
+              padding: '7px 12px',
+              fontSize: '0.75rem',
+              cursor: 'pointer',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}
+          >
+            🔄 Atualizar
+          </button>
+        </div>
+      </div>
+
+      {/* Card SALDO DO MÊS em Destaque */}
+      <div style={{
+        backgroundColor: 'linear-gradient(135deg, #34a853 0%, #4caf50 100%)',
+        background: `linear-gradient(135deg, ${(resumo?.saldoMes || 0) >= 0 ? 'rgba(52, 168, 83, 0.95)' : 'rgba(234, 67, 53, 0.95)'} 0%, ${(resumo?.saldoMes || 0) >= 0 ? 'rgba(76, 175, 80, 0.95)' : 'rgba(244, 81, 67, 0.95)'} 100%)`,
+        borderRadius: '16px',
+        padding: '20px',
+        marginBottom: '24px',
+        boxShadow: `0 6px 24px ${(resumo?.saldoMes || 0) >= 0 ? 'rgba(52, 168, 83, 0.25)' : 'rgba(234, 67, 53, 0.25)'}`,
+        border: `2px solid ${(resumo?.saldoMes || 0) >= 0 ? '#34a853' : '#ea4335'}`,
+        position: 'relative',
+        overflow: 'hidden'
+      }}>
+        {/* Background Pattern */}
+        <div style={{
+          position: 'absolute',
+          top: '-50px',
+          right: '-50px',
+          width: '200px',
+          height: '200px',
+          background: 'rgba(255, 255, 255, 0.1)',
+          borderRadius: '50%',
+          zIndex: 1
+        }}></div>
+        
+        <div style={{
+          position: 'relative',
+          zIndex: 2,
+          display: 'grid',
+          gridTemplateColumns: '1fr auto',
+          gap: '24px',
+          alignItems: 'center'
+        }}>
+          <div>
+            <div style={{
+              fontSize: '0.875rem',
+              color: '#ffffff',
+              fontWeight: '600',
+              marginBottom: '8px',
+              letterSpacing: '0.5px',
+              textTransform: 'uppercase',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              💰 SALDO DO MÊS {(resumo?.saldoMes || 0) >= 0 ? '✅' : '⚠️'}
+            </div>
+            
+            <div style={{
+              fontSize: '2rem',
+              fontWeight: '700',
+              color: '#ffffff',
+              marginBottom: '12px',
+              textShadow: '0 2px 4px rgba(0,0,0,0.2)'
+            }}>
+              {formatarMoeda(resumo?.saldoMes || 0)}
+            </div>
+            
+            <div style={{
+              fontSize: '0.875rem',
+              color: 'rgba(255, 255, 255, 0.9)',
+              marginBottom: '16px'
+            }}>
+              {(resumo?.saldoMes || 0) >= 0 ? 'Positivo' : 'Negativo'} - Saldo real após despesas
+            </div>
+          </div>
+          
+          {/* Composição Detalhada */}
+          <div style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.15)',
+            borderRadius: '16px',
+            padding: '20px',
+            backdropFilter: 'blur(10px)',
+            minWidth: '280px'
+          }}>
+            <div style={{
+              fontSize: '0.875rem',
+              color: '#ffffff',
+              fontWeight: '600',
+              marginBottom: '12px',
+              textAlign: 'center'
+            }}>
+              📊 COMPOSIÇÃO DO SALDO
+            </div>
+            
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px',
+              fontSize: '0.875rem',
+              color: '#ffffff'
+            }}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '8px 0',
+                borderBottom: '1px solid rgba(255, 255, 255, 0.2)'
+              }}>
+                <span>💵 Local atual:</span>
+                <span style={{ fontWeight: '700' }}>{formatarMoeda(resumo?.totalLocal || 0)}</span>
+              </div>
+              
+              {resumo?.saldoRotativo > 0 && (
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '8px 0',
+                  borderBottom: '1px solid rgba(255, 255, 255, 0.2)'
+                }}>
+                  <span>🔄 Saldo anterior:</span>
+                  <span style={{ fontWeight: '700' }}>{formatarMoeda(resumo?.saldoRotativo || 0)}</span>
+                </div>
+              )}
+              
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '8px 0',
+                borderBottom: '1px solid rgba(255, 255, 255, 0.2)'
+              }}>
+                <span>💸 Despesas pagas:</span>
+                <span style={{ fontWeight: '700' }}>-{formatarMoeda(resumo?.totalDespesasPagas || 0)}</span>
+              </div>
+              
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '12px 0 8px 0',
+                fontSize: '1rem',
+                fontWeight: '700',
+                borderTop: '2px solid rgba(255, 255, 255, 0.3)',
+                marginTop: '8px'
+              }}>
+                <span>💰 SALDO FINAL:</span>
+                <span>{formatarMoeda(resumo?.saldoMes || 0)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Cards de Resumo Financeiro */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+        gap: '16px',
+        marginBottom: '24px'
+      }}>
+        
+        {/* Entrada Total do Mês */}
+        <div style={{
+          backgroundColor: '#ffffff',
+          borderRadius: '10px',
+          padding: '16px',
+          boxShadow: '0 3px 12px rgba(0,0,0,0.08)',
+          border: '2px solid #4285f4'
+        }}>
+          <div style={{
+            fontSize: '0.75rem',
+            color: '#4285f4',
+            fontWeight: '600',
+            marginBottom: '6px',
+            letterSpacing: '0.3px'
+          }}>
+            💰 ENTRADA TOTAL DO MÊS
+          </div>
+          <div style={{
+            fontSize: '1.5rem',
+            fontWeight: '700',
+            color: '#4285f4',
+            marginBottom: '6px'
+          }}>
+            {formatarMoeda((resumo?.totalCentral || 0) + (resumo?.totalLocal || 0) + (resumo?.totalMissoes || 0))}
+          </div>
+          <div style={{
+            fontSize: '0.875rem',
+            color: '#5f6368',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '2px'
+          }}>
+            <div>💳 PIX: {formatarMoeda(resumo?.totalPix || 0)}</div>
+            <div>💵 Dinheiro: {formatarMoeda(resumo?.totalDinheiro || 0)}</div>
           </div>
         </div>
         
-        <p style={{
-          fontSize: '0.9375rem',
-          color: '#5f6368',
-          fontWeight: '500',
-          textTransform: 'capitalize',
-          marginTop: '12px'
-        }}>
-          Período: {mesNome}
-        </p>
-      </div>
-
-      {/* SEÇÃO 1: Resumo Financeiro (4 cards) */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-        gap: '20px',
-        marginBottom: '32px'
-      }}>
-        {/* Card Entrada Total do Mês */}
+        {/* Central */}
         <div style={{
           backgroundColor: '#ffffff',
-          borderRadius: '12px',
-          padding: '24px',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
-          border: '3px solid #1a73e8',
-          position: 'relative'
+          borderRadius: '10px',
+          padding: '16px',
+          boxShadow: '0 3px 12px rgba(0,0,0,0.08)',
+          border: '2px solid #1a73e8'
         }}>
           <div style={{
+            fontSize: '0.75rem',
+            color: '#1a73e8',
+            fontWeight: '600',
+            marginBottom: '6px',
+            letterSpacing: '0.3px'
+          }}>
+            🏛️ CENTRAL
+          </div>
+          <div style={{
+            fontSize: '1.5rem',
+            fontWeight: '700',
+            color: '#1a73e8',
+            marginBottom: '6px'
+          }}>
+            {formatarMoeda(resumo?.totalCentral || 0)}
+          </div>
+          <div style={{
             fontSize: '0.875rem',
-            color: '#1a73e8',
-            fontWeight: '700',
-            marginBottom: '8px',
-            letterSpacing: '0.5px'
+            color: '#5f6368'
           }}>
-            💎 ENTRADA TOTAL DO MÊS
-          </div>
-          <div style={{
-            fontSize: '2rem',
-            fontWeight: '700',
-            color: '#1a73e8',
-            marginBottom: '8px'
-          }}>
-            {formatarMoeda(resumo?.total || 0)}
-          </div>
-          <div style={{
-            fontSize: '0.75rem',
-            color: '#5f6368',
-            lineHeight: '1.4',
-            marginBottom: '4px'
-          }}>
-            💳 PIX: {formatarMoeda(resumo?.formasPagamento?.totalPix || 0)}
-          </div>
-          <div style={{
-            fontSize: '0.75rem',
-            color: '#5f6368',
-            lineHeight: '1.4'
-          }}>
-            💵 Dinheiro: {formatarMoeda(resumo?.formasPagamento?.totalDinheiro || 0)}
+            60% dízimo + 40% oferta
           </div>
         </div>
 
-        {/* Igreja Central */}
-        <div style={{
-          backgroundColor: '#ffffff',
-          borderRadius: '12px',
-          padding: '24px',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
-          border: '3px solid #1a73e8'
-        }}>
-          <div style={{
-            fontSize: '0.875rem',
-            color: '#1a73e8',
-            fontWeight: '700',
-            marginBottom: '8px',
-            letterSpacing: '0.5px'
-          }}>
-            🏛️ PARA CENTRAL
-          </div>
-          <div style={{
-            fontSize: '2rem',
-            fontWeight: '700',
-            color: '#1a73e8',
-            marginBottom: '8px'
-          }}>
-            {formatarMoeda(resumo?.central || 0)}
-          </div>
-          <div style={{
-            fontSize: '0.75rem',
-            color: '#5f6368',
-            lineHeight: '1.4',
-            marginBottom: '4px'
-          }}>
-            💳 PIX: {formatarMoeda(resumo?.formasPagamento?.central?.pix || 0)}
-          </div>
-          <div style={{
-            fontSize: '0.75rem',
-            color: '#5f6368',
-            lineHeight: '1.4',
-            marginBottom: '8px'
-          }}>
-            💵 Dinheiro: {formatarMoeda(resumo?.formasPagamento?.central?.dinheiro || 0)}
-          </div>
-          <div style={{
-            fontSize: '0.75rem',
-            color: '#5f6368',
-            fontStyle: 'italic'
-          }}>
-            60% dízimos/ofertas
-          </div>
-        </div>
 
-        {/* Entrada Local */}
-        <div style={{
-          backgroundColor: '#ffffff',
-          borderRadius: '12px',
-          padding: '24px',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
-          border: '3px solid #34a853'
-        }}>
-          <div style={{
-            fontSize: '0.875rem',
-            color: '#34a853',
-            fontWeight: '700',
-            marginBottom: '8px',
-            letterSpacing: '0.5px'
-          }}>
-            💵 ENTRADA LOCAL
-          </div>
-          <div style={{
-            fontSize: '2rem',
-            fontWeight: '700',
-            color: '#34a853',
-            marginBottom: '8px'
-          }}>
-            {formatarMoeda(resumo?.local || 0)}
-          </div>
-          <div style={{
-            fontSize: '0.75rem',
-            color: '#5f6368',
-            lineHeight: '1.4',
-            marginBottom: '4px'
-          }}>
-            💳 PIX: {formatarMoeda(resumo?.formasPagamento?.local?.pix || 0)}
-          </div>
-          <div style={{
-            fontSize: '0.75rem',
-            color: '#5f6368',
-            lineHeight: '1.4',
-            marginBottom: '8px'
-          }}>
-            💵 Dinheiro: {formatarMoeda(resumo?.formasPagamento?.local?.dinheiro || 0)}
-          </div>
-          <div style={{
-            fontSize: '0.75rem',
-            color: '#5f6368',
-            fontStyle: 'italic'
-          }}>
-            40% dízimos/ofertas + outras entradas
-          </div>
-        </div>
 
         {/* Despesas Pagas */}
         <div style={{
           backgroundColor: '#ffffff',
-          borderRadius: '12px',
-          padding: '24px',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
-          border: '3px solid #ea4335'
+          borderRadius: '10px',
+          padding: '16px',
+          boxShadow: '0 3px 12px rgba(0,0,0,0.08)',
+          border: '2px solid #ea4335'
         }}>
           <div style={{
-            fontSize: '0.875rem',
+            fontSize: '0.75rem',
             color: '#ea4335',
-            fontWeight: '700',
-            marginBottom: '8px',
-            letterSpacing: '0.5px'
+            fontWeight: '600',
+            marginBottom: '6px',
+            letterSpacing: '0.3px'
           }}>
             💸 DESPESAS PAGAS
           </div>
           <div style={{
-            fontSize: '2rem',
+            fontSize: '1.5rem',
             fontWeight: '700',
             color: '#ea4335',
-            marginBottom: '8px'
+            marginBottom: '6px'
           }}>
-            {formatarMoeda(resumo?.despesasPagas || 0)}
+            {formatarMoeda(resumo?.totalDespesasPagas || 0)}
           </div>
           <div style={{
             fontSize: '0.875rem',
@@ -611,63 +614,79 @@ function Dashboard({ onNavigate }) {
           </div>
         </div>
 
-        {/* Saldo do Mês */}
+        {/* Local */}
         <div style={{
           backgroundColor: '#ffffff',
-          borderRadius: '12px',
-          padding: '24px',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
-          border: `3px solid ${(resumo?.local || 0) - (resumo?.despesasPagas || 0) >= 0 ? '#34a853' : '#ea4335'}`
+          borderRadius: '10px',
+          padding: '16px',
+          boxShadow: '0 3px 12px rgba(0,0,0,0.08)',
+          border: '2px solid #34a853'
         }}>
           <div style={{
-            fontSize: '0.875rem',
-            color: (resumo?.local || 0) - (resumo?.despesasPagas || 0) >= 0 ? '#34a853' : '#ea4335',
-            fontWeight: '700',
-            marginBottom: '8px',
-            letterSpacing: '0.5px'
+            fontSize: '0.75rem',
+            color: '#34a853',
+            fontWeight: '600',
+            marginBottom: '6px',
+            letterSpacing: '0.3px'
           }}>
-            💰 SALDO DO MÊS {(resumo?.local || 0) - (resumo?.despesasPagas || 0) >= 0 ? '✅' : '⚠️'}
+            🏠 LOCAL
           </div>
           <div style={{
-            fontSize: '2rem',
+            fontSize: '1.5rem',
             fontWeight: '700',
-            color: (resumo?.local || 0) - (resumo?.despesasPagas || 0) >= 0 ? '#34a853' : '#ea4335',
+            color: '#34a853',
+            marginBottom: '6px'
+          }}>
+            {formatarMoeda(resumo?.totalLocal || 0)}
+          </div>
+          <div style={{
+            fontSize: '0.875rem',
+            color: '#5f6368',
             marginBottom: '8px'
           }}>
-            {formatarMoeda((resumo?.local || 0) - (resumo?.despesasPagas || 0))}
+            40% dízimo + 60% oferta + outros
           </div>
-          <div style={{
-            fontSize: '0.875rem',
-            color: '#5f6368'
-          }}>
-            {(resumo?.local || 0) - (resumo?.despesasPagas || 0) >= 0 ? 'Positivo' : 'Negativo'}
-          </div>
+          {/* 🔄 COMPOSIÇÃO COM SALDO ROTATIVO */}
+          {resumo?.saldoRotativo > 0 && (
+            <div style={{
+              fontSize: '0.75rem',
+              color: '#666',
+              backgroundColor: '#f8f9fa',
+              padding: '8px',
+              borderRadius: '6px',
+              marginTop: '8px'
+            }}>
+              <div>💵 Local atual: {formatarMoeda(resumo?.totalLocal || 0)}</div>
+              <div>🔄 Saldo anterior: {formatarMoeda(resumo?.saldoRotativo || 0)}</div>
+              <div>  Total disponível: {formatarMoeda((resumo?.totalLocal || 0) + (resumo?.saldoRotativo || 0))}</div>
+            </div>
+          )}
         </div>
 
         {/* Missões */}
         <div style={{
           backgroundColor: '#ffffff',
-          borderRadius: '12px',
-          padding: '24px',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
-          border: '3px solid #fbbc04'
+          borderRadius: '10px',
+          padding: '16px',
+          boxShadow: '0 3px 12px rgba(0,0,0,0.08)',
+          border: '2px solid #fbbc04'
         }}>
           <div style={{
-            fontSize: '0.875rem',
+            fontSize: '0.75rem',
             color: '#f9ab00',
-            fontWeight: '700',
-            marginBottom: '8px',
-            letterSpacing: '0.5px'
+            fontWeight: '600',
+            marginBottom: '6px',
+            letterSpacing: '0.3px'
           }}>
             ⛪ MISSÕES
           </div>
           <div style={{
-            fontSize: '2rem',
+            fontSize: '1.5rem',
             fontWeight: '700',
             color: '#f9ab00',
-            marginBottom: '8px'
+            marginBottom: '6px'
           }}>
-            {formatarMoeda(resumo?.missoes || 0)}
+            {formatarMoeda(resumo?.totalMissoes || 0)}
           </div>
           <div style={{
             fontSize: '0.875rem',
@@ -680,25 +699,25 @@ function Dashboard({ onNavigate }) {
         {/* Rádio Nazareno */}
         <div style={{
           backgroundColor: '#ffffff',
-          borderRadius: '12px',
-          padding: '24px',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
-          border: '3px solid #9c27b0'
+          borderRadius: '10px',
+          padding: '16px',
+          boxShadow: '0 3px 12px rgba(0,0,0,0.08)',
+          border: '2px solid #9c27b0'
         }}>
           <div style={{
-            fontSize: '0.875rem',
+            fontSize: '0.75rem',
             color: '#9c27b0',
-            fontWeight: '700',
-            marginBottom: '8px',
-            letterSpacing: '0.5px'
+            fontWeight: '600',
+            marginBottom: '6px',
+            letterSpacing: '0.3px'
           }}>
             📻 RÁDIO NAZARENO
           </div>
           <div style={{
-            fontSize: '2rem',
+            fontSize: '1.5rem',
             fontWeight: '700',
             color: '#9c27b0',
-            marginBottom: '8px'
+            marginBottom: '6px'
           }}>
             {formatarMoeda(resumo?.radioNazareno || 0)}
           </div>
@@ -706,415 +725,70 @@ function Dashboard({ onNavigate }) {
             fontSize: '0.875rem',
             color: '#5f6368'
           }}>
-            1% da Igreja Local
+            1% do valor local
           </div>
         </div>
       </div>
 
-      {/* SEÇÃO 1.5: Widget Reconciliação Física vs Contábil */}
+      {/* Seção de Despesas Pendentes */}
       <div style={{
         backgroundColor: '#ffffff',
         borderRadius: '16px',
         padding: '32px',
         marginBottom: '32px',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
-        border: '2px solid #ff6f00'
+        boxShadow: '0 4px 20px rgba(0,0,0,0.12)'
       }}>
-        <div style={{
+        <h2 style={{
+          fontSize: '1.5rem',
+          fontWeight: '700',
+          color: '#202124',
+          marginBottom: '24px',
           display: 'flex',
-          justifyContent: 'space-between',
           alignItems: 'center',
-          marginBottom: '24px'
+          gap: '12px'
         }}>
-          <div>
-            <h2 style={{
-              fontSize: '1.5rem',
-              fontWeight: '700',
-              color: '#ff6f00',
-              margin: '0',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px'
-            }}>
-              💰 RECONCILIAÇÃO FÍSICA
-            </h2>
-            <p style={{
-              fontSize: '0.875rem',
-              color: '#666',
-              margin: '4px 0 0 0',
-              fontStyle: 'italic'
-            }}>
-              Apenas Dízimo e Oferta (rateio 60/40) • Exclui: Missão, Cantina, Outros
-            </p>
-          </div>
-          <button
-            onClick={() => {
-              if (onNavigate) {
-                onNavigate('reconciliacao');
-              } else {
-                // Fallback caso não tenha a função de navegação
-                window.location.hash = 'reconciliacao';
-              }
-            }}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: '#ff6f00',
-              color: '#ffffff',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '0.875rem',
-              fontWeight: '500',
-              transition: 'all 0.2s ease'
-            }}
-            onMouseEnter={(e) => e.target.style.backgroundColor = '#e65100'}
-            onMouseLeave={(e) => e.target.style.backgroundColor = '#ff6f00'}
-          >
-            📊 Ver Reconciliação Completa
-          </button>
-        </div>
-
-        {resumo?.reconciliacao ? (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: '16px',
-            marginBottom: '20px'
-          }}>
-            {/* PIX → Central */}
-            <div style={{
-              padding: '16px',
-              backgroundColor: '#e3f2fd',
-              borderRadius: '8px',
-              border: '1px solid #2196f3'
-            }}>
-              <div style={{ fontSize: '0.75rem', color: '#1565c0', fontWeight: '600', marginBottom: '4px' }}>
-                💳 PIX → CENTRAL
-              </div>
-              <div style={{ fontSize: '1.25rem', fontWeight: '600', color: '#1565c0' }}>
-                {formatarMoeda(resumo.reconciliacao.totalPix)}
-              </div>
-            </div>
-
-            {/* Central deve devolver */}
-            <div style={{
-              padding: '16px',
-              backgroundColor: '#fff3e0',
-              borderRadius: '8px',
-              border: '1px solid #ff9800'
-            }}>
-              <div style={{ fontSize: '0.75rem', color: '#e65100', fontWeight: '600', marginBottom: '4px' }}>
-                ↩️ CENTRAL DEVE DEVOLVER
-              </div>
-              <div style={{ fontSize: '1.25rem', fontWeight: '600', color: '#e65100' }}>
-                {formatarMoeda(resumo.reconciliacao.centralDeveDevolver)}
-              </div>
-              <div style={{ fontSize: '0.625rem', color: '#e65100' }}>40% dos PIX</div>
-            </div>
-
-            {/* Dinheiro → Local */}
-            <div style={{
-              padding: '16px',
-              backgroundColor: '#e8f5e8',
-              borderRadius: '8px',
-              border: '1px solid #4caf50'
-            }}>
-              <div style={{ fontSize: '0.75rem', color: '#2e7d32', fontWeight: '600', marginBottom: '4px' }}>
-                💵 DINHEIRO → LOCAL
-              </div>
-              <div style={{ fontSize: '1.25rem', fontWeight: '600', color: '#2e7d32' }}>
-                {formatarMoeda(resumo.reconciliacao.totalDinheiro)}
-              </div>
-            </div>
-
-            {/* Local deve repassar */}
-            <div style={{
-              padding: '16px',
-              backgroundColor: '#fce4ec',
-              borderRadius: '8px',
-              border: '1px solid #e91e63'
-            }}>
-              <div style={{ fontSize: '0.75rem', color: '#c2185b', fontWeight: '600', marginBottom: '4px' }}>
-                ↪️ LOCAL DEVE REPASSAR
-              </div>
-              <div style={{ fontSize: '1.25rem', fontWeight: '600', color: '#c2185b' }}>
-                {formatarMoeda(resumo.reconciliacao.localDeveRepassar)}
-              </div>
-              <div style={{ fontSize: '0.625rem', color: '#c2185b' }}>60% do dinheiro</div>
-            </div>
-          </div>
-        ) : null}
-
-        {/* Resultado Final */}
-        {resumo?.reconciliacao && (
-          <div style={{
-            padding: '20px',
-            backgroundColor: resumo.reconciliacao.favorecido === 'local' ? '#e8f5e8' : '#fff3e0',
-            borderRadius: '12px',
-            border: `2px solid ${resumo.reconciliacao.favorecido === 'local' ? '#4caf50' : '#ff9800'}`,
-            textAlign: 'center'
-          }}>
-            <div style={{
-              fontSize: '0.875rem',
-              color: resumo.reconciliacao.favorecido === 'local' ? '#2e7d32' : '#e65100',
-              fontWeight: '600',
-              marginBottom: '8px'
-            }}>
-              {resumo.reconciliacao.favorecido === 'local' ? '✅ RESULTADO FINAL' : '⚠️ RESULTADO FINAL'}
-            </div>
-            <div style={{
-              fontSize: '1.5rem',
-              fontWeight: '700',
-              color: resumo.reconciliacao.favorecido === 'local' ? '#2e7d32' : '#e65100',
-              marginBottom: '4px'
-            }}>
-              {resumo.reconciliacao.descricao}
-            </div>
-            <div style={{
-              fontSize: '0.75rem',
-              color: '#5f6368'
-            }}>
-              {resumo.reconciliacao.saldoFinal > 0 
-                ? `Diferença de ${formatarMoeda(resumo.reconciliacao.saldoFinal)}`
-                : 'Valores equilibrados'
-              }
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* SEÇÃO 2: Meta de Missões */}
-      <div style={{
-        backgroundColor: '#ffffff',
-        borderRadius: '16px',
-        padding: '32px',
-        marginBottom: '32px',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
-        border: '2px solid #fbbc04'
-      }}>
-        <h2 style={{
-          fontSize: '1.5rem',
-          fontWeight: '700',
-          color: '#f9ab00',
-          marginBottom: '24px'
-        }}>
-          🎯 META DE MISSÕES - {mesNome.toUpperCase()}
-        </h2>
-        
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-          gap: '24px',
-          marginBottom: '24px'
-        }}>
-          <div>
-            <div style={{
-              fontSize: '0.875rem',
-              color: '#5f6368',
-              marginBottom: '4px'
-            }}>
-              Arrecadado
-            </div>
-            <div style={{
-              fontSize: '1.5rem',
-              fontWeight: '700',
-              color: '#34a853'
-            }}>
-              {formatarMoeda(missoes?.arrecadado || 0)}
-            </div>
-          </div>
-          <div>
-            <div style={{
-              fontSize: '0.875rem',
-              color: '#5f6368',
-              marginBottom: '4px'
-            }}>
-              Meta
-            </div>
-            <div style={{
-              fontSize: '1.5rem',
-              fontWeight: '700',
-              color: '#1a73e8'
-            }}>
-              {formatarMoeda(missoes?.meta || 0)}
-            </div>
-          </div>
-          <div>
-            <div style={{
-              fontSize: '0.875rem',
-              color: '#5f6368',
-              marginBottom: '4px'
-            }}>
-              Falta
-            </div>
-            <div style={{
-              fontSize: '1.5rem',
-              fontWeight: '700',
-              color: (missoes?.falta || 0) > 0 ? '#ea4335' : '#34a853'
-            }}>
-              {formatarMoeda(missoes?.falta || 0)}
-            </div>
-          </div>
-        </div>
-
-        {/* Barra de Progresso */}
-        <div style={{
-          backgroundColor: '#f1f3f4',
-          borderRadius: '12px',
-          height: '24px',
-          overflow: 'hidden',
-          position: 'relative',
-          border: '2px solid #e8eaed'
-        }}>
-          <div style={{
-            height: '100%',
-            width: `${missoes?.progresso || 0}%`,
-            backgroundColor: parseFloat(missoes?.progresso || 0) >= 100 ? '#34a853' : '#fbbc04',
-            transition: 'width 1s ease',
-            borderRadius: '10px'
-          }} />
-          <div style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            fontSize: '0.875rem',
-            fontWeight: '700',
-            color: '#202124'
-          }}>
-            {missoes?.progresso || 0}%
-          </div>
-        </div>
-
-        {/* Botão Editar Meta */}
-        <div style={{ marginTop: '20px', textAlign: 'center' }}>
-          {!modoEdicaoMeta ? (
-            <button
-              onClick={() => setModoEdicaoMeta(true)}
-              style={{
-                padding: '12px 24px',
-                backgroundColor: '#fbbc04',
-                color: '#000000',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '0.875rem',
-                fontWeight: '600',
-                cursor: 'pointer'
-              }}
-            >
-              ✏️ Editar Meta
-            </button>
-          ) : (
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', alignItems: 'center' }}>
-              <input
-                type="number"
-                placeholder="Nova meta"
-                value={novaMeta}
-                onChange={(e) => setNovaMeta(e.target.value)}
-                style={{
-                  padding: '12px',
-                  border: '1px solid #dadce0',
-                  borderRadius: '6px',
-                  fontSize: '0.875rem',
-                  width: '150px'
-                }}
-              />
-              <button
-                onClick={handleAtualizarMeta}
-                style={{
-                  padding: '12px 20px',
-                  backgroundColor: '#34a853',
-                  color: '#ffffff',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontSize: '0.875rem',
-                  cursor: 'pointer'
-                }}
-              >
-                ✅ Salvar
-              </button>
-              <button
-                onClick={() => setModoEdicaoMeta(false)}
-                style={{
-                  padding: '12px 20px',
-                  backgroundColor: '#ea4335',
-                  color: '#ffffff',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontSize: '0.875rem',
-                  cursor: 'pointer'
-                }}
-              >
-                ❌ Cancelar
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* SEÇÃO 3: Despesas Pendentes */}
-      <div style={{
-        backgroundColor: '#ffffff',
-        borderRadius: '16px',
-        padding: '32px',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
-        border: '2px solid #ea4335'
-      }}>
-        <h2 style={{
-          fontSize: '1.5rem',
-          fontWeight: '700',
-          color: '#ea4335',
-          marginBottom: '24px'
-        }}>
-          ⚠️ DESPESAS PENDENTES - PRÓXIMOS 15 DIAS
+          ⏰ Despesas Pendentes (Próximos 15 Dias)
         </h2>
 
-        {/* Resumo das Despesas */}
+        {/* Análise de Saldo vs Despesas */}
         <div style={{
-          backgroundColor: (resumo?.local || 0) >= (despesas?.totais?.geral || 0) ? '#e8f5e8' : '#fce8e6',
+          backgroundColor: (resumo?.saldoMes || 0) >= (despesas?.totais?.geral || 0) ? '#e8f5e8' : '#fce8e6',
           borderRadius: '12px',
           padding: '20px',
           marginBottom: '24px',
-          border: `2px solid ${(resumo?.local || 0) >= (despesas?.totais?.geral || 0) ? '#34a853' : '#ea4335'}`
+          border: `2px solid ${(resumo?.saldoMes || 0) >= (despesas?.totais?.geral || 0) ? '#34a853' : '#ea4335'}`
         }}>
           <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-            gap: '16px',
+            fontSize: '1.125rem',
+            fontWeight: '600',
+            color: '#202124',
+            marginBottom: '12px'
+          }}>
+            💰 SALDO DISPONÍVEL
+          </div>
+          <div style={{
+            fontSize: '1.5rem',
+            fontWeight: '700',
+            color: (resumo?.saldoMes || 0) >= (despesas?.totais?.geral || 0) ? '#34a853' : '#ea4335',
             marginBottom: '16px'
           }}>
-            <div>
-              <div style={{ fontSize: '0.875rem', color: '#5f6368', marginBottom: '4px' }}>
-                � SALDO DISPONÍVEL
-              </div>
-              <div style={{ fontSize: '1.25rem', fontWeight: '700', color: '#34a853' }}>
-                {formatarMoeda((resumo?.local || 0) - (resumo?.despesasPagas || 0))}
-              </div>
-            </div>
-            <div>
-              <div style={{ fontSize: '0.875rem', color: '#5f6368', marginBottom: '4px' }}>
-                💸 TOTAL A PAGAR
-              </div>
-              <div style={{ fontSize: '1.25rem', fontWeight: '700', color: '#ea4335' }}>
-                {formatarMoeda(despesas?.totais?.geral || 0)}
-              </div>
-            </div>
+            {formatarMoeda(resumo?.saldoMes || 0)}
           </div>
           
-          {((resumo?.local || 0) - (resumo?.despesasPagas || 0)) >= (despesas?.totais?.geral || 0) ? (
+          {(resumo?.saldoMes || 0) >= (despesas?.totais?.geral || 0) ? (
             <div style={{
-              backgroundColor: '#d1e7dd',
+              backgroundColor: '#ffffff',
               borderRadius: '8px',
               padding: '16px',
-              border: '2px solid #34a853'
+              borderLeft: '4px solid #34a853'
             }}>
               <div style={{
-                fontSize: '1.125rem',
-                fontWeight: '700',
-                color: '#0f5132',
-                marginBottom: '4px'
+                fontSize: '1rem',
+                fontWeight: '600',
+                color: '#34a853',
+                marginBottom: '8px'
               }}>
-                ✅ SALDO APÓS PAGAR: {formatarMoeda(((resumo?.local || 0) - (resumo?.despesasPagas || 0)) - (despesas?.totais?.geral || 0))}
+                ✅ SALDO APÓS PAGAR: {formatarMoeda((resumo?.saldoMes || 0) - (despesas?.totais?.geral || 0))}
               </div>
               <div style={{
                 fontSize: '0.875rem',
@@ -1125,18 +799,18 @@ function Dashboard({ onNavigate }) {
             </div>
           ) : (
             <div style={{
-              backgroundColor: '#fce8e6',
+              backgroundColor: '#ffffff',
               borderRadius: '8px',
               padding: '16px',
-              border: '2px solid #ea4335'
+              borderLeft: '4px solid #ea4335'
             }}>
               <div style={{
-                fontSize: '1.125rem',
-                fontWeight: '700',
-                color: '#c5221f',
-                marginBottom: '4px'
+                fontSize: '1rem',
+                fontWeight: '600',
+                color: '#ea4335',
+                marginBottom: '8px'
               }}>
-                ⚠️ FALTAM: {formatarMoeda((despesas?.totais?.geral || 0) - ((resumo?.local || 0) - (resumo?.despesasPagas || 0)))}
+                ⚠️ FALTAM: {formatarMoeda((despesas?.totais?.geral || 0) - (resumo?.saldoMes || 0))}
               </div>
               <div style={{
                 fontSize: '0.875rem',
@@ -1148,11 +822,15 @@ function Dashboard({ onNavigate }) {
           )}
         </div>
 
-        {/* Lista de Despesas por Categoria */}
-        {/* Grupo: Vencidas */}
-        {(despesas?.vencidas?.length || 0) > 0 && (
+        {/* Grid de Despesas por Período */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+          gap: '24px'
+        }}>
+          
+          {/* Vencidas */}
           <div style={{
-            marginBottom: '24px',
             backgroundColor: '#fce8e6',
             borderRadius: '12px',
             padding: '20px',
@@ -1161,71 +839,93 @@ function Dashboard({ onNavigate }) {
             <h3 style={{
               fontSize: '1.125rem',
               fontWeight: '700',
-              color: '#c5221f',
+              color: '#ea4335',
+              marginBottom: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              🚨 Vencidas ({despesas?.vencidas?.length || 0})
+            </h3>
+            <div style={{
+              fontSize: '1.25rem',
+              fontWeight: '700',
+              color: '#ea4335',
               marginBottom: '16px'
             }}>
-              🔴 VENCIDAS ({despesas?.vencidas?.length || 0})
-            </h3>
-            {(despesas?.vencidas || []).map(d => (
-              <div key={d.id} style={{
-                backgroundColor: '#ffffff',
-                borderRadius: '8px',
-                padding: '16px',
-                marginBottom: '12px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                gap: '12px',
-                border: '1px solid #ea4335'
-              }}>
-                <div style={{ flex: '1', minWidth: '200px' }}>
-                  <div style={{
-                    fontSize: '1rem',
-                    fontWeight: '600',
-                    color: '#202124',
-                    marginBottom: '4px'
-                  }}>
-                    {d.descricao}
-                  </div>
-                  <div style={{
-                    fontSize: '0.875rem',
-                    color: '#5f6368'
-                  }}>
-                    Vencimento: {new Date(d.vencimento).toLocaleDateString('pt-BR')}
-                  </div>
-                </div>
-                <div style={{
-                  fontSize: '1.25rem',
-                  fontWeight: '700',
-                  color: '#ea4335'
-                }}>
-                  {formatarMoeda(d.valor)}
-                </div>
-                <button
-                  onClick={() => handlePagarDespesa(d.id)}
-                  style={{
-                    padding: '10px 20px',
-                    backgroundColor: '#ea4335',
-                    color: '#ffffff',
-                    border: 'none',
+              {formatarMoeda(despesas?.totais?.vencidas || 0)}
+            </div>
+            
+            <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+              {despesas?.vencidas?.length > 0 ? (
+                despesas.vencidas.map(despesa => (
+                  <div key={despesa.id} style={{
+                    backgroundColor: '#ffffff',
                     borderRadius: '8px',
-                    fontSize: '0.875rem',
-                    fontWeight: '600',
-                    cursor: 'pointer'
-                  }}
-                >
-                  💸 Pagar
-                </button>
-              </div>
-            ))}
+                    padding: '12px',
+                    marginBottom: '8px',
+                    borderLeft: '4px solid #ea4335'
+                  }}>
+                    <div style={{
+                      fontSize: '0.875rem',
+                      fontWeight: '600',
+                      color: '#202124',
+                      marginBottom: '4px'
+                    }}>
+                      {despesa.descricao}
+                    </div>
+                    <div style={{
+                      fontSize: '0.75rem',
+                      color: '#5f6368',
+                      marginBottom: '8px'
+                    }}>
+                      Vencimento: {new Date(despesa.vencimento).toLocaleDateString('pt-BR')}
+                    </div>
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}>
+                      <span style={{
+                        fontSize: '0.875rem',
+                        fontWeight: '700',
+                        color: '#ea4335'
+                      }}>
+                        {formatarMoeda(despesa.valor)}
+                      </span>
+                      <button
+                        onClick={() => handlePagarDespesa(despesa.id)}
+                        style={{
+                          backgroundColor: '#34a853',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '4px',
+                          padding: '4px 8px',
+                          fontSize: '0.75rem',
+                          cursor: 'pointer',
+                          fontWeight: '600'
+                        }}
+                      >
+                        ✅ Pagar
+                      </button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div style={{
+                  color: '#5f6368',
+                  fontStyle: 'italic',
+                  textAlign: 'center',
+                  padding: '20px'
+                }}>
+                  Nenhuma despesa vencida
+                </div>
+              )}
+            </div>
           </div>
-        )}
 
-        {/* Grupo: Próximos 7 dias */}
-        {(despesas?.proximos7Dias?.length || 0) > 0 && (
+          {/* Próximos 7 Dias */}
           <div style={{
-            marginBottom: '24px',
             backgroundColor: '#fff3cd',
             borderRadius: '12px',
             padding: '20px',
@@ -1235,153 +935,488 @@ function Dashboard({ onNavigate }) {
               fontSize: '1.125rem',
               fontWeight: '700',
               color: '#f9ab00',
+              marginBottom: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              ⚠️ Próximos 7 Dias ({despesas?.proximos7Dias?.length || 0})
+            </h3>
+            <div style={{
+              fontSize: '1.25rem',
+              fontWeight: '700',
+              color: '#f9ab00',
               marginBottom: '16px'
             }}>
-              🟡 VENCE EM 7 DIAS ({despesas?.proximos7Dias?.length || 0})
-            </h3>
-            {(despesas?.proximos7Dias || []).map(d => (
-              <div key={d.id} style={{
-                backgroundColor: '#ffffff',
-                borderRadius: '8px',
-                padding: '16px',
-                marginBottom: '12px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                gap: '12px',
-                border: '1px solid #fbbc04'
-              }}>
-                <div style={{ flex: '1', minWidth: '200px' }}>
-                  <div style={{
-                    fontSize: '1rem',
-                    fontWeight: '600',
-                    color: '#202124',
-                    marginBottom: '4px'
-                  }}>
-                    {d.descricao}
-                  </div>
-                  <div style={{
-                    fontSize: '0.875rem',
-                    color: '#5f6368'
-                  }}>
-                    Vencimento: {new Date(d.vencimento).toLocaleDateString('pt-BR')}
-                  </div>
-                </div>
-                <div style={{
-                  fontSize: '1.25rem',
-                  fontWeight: '700',
-                  color: '#f9ab00'
-                }}>
-                  {formatarMoeda(d.valor)}
-                </div>
-                <button
-                  onClick={() => handlePagarDespesa(d.id)}
-                  style={{
-                    padding: '10px 20px',
-                    backgroundColor: '#34a853',
-                    color: '#ffffff',
-                    border: 'none',
+              {formatarMoeda(despesas?.totais?.proximos7 || 0)}
+            </div>
+            
+            <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+              {despesas?.proximos7Dias?.length > 0 ? (
+                despesas.proximos7Dias.map(despesa => (
+                  <div key={despesa.id} style={{
+                    backgroundColor: '#ffffff',
                     borderRadius: '8px',
-                    fontSize: '0.875rem',
-                    fontWeight: '600',
-                    cursor: 'pointer'
-                  }}
-                >
-                  💸 Pagar
-                </button>
-              </div>
-            ))}
+                    padding: '12px',
+                    marginBottom: '8px',
+                    borderLeft: '4px solid #fbbc04'
+                  }}>
+                    <div style={{
+                      fontSize: '0.875rem',
+                      fontWeight: '600',
+                      color: '#202124',
+                      marginBottom: '4px'
+                    }}>
+                      {despesa.descricao}
+                    </div>
+                    <div style={{
+                      fontSize: '0.75rem',
+                      color: '#5f6368',
+                      marginBottom: '8px'
+                    }}>
+                      Vencimento: {new Date(despesa.vencimento).toLocaleDateString('pt-BR')}
+                    </div>
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}>
+                      <span style={{
+                        fontSize: '0.875rem',
+                        fontWeight: '700',
+                        color: '#f9ab00'
+                      }}>
+                        {formatarMoeda(despesa.valor)}
+                      </span>
+                      <button
+                        onClick={() => handlePagarDespesa(despesa.id)}
+                        style={{
+                          backgroundColor: '#34a853',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '4px',
+                          padding: '4px 8px',
+                          fontSize: '0.75rem',
+                          cursor: 'pointer',
+                          fontWeight: '600'
+                        }}
+                      >
+                        ✅ Pagar
+                      </button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div style={{
+                  color: '#5f6368',
+                  fontStyle: 'italic',
+                  textAlign: 'center',
+                  padding: '20px'
+                }}>
+                  Nenhuma despesa nos próximos 7 dias
+                </div>
+              )}
+            </div>
           </div>
-        )}
 
-        {/* Grupo: 8-15 dias */}
-        {(despesas?.de8a15Dias?.length || 0) > 0 && (
+          {/* 8 a 15 Dias */}
           <div style={{
-            marginBottom: '24px',
-            backgroundColor: '#d1e7dd',
+            backgroundColor: '#e3f2fd',
+            borderRadius: '12px',
+            padding: '20px',
+            border: '2px solid #1a73e8'
+          }}>
+            <h3 style={{
+              fontSize: '1.125rem',
+              fontWeight: '700',
+              color: '#1a73e8',
+              marginBottom: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              📅 8 a 15 Dias ({despesas?.de8a15Dias?.length || 0})
+            </h3>
+            <div style={{
+              fontSize: '1.25rem',
+              fontWeight: '700',
+              color: '#1a73e8',
+              marginBottom: '16px'
+            }}>
+              {formatarMoeda(despesas?.totais?.de8a15 || 0)}
+            </div>
+            
+            <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+              {despesas?.de8a15Dias?.length > 0 ? (
+                despesas.de8a15Dias.map(despesa => (
+                  <div key={despesa.id} style={{
+                    backgroundColor: '#ffffff',
+                    borderRadius: '8px',
+                    padding: '12px',
+                    marginBottom: '8px',
+                    borderLeft: '4px solid #1a73e8'
+                  }}>
+                    <div style={{
+                      fontSize: '0.875rem',
+                      fontWeight: '600',
+                      color: '#202124',
+                      marginBottom: '4px'
+                    }}>
+                      {despesa.descricao}
+                    </div>
+                    <div style={{
+                      fontSize: '0.75rem',
+                      color: '#5f6368',
+                      marginBottom: '8px'
+                    }}>
+                      Vencimento: {new Date(despesa.vencimento).toLocaleDateString('pt-BR')}
+                    </div>
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}>
+                      <span style={{
+                        fontSize: '0.875rem',
+                        fontWeight: '700',
+                        color: '#1a73e8'
+                      }}>
+                        {formatarMoeda(despesa.valor)}
+                      </span>
+                      <button
+                        onClick={() => handlePagarDespesa(despesa.id)}
+                        style={{
+                          backgroundColor: '#34a853',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '4px',
+                          padding: '4px 8px',
+                          fontSize: '0.75rem',
+                          cursor: 'pointer',
+                          fontWeight: '600'
+                        }}
+                      >
+                        ✅ Pagar
+                      </button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div style={{
+                  color: '#5f6368',
+                  fontStyle: 'italic',
+                  textAlign: 'center',
+                  padding: '20px'
+                }}>
+                  Nenhuma despesa de 8 a 15 dias
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Resumo Total das Despesas */}
+        <div style={{
+          backgroundColor: '#f8f9fa',
+          borderRadius: '12px',
+          padding: '20px',
+          marginTop: '24px',
+          border: '2px solid #dadce0'
+        }}>
+          <h3 style={{
+            fontSize: '1.125rem',
+            fontWeight: '700',
+            color: '#202124',
+            marginBottom: '16px'
+          }}>
+            📊 Resumo Total
+          </h3>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '16px'
+          }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{
+                fontSize: '1.5rem',
+                fontWeight: '700',
+                color: '#ea4335',
+                marginBottom: '4px'
+              }}>
+                {formatarMoeda(despesas?.totais?.vencidas || 0)}
+              </div>
+              <div style={{ fontSize: '0.875rem', color: '#5f6368' }}>
+                Vencidas
+              </div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{
+                fontSize: '1.5rem',
+                fontWeight: '700',
+                color: '#f9ab00',
+                marginBottom: '4px'
+              }}>
+                {formatarMoeda(despesas?.totais?.proximos7 || 0)}
+              </div>
+              <div style={{ fontSize: '0.875rem', color: '#5f6368' }}>
+                Próximos 7 dias
+              </div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{
+                fontSize: '1.5rem',
+                fontWeight: '700',
+                color: '#1a73e8',
+                marginBottom: '4px'
+              }}>
+                {formatarMoeda(despesas?.totais?.de8a15 || 0)}
+              </div>
+              <div style={{ fontSize: '0.875rem', color: '#5f6368' }}>
+                8 a 15 dias
+              </div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{
+                fontSize: '1.5rem',
+                fontWeight: '700',
+                color: '#202124',
+                marginBottom: '4px'
+              }}>
+                {formatarMoeda(despesas?.totais?.geral || 0)}
+              </div>
+              <div style={{ fontSize: '0.875rem', color: '#5f6368' }}>
+                Total Geral
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Seção de Missões */}
+      <div style={{
+        backgroundColor: '#ffffff',
+        borderRadius: '16px',
+        padding: '32px',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.12)'
+      }}>
+        <h2 style={{
+          fontSize: '1.5rem',
+          fontWeight: '700',
+          color: '#202124',
+          marginBottom: '24px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px'
+        }}>
+          ⛪ Meta de Missões
+        </h2>
+
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+          gap: '24px',
+          marginBottom: '24px'
+        }}>
+          <div style={{
+            backgroundColor: '#e8f5e8',
             borderRadius: '12px',
             padding: '20px',
             border: '2px solid #34a853'
           }}>
             <h3 style={{
-              fontSize: '1.125rem',
+              fontSize: '1rem',
               fontWeight: '700',
-              color: '#137333',
-              marginBottom: '16px'
+              color: '#34a853',
+              marginBottom: '8px'
             }}>
-              🟢 VENCE EM 8-15 DIAS ({despesas?.de8a15Dias?.length || 0})
+              💰 Arrecadado
             </h3>
-            {(despesas?.de8a15Dias || []).map(d => (
-              <div key={d.id} style={{
-                backgroundColor: '#ffffff',
-                borderRadius: '8px',
-                padding: '16px',
-                marginBottom: '12px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                gap: '12px',
-                border: '1px solid #34a853'
-              }}>
-                <div style={{ flex: '1', minWidth: '200px' }}>
-                  <div style={{
-                    fontSize: '1rem',
-                    fontWeight: '600',
-                    color: '#202124',
-                    marginBottom: '4px'
-                  }}>
-                    {d.descricao}
-                  </div>
-                  <div style={{
-                    fontSize: '0.875rem',
-                    color: '#5f6368'
-                  }}>
-                    Vencimento: {new Date(d.vencimento).toLocaleDateString('pt-BR')}
-                  </div>
-                </div>
-                <div style={{
-                  fontSize: '1.25rem',
-                  fontWeight: '700',
-                  color: '#137333'
-                }}>
-                  {formatarMoeda(d.valor)}
-                </div>
+            <div style={{
+              fontSize: '1.5rem',
+              fontWeight: '700',
+              color: '#34a853'
+            }}>
+              {formatarMoeda(missoes?.arrecadado || 0)}
+            </div>
+          </div>
+
+          <div style={{
+            backgroundColor: '#e3f2fd',
+            borderRadius: '12px',
+            padding: '20px',
+            border: '2px solid #1a73e8'
+          }}>
+            <h3 style={{
+              fontSize: '1rem',
+              fontWeight: '700',
+              color: '#1a73e8',
+              marginBottom: '8px'
+            }}>
+              🎯 Meta
+            </h3>
+            <div style={{
+              fontSize: '1.5rem',
+              fontWeight: '700',
+              color: '#1a73e8',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px'
+            }}>
+              {formatarMoeda(missoes?.meta || 0)}
+              {!modoEdicaoMeta && (
                 <button
-                  onClick={() => handlePagarDespesa(d.id)}
+                  onClick={() => setModoEdicaoMeta(true)}
                   style={{
-                    padding: '10px 20px',
-                    backgroundColor: '#34a853',
+                    backgroundColor: '#1a73e8',
                     color: '#ffffff',
                     border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '0.875rem',
-                    fontWeight: '600',
-                    cursor: 'pointer'
+                    borderRadius: '4px',
+                    padding: '4px 8px',
+                    fontSize: '0.75rem',
+                    cursor: 'pointer',
+                    fontWeight: '600'
                   }}
                 >
-                  💸 Pagar
+                  ✏️ Editar
                 </button>
-              </div>
-            ))}
+              )}
+            </div>
           </div>
-        )}
 
-        {/* Mensagem quando não há despesas */}
-        {(despesas?.vencidas?.length || 0) === 0 && (despesas?.proximos7Dias?.length || 0) === 0 && (despesas?.de8a15Dias?.length || 0) === 0 && (
           <div style={{
-            textAlign: 'center',
-            padding: '40px',
-            color: '#5f6368'
+            backgroundColor: (missoes?.progresso || 0) >= 100 ? '#e8f5e8' : '#fff3cd',
+            borderRadius: '12px',
+            padding: '20px',
+            border: `2px solid ${(missoes?.progresso || 0) >= 100 ? '#34a853' : '#fbbc04'}`
           }}>
-            <div style={{ fontSize: '3rem', marginBottom: '16px' }}>✅</div>
-            <p style={{ fontSize: '1.125rem', fontWeight: '500' }}>
-              ✅ Nenhuma despesa pendente nos próximos 15 dias
-            </p>
-            <p style={{ fontSize: '0.875rem' }}>
-              Todas as contas estão em dia!
-            </p>
+            <h3 style={{
+              fontSize: '1rem',
+              fontWeight: '700',
+              color: (missoes?.progresso || 0) >= 100 ? '#34a853' : '#f9ab00',
+              marginBottom: '8px'
+            }}>
+              📊 Progresso
+            </h3>
+            <div style={{
+              fontSize: '1.5rem',
+              fontWeight: '700',
+              color: (missoes?.progresso || 0) >= 100 ? '#34a853' : '#f9ab00'
+            }}>
+              {(parseFloat(missoes?.progresso) || 0).toFixed(1)}%
+            </div>
+          </div>
+
+          <div style={{
+            backgroundColor: (missoes?.falta || 0) <= 0 ? '#e8f5e8' : '#fce8e6',
+            borderRadius: '12px',
+            padding: '20px',
+            border: `2px solid ${(missoes?.falta || 0) <= 0 ? '#34a853' : '#ea4335'}`
+          }}>
+            <h3 style={{
+              fontSize: '1rem',
+              fontWeight: '700',
+              color: (missoes?.falta || 0) <= 0 ? '#34a853' : '#ea4335',
+              marginBottom: '8px'
+            }}>
+              {(missoes?.falta || 0) <= 0 ? '🎉 Meta Alcançada!' : '📈 Falta'}
+            </h3>
+            <div style={{
+              fontSize: '1.5rem',
+              fontWeight: '700',
+              color: (missoes?.falta || 0) <= 0 ? '#34a853' : '#ea4335'
+            }}>
+              {(missoes?.falta || 0) <= 0 ? '✅ Concluída' : formatarMoeda(missoes?.falta || 0)}
+            </div>
+          </div>
+        </div>
+
+        {/* Barra de Progresso */}
+        <div style={{
+          backgroundColor: '#f1f3f4',
+          borderRadius: '8px',
+          height: '20px',
+          overflow: 'hidden',
+          marginBottom: '16px'
+        }}>
+          <div style={{
+            backgroundColor: (missoes?.progresso || 0) >= 100 ? '#34a853' : '#1a73e8',
+            height: '100%',
+            width: `${Math.min(missoes?.progresso || 0, 100)}%`,
+            transition: 'width 0.3s ease',
+            borderRadius: '8px'
+          }}></div>
+        </div>
+
+        {/* Edição de Meta */}
+        {modoEdicaoMeta && (
+          <div style={{
+            backgroundColor: '#f8f9fa',
+            borderRadius: '12px',
+            padding: '20px',
+            border: '2px solid #dadce0'
+          }}>
+            <h3 style={{
+              fontSize: '1rem',
+              fontWeight: '700',
+              color: '#202124',
+              marginBottom: '16px'
+            }}>
+              ✏️ Editar Meta de Missões
+            </h3>
+            <div style={{
+              display: 'flex',
+              gap: '12px',
+              alignItems: 'center',
+              flexWrap: 'wrap'
+            }}>
+              <input
+                type="number"
+                value={novaMeta}
+                onChange={(e) => setNovaMeta(e.target.value)}
+                placeholder="Nova meta (R$)"
+                style={{
+                  padding: '12px',
+                  border: '2px solid #dadce0',
+                  borderRadius: '8px',
+                  fontSize: '1rem',
+                  flex: '1',
+                  minWidth: '200px'
+                }}
+              />
+              <button
+                onClick={handleAtualizarMeta}
+                style={{
+                  backgroundColor: '#34a853',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '12px 20px',
+                  fontSize: '1rem',
+                  cursor: 'pointer',
+                  fontWeight: '600'
+                }}
+              >
+                ✅ Salvar
+              </button>
+              <button
+                onClick={() => {
+                  setModoEdicaoMeta(false);
+                  setNovaMeta(missoes?.meta || 0);
+                }}
+                style={{
+                  backgroundColor: '#5f6368',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '12px 20px',
+                  fontSize: '1rem',
+                  cursor: 'pointer',
+                  fontWeight: '600'
+                }}
+              >
+                ❌ Cancelar
+              </button>
+            </div>
           </div>
         )}
       </div>

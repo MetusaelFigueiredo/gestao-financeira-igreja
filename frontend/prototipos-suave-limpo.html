@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Protótipos - Tema Suave e Limpo</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8fafc;
+            margin: 0;
+            padding: 20px;
+            color: #334155;
+        }
+        
+        .prototipo {
+            max-width: 1200px;
+            margin: 0 auto 60px auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1px solid #e2e8f0;
+        }
+        
+        .titulo-prototipo {
+            text-align: center;
+            color: #1e293b;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: white;
+            border-radius: 15px;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        
+        /* PROTÓTIPO A: Layout Suave com Destaque */
+        .layout-suave {
+            display: grid;
+            gap: 25px;
+        }
+        
+        .saldo-destaque {
+            background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .saldo-destaque::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+        
+        .saldo-principal {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 10px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .saldo-subtitulo {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            margin-bottom: 20px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .composicao-inline {
+            background: rgba(255,255,255,0.2);
+            border-radius: 12px;
+            padding: 15px;
+            font-size: 0.9rem;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+        
+        /* PROTÓTIPO B: Design Moderno Limpo */
+        .design-moderno {
+            background: #fefefe;
+            border: 2px solid #f1f5f9;
+            border-radius: 25px;
+            padding: 40px;
+        }
+        
+        .header-moderno {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 30px;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            border-radius: 20px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .data-moderno {
+            font-size: 0.9rem;
+            color: #64748b;
+            margin-bottom: 15px;
+        }
+        
+        .saldo-moderno {
+            font-size: 3.5rem;
+            font-weight: 300;
+            color: #10b981;
+            margin-bottom: 15px;
+        }
+        
+        .status-moderno {
+            display: inline-block;
+            background: #dcfce7;
+            color: #166534;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border: 1px solid #bbf7d0;
+        }
+        
+        /* PROTÓTIPO C: Layout Balanceado */
+        .layout-balanceado {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .painel-principal {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            border-radius: 20px;
+            padding: 35px;
+            color: white;
+        }
+        
+        .info-lateral {
+            background: #f8fafc;
+            border-radius: 20px;
+            padding: 25px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .resumo-item {
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        /* Estilos dos Cards */
+        .card-suave {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            transition: all 0.3s ease;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            border: 2px solid;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .card-suave::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: inherit;
+        }
+        
+        .card-suave:hover {
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            transform: translateY(-3px);
+        }
+        
+        .card-header-suave {
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .card-value-suave {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+        
+        .card-description-suave {
+            font-size: 0.85rem;
+            color: #64748b;
+            line-height: 1.5;
+        }
+        
+        /* Cores suaves */
+        .verde-suave { color: #10b981; }
+        .azul-suave { color: #3b82f6; }
+        .vermelho-suave { color: #ef4444; }
+        .laranja-suave { color: #f59e0b; }
+        .roxo-suave { color: #8b5cf6; }
+        
+        /* Bordas coloridas para os cards */
+        .card-entradas {
+            border-color: #10b981;
+            background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
+        }
+        
+        .card-entradas::before {
+            background: linear-gradient(90deg, #10b981 0%, #34d399 100%);
+        }
+        
+        .card-central {
+            border-color: #3b82f6;
+            background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);
+        }
+        
+        .card-central::before {
+            background: linear-gradient(90deg, #3b82f6 0%, #60a5fa 100%);
+        }
+        
+        .card-missoes {
+            border-color: #f59e0b;
+            background: linear-gradient(135deg, #fffbeb 0%, #ffffff 100%);
+        }
+        
+        .card-missoes::before {
+            background: linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%);
+        }
+        
+        .card-despesas {
+            border-color: #ef4444;
+            background: linear-gradient(135deg, #fef2f2 0%, #ffffff 100%);
+        }
+        
+        .card-despesas::before {
+            background: linear-gradient(90deg, #ef4444 0%, #f87171 100%);
+        }
+        
+        /* Badge suave */
+        .badge-suave {
+            display: inline-block;
+            background: #f1f5f9;
+            color: #475569;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+        
+        /* Responsivo */
+        @media (max-width: 768px) {
+            .layout-balanceado {
+                grid-template-columns: 1fr;
+            }
+            
+            .saldo-principal, .saldo-moderno {
+                font-size: 2.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- PROTÓTIPO A: LAYOUT SUAVE COM DESTAQUE -->
+    <div class="prototipo">
+        <div class="titulo-prototipo">
+            🌟 PROTÓTIPO A: Layout Suave com Saldo em Destaque
+        </div>
+        
+        <div class="layout-suave">
+            <!-- Saldo em Destaque -->
+            <div class="saldo-destaque">
+                <div class="saldo-principal">R$ 2.350,00</div>
+                <div class="saldo-subtitulo">💰 Saldo Disponível da Igreja</div>
+                <div class="composicao-inline">
+                    <strong>📊 Composição:</strong> R$ 750,00 (entradas) + R$ 2.800,00 (anterior) - R$ 1.200,00 (despesas)
+                </div>
+            </div>
+            
+            <!-- Cards Principais -->
+            <div class="cards-grid">
+                <div class="card-suave card-entradas">
+                    <div class="card-header-suave verde-suave">
+                        💵 ENTRADAS LOCAIS
+                        <span class="badge-suave">+15%</span>
+                    </div>
+                    <div class="card-value-suave verde-suave">R$ 750,00</div>
+                    <div class="card-description-suave">
+                        Receitas do mês atual<br>
+                        4 lançamentos registrados
+                    </div>
+                </div>
+                
+                <div class="card-suave card-central">
+                    <div class="card-header-suave azul-suave">
+                        🏛️ CENTRAL
+                        <span class="badge-suave">Em dia</span>
+                    </div>
+                    <div class="card-value-suave azul-suave">R$ 750,00</div>
+                    <div class="card-description-suave">
+                        Repasse para a sede<br>
+                        Envio em 30/11/2025
+                    </div>
+                </div>
+                
+                <div class="card-suave card-missoes">
+                    <div class="card-header-suave laranja-suave">
+                        ⛪ MISSÕES
+                        <span class="badge-suave">83%</span>
+                    </div>
+                    <div class="card-value-suave laranja-suave">R$ 250,00</div>
+                    <div class="card-description-suave">
+                        Meta mensal: R$ 300,00<br>
+                        Faltam R$ 50,00
+                    </div>
+                </div>
+                
+                <div class="card-suave card-despesas">
+                    <div class="card-header-suave vermelho-suave">
+                        💸 DESPESAS
+                        <span class="badge-suave">Quitadas</span>
+                    </div>
+                    <div class="card-value-suave vermelho-suave">R$ 1.200,00</div>
+                    <div class="card-description-suave">
+                        Todas as despesas pagas<br>
+                        Controle em dia
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- PROTÓTIPO B: DESIGN MODERNO LIMPO -->
+    <div class="prototipo">
+        <div class="titulo-prototipo">
+            ✨ PROTÓTIPO B: Design Moderno e Limpo
+        </div>
+        
+        <div class="design-moderno">
+            <!-- Header Moderno -->
+            <div class="header-moderno">
+                <div class="data-moderno">📅 Novembro 2025 • Igreja Local</div>
+                <div class="saldo-moderno">R$ 2.350,00</div>
+                <div class="status-moderno">💎 Situação Financeira Excelente</div>
+            </div>
+            
+            <!-- Cards Modernos -->
+            <div class="cards-grid">
+                <div class="card-suave">
+                    <div class="card-header-suave verde-suave">
+                        💵 RECEITAS DO MÊS
+                    </div>
+                    <div class="card-value-suave verde-suave">R$ 750,00</div>
+                    <div class="card-description-suave">
+                        • Dízimos: R$ 500,00<br>
+                        • Ofertas: R$ 250,00<br>
+                        • Crescimento: +15% vs outubro
+                    </div>
+                </div>
+                
+                <div class="card-suave">
+                    <div class="card-header-suave azul-suave">
+                        🔄 SALDO TRANSFERIDO
+                    </div>
+                    <div class="card-value-suave azul-suave">R$ 2.800,00</div>
+                    <div class="card-description-suave">
+                        • Origem: Outubro 2025<br>
+                        • Reserva acumulada<br>
+                        • Base financeira sólida
+                    </div>
+                </div>
+                
+                <div class="card-suave">
+                    <div class="card-header-suave vermelho-suave">
+                        💸 GASTOS MENSAIS
+                    </div>
+                    <div class="card-value-suave vermelho-suave">R$ 1.200,00</div>
+                    <div class="card-description-suave">
+                        • Despesas operacionais<br>
+                        • Status: Todas quitadas ✅<br>
+                        • Controle rigoroso mantido
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- PROTÓTIPO C: LAYOUT BALANCEADO -->
+    <div class="prototipo">
+        <div class="titulo-prototipo">
+            ⚖️ PROTÓTIPO C: Layout Balanceado e Organizado
+        </div>
+        
+        <div class="layout-balanceado">
+            <!-- Painel Principal -->
+            <div class="painel-principal">
+                <h2 style="margin: 0 0 10px 0; font-size: 1.5rem;">💰 Saldo da Igreja</h2>
+                <div style="font-size: 3.2rem; font-weight: 800; margin-bottom: 15px;">R$ 2.350,00</div>
+                <div style="opacity: 0.9; margin-bottom: 25px;">
+                    Situação financeira excelente para novembro de 2025
+                </div>
+                
+                <div style="background: rgba(255,255,255,0.15); border-radius: 12px; padding: 20px;">
+                    <div style="font-size: 0.9rem; margin-bottom: 10px; font-weight: 600;">📊 Composição do Saldo:</div>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; text-align: center;">
+                        <div>
+                            <div style="font-size: 1.3rem; font-weight: 700;">R$ 750</div>
+                            <div style="font-size: 0.8rem; opacity: 0.8;">Entradas</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 1.3rem; font-weight: 700;">R$ 2.800</div>
+                            <div style="font-size: 0.8rem; opacity: 0.8;">Anterior</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 1.3rem; font-weight: 700;">R$ 1.200</div>
+                            <div style="font-size: 0.8rem; opacity: 0.8;">Despesas</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Info Lateral -->
+            <div class="info-lateral">
+                <h3 style="margin: 0 0 20px 0; color: #1e293b;">📋 Resumo Rápido</h3>
+                
+                <div class="resumo-item">
+                    <div style="font-weight: 600; color: #10b981; margin-bottom: 5px;">💵 Entradas</div>
+                    <div style="font-size: 1.2rem; font-weight: 700;">R$ 750,00</div>
+                    <div style="font-size: 0.8rem; color: #64748b;">4 lançamentos</div>
+                </div>
+                
+                <div class="resumo-item">
+                    <div style="font-weight: 600; color: #3b82f6; margin-bottom: 5px;">🏛️ Central</div>
+                    <div style="font-size: 1.2rem; font-weight: 700;">R$ 750,00</div>
+                    <div style="font-size: 0.8rem; color: #64748b;">Envio 30/11</div>
+                </div>
+                
+                <div class="resumo-item">
+                    <div style="font-weight: 600; color: #f59e0b; margin-bottom: 5px;">⛪ Missões</div>
+                    <div style="font-size: 1.2rem; font-weight: 700;">R$ 250,00</div>
+                    <div style="font-size: 0.8rem; color: #64748b;">83% da meta</div>
+                </div>
+                
+                <div class="resumo-item">
+                    <div style="font-weight: 600; color: #ef4444; margin-bottom: 5px;">💸 Despesas</div>
+                    <div style="font-size: 1.2rem; font-weight: 700;">R$ 1.200,00</div>
+                    <div style="font-size: 0.8rem; color: #64748b;">Todas pagas ✅</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Footer de Escolha -->
+    <div style="max-width: 1200px; margin: 0 auto; background: #f8fafc; color: #334155; padding: 30px; border-radius: 20px; text-align: center; border: 1px solid #e2e8f0;">
+        <h2 style="margin-bottom: 20px; color: #1e293b;">🎯 Qual protótipo prefere?</h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; text-align: left;">
+            <div style="background: white; padding: 20px; border-radius: 15px; border: 1px solid #e2e8f0;">
+                <h3 style="color: #10b981;">🌟 PROTÓTIPO A</h3>
+                <p>Saldo em destaque máximo + cards suaves com badges</p>
+            </div>
+            <div style="background: white; padding: 20px; border-radius: 15px; border: 1px solid #e2e8f0;">
+                <h3 style="color: #3b82f6;">✨ PROTÓTIPO B</h3>
+                <p>Design moderno ultra limpo com informações organizadas</p>
+            </div>
+            <div style="background: white; padding: 20px; border-radius: 15px; border: 1px solid #e2e8f0;">
+                <h3 style="color: #8b5cf6;">⚖️ PROTÓTIPO C</h3>
+                <p>Layout balanceado com painel principal + resumo lateral</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

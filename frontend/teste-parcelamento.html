@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 Teste - Correção do Bug de Parcelamento</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .erro { background: #ffebee; color: #c62828; border-left: 4px solid #f44336; }
+        .correto { background: #e8f5e8; color: #2e7d32; border-left: 4px solid #4caf50; }
+        .exemplo {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .codigo {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+        }
+        h2 { color: #2c3e50; }
+        h3 { color: #3498db; }
+        .highlight { background: #fff3cd; padding: 2px 6px; border-radius: 4px; }
+        .parcela {
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 12px;
+            margin: 8px 0;
+            background: #fafafa;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background: #f8f9fa;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Teste - Correção do Bug de Parcelamento</h1>
+        
+        <h2>🐛 Problema Identificado</h2>
+        <div class="status erro">
+            <strong>Bug Crítico:</strong> Sistema estava salvando valor total como primeira parcela em vez de dividir o valor e criar múltiplas parcelas.
+        </div>
+
+        <div class="exemplo">
+            <h3>❌ Comportamento ANTERIOR (Incorreto)</h3>
+            <p><strong>Input:</strong> Despesa de R$ 900,00 em 3 parcelas</p>
+            <p><strong>Output Incorreto:</strong> 1 documento no Firestore com valor R$ 900,00</p>
+            
+            <div class="parcela">
+                <strong>Documento único criado:</strong><br>
+                • Descrição: "Compra do Freezer"<br>
+                • Valor: R$ 900,00 💥 (valor total, não da parcela)<br>
+                • Vencimento: 07/11/2025<br>
+                • Status: Pendente
+            </div>
+        </div>
+
+        <div class="exemplo">
+            <h3>✅ Comportamento ATUAL (Corrigido)</h3>
+            <p><strong>Input:</strong> Despesa de R$ 900,00 em 3 parcelas</p>
+            <p><strong>Output Correto:</strong> 3 documentos no Firestore, cada um com valor R$ 300,00</p>
+            
+            <div class="parcela">
+                <strong>Parcela 1/3:</strong><br>
+                • Descrição: "Compra do Freezer (Parcela 1/3)"<br>
+                • Valor: R$ 300,00 ✅<br>
+                • Vencimento: 07/11/2025<br>
+                • parcelaAtual: 1, numeroParcelas: 3
+            </div>
+            
+            <div class="parcela">
+                <strong>Parcela 2/3:</strong><br>
+                • Descrição: "Compra do Freezer (Parcela 2/3)"<br>
+                • Valor: R$ 300,00 ✅<br>
+                • Vencimento: 07/12/2025 (+1 mês)<br>
+                • parcelaAtual: 2, numeroParcelas: 3
+            </div>
+            
+            <div class="parcela">
+                <strong>Parcela 3/3:</strong><br>
+                • Descrição: "Compra do Freezer (Parcela 3/3)"<br>
+                • Valor: R$ 300,00 ✅<br>
+                • Vencimento: 07/01/2026 (+2 meses)<br>
+                • parcelaAtual: 3, numeroParcelas: 3
+            </div>
+        </div>
+
+        <h2>🔧 Correções Implementadas</h2>
+        
+        <div class="status correto">
+            <strong>✅ Função adicionarDespesa() corrigida:</strong>
+            <ul>
+                <li><span class="highlight">Cálculo do valor da parcela:</span> valorTotal ÷ numeroParcelas</li>
+                <li><span class="highlight">Loop de criação:</span> Cria um documento para cada parcela</li>
+                <li><span class="highlight">Incremento de data:</span> +1 mês para cada parcela subsequente</li>
+                <li><span class="highlight">Descrição atualizada:</span> Adiciona "(Parcela X/Y)" na descrição</li>
+                <li><span class="highlight">Metadados:</span> parcelaAtual, valorTotal para referência</li>
+            </ul>
+        </div>
+
+        <h2>📊 Comparação: Dados no Firestore</h2>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Campo</th>
+                    <th>❌ Antes (Bug)</th>
+                    <th>✅ Depois (Corrigido)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Documentos criados</strong></td>
+                    <td>1 documento</td>
+                    <td>3 documentos (um por parcela)</td>
+                </tr>
+                <tr>
+                    <td><strong>Campo "valor"</strong></td>
+                    <td>900.00 (valor total)</td>
+                    <td>300.00 (valor da parcela)</td>
+                </tr>
+                <tr>
+                    <td><strong>Campo "descricao"</strong></td>
+                    <td>"Compra do Freezer"</td>
+                    <td>"Compra do Freezer (Parcela 1/3)"</td>
+                </tr>
+                <tr>
+                    <td><strong>Campo "vencimento"</strong></td>
+                    <td>2025-11-07 (única data)</td>
+                    <td>2025-11-07, 2025-12-07, 2026-01-07</td>
+                </tr>
+                <tr>
+                    <td><strong>Campo "parcelaAtual"</strong></td>
+                    <td>❌ Não existia</td>
+                    <td>✅ 1, 2, 3</td>
+                </tr>
+                <tr>
+                    <td><strong>Campo "valorTotal"</strong></td>
+                    <td>❌ Não existia</td>
+                    <td>✅ 900.00 (referência)</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>🎯 Benefícios da Correção</h2>
+        
+        <div class="status correto">
+            <p><strong>📈 Dashboard:</strong> Agora mostrará valores corretos por mês (R$ 300,00 em Nov/2025, R$ 300,00 em Dez/2025, R$ 300,00 em Jan/2026)</p>
+            <p><strong>📊 Relatórios:</strong> Relatórios mensais exibirão apenas o valor da parcela do mês correspondente</p>
+            <p><strong>💰 Reconciliação:</strong> Cálculos de reconciliação considerarão apenas parcelas vencidas no período</p>
+            <p><strong>🗂️ Organização:</strong> Cada parcela pode ter status independente (Paga/Pendente/Vencida)</p>
+        </div>
+
+        <h2>🧪 Como Testar</h2>
+        
+        <div class="codigo">
+// Teste no Console do Firefox/Chrome:<br>
+console.log('🧪 Testando parcelamento...');<br>
+<br>
+// 1. Vá para página de Despesas<br>
+// 2. Clique em "Nova Despesa"<br>
+// 3. Preencha:<br>
+//    - Descrição: "Teste de Parcelamento"<br>
+//    - Valor: 1200<br>
+//    - Vencimento: escolha uma data<br>
+//    - Marque "Parcelado" ✅<br>
+//    - Número de Parcelas: 4<br>
+// 4. Clique "Salvar"<br>
+// 5. Verifique se apareceram 4 linhas na tabela<br>
+// 6. Cada uma com valor R$ 300,00<br>
+// 7. Datas incrementadas mensalmente
+        </div>
+
+        <div class="status correto">
+            <strong>🎉 Teste passou?</strong> Se você vê 4 linhas com R$ 300,00 cada e datas mensais incrementadas, a correção funcionou!
+        </div>
+
+        <hr style="margin: 30px 0;">
+        <p style="text-align: center; color: #666;">
+            🚀 <strong>Correção implementada com sucesso!</strong><br>
+            O bug crítico de parcelamento foi resolvido. Agora o sistema cria corretamente<br>
+            uma despesa individual para cada parcela com valor dividido e datas incrementadas.
+        </p>
+    </div>
+</body>
+</html>

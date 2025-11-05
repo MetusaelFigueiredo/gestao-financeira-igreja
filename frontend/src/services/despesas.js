@@ -75,44 +75,72 @@ export const adicionarDespesa = async (despesaData, usuarioEmail) => {
   try {
     console.log('📝 Dados recebidos:', despesaData);
 
-    const dadosParaSalvar = {
-      descricao: despesaData.descricao,
-      valor: parseFloat(despesaData.valor),
-      vencimento: Timestamp.fromDate(new Date(despesaData.vencimento)),
-      categoria: despesaData.categoria || 'Outros',
-      formaPagamento: despesaData.formaPagamento || 'Dinheiro',
-      status: despesaData.status || 'Pendente',
-      observacoes: despesaData.observacoes || '',
-      parcelado: despesaData.parcelado || false,
-      numeroParcelas: despesaData.parcelado ? parseInt(despesaData.numeroParcelas) : 1,
-      comprovanteURL: despesaData.comprovanteURL || null,
-      criadoPor: usuarioEmail,
-      createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now()
-    };
+    const numeroParcelas = despesaData.parcelado ? parseInt(despesaData.numeroParcelas) : 1;
+    const valorTotal = parseFloat(despesaData.valor);
+    const valorParcela = numeroParcelas > 1 ? valorTotal / numeroParcelas : valorTotal;
+    const dataVencimento = new Date(despesaData.vencimento);
 
-    console.log('💾 Salvando no Firestore:', dadosParaSalvar);
+    console.log(`💰 Valor total: R$ ${valorTotal.toFixed(2)}, Parcelas: ${numeroParcelas}, Valor por parcela: R$ ${valorParcela.toFixed(2)}`);
 
-    const docRef = await addDoc(collection(db, 'despesas'), dadosParaSalvar);
-    console.log('✅ Despesa salva com ID:', docRef.id);
+    const documentosIds = [];
 
-    // Se já tem URL do comprovante (upload direto), não precisa fazer upload novamente
-if (despesaData.comprovanteURL) {
-  console.log('✅ Comprovante já foi enviado:', despesaData.comprovanteURL);
-} else if (despesaData.comprovante && despesaData.comprovante instanceof File) {
-  console.log('📎 Fazendo upload do comprovante...');
-  const comprovanteURL = await uploadComprovante(despesaData.comprovante, docRef.id);
-  
-  if (comprovanteURL) {
-    await updateDoc(doc(db, 'despesas', docRef.id), {
-      comprovanteURL,
-      updatedAt: Timestamp.now()
-    });
-    console.log('✅ Comprovante anexado!');
-  }
-}
+    // Loop para criar cada parcela
+    for (let i = 0; i < numeroParcelas; i++) {
+      // Calcular data de vencimento da parcela (primeira parcela = data original, demais +1 mês cada)
+      const dataVencimentoParcela = new Date(dataVencimento);
+      dataVencimentoParcela.setMonth(dataVencimentoParcela.getMonth() + i);
 
-    return docRef.id;
+      // Atualizar descrição com número da parcela (se parcelado)
+      const descricaoParcela = numeroParcelas > 1 
+        ? `${despesaData.descricao} (Parcela ${i + 1}/${numeroParcelas})`
+        : despesaData.descricao;
+
+      const dadosParaSalvar = {
+        descricao: descricaoParcela,
+        valor: valorParcela,
+        vencimento: Timestamp.fromDate(dataVencimentoParcela),
+        categoria: despesaData.categoria || 'Outros',
+        formaPagamento: despesaData.formaPagamento || 'Dinheiro',
+        status: despesaData.status || 'Pendente',
+        observacoes: despesaData.observacoes || '',
+        parcelado: despesaData.parcelado || false,
+        numeroParcelas: numeroParcelas,
+        parcelaAtual: i + 1, // Número da parcela atual
+        valorTotal: valorTotal, // Valor total original (para referência)
+        comprovanteURL: despesaData.comprovanteURL || null,
+        criadoPor: usuarioEmail,
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now()
+      };
+
+      console.log(`💾 Salvando parcela ${i + 1}/${numeroParcelas}:`, dadosParaSalvar);
+
+      const docRef = await addDoc(collection(db, 'despesas'), dadosParaSalvar);
+      documentosIds.push(docRef.id);
+      console.log(`✅ Parcela ${i + 1} salva com ID: ${docRef.id}`);
+
+      // Upload do comprovante apenas na primeira parcela (para evitar duplicatas)
+      if (i === 0) {
+        // Se já tem URL do comprovante (upload direto), não precisa fazer upload novamente
+        if (despesaData.comprovanteURL) {
+          console.log('✅ Comprovante já foi enviado:', despesaData.comprovanteURL);
+        } else if (despesaData.comprovante && despesaData.comprovante instanceof File) {
+          console.log('📎 Fazendo upload do comprovante...');
+          const comprovanteURL = await uploadComprovante(despesaData.comprovante, docRef.id);
+          
+          if (comprovanteURL) {
+            await updateDoc(doc(db, 'despesas', docRef.id), {
+              comprovanteURL,
+              updatedAt: Timestamp.now()
+            });
+            console.log('✅ Comprovante anexado!');
+          }
+        }
+      }
+    }
+
+    console.log(`🎯 ${numeroParcelas} parcela(s) criada(s) com sucesso!`);
+    return documentosIds; // Retorna array com IDs de todas as parcelas criadas
     
   } catch (error) {
     console.error('❌ Erro ao adicionar despesa:', error);

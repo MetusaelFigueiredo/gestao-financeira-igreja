@@ -7,6 +7,72 @@ import { doc, getDoc, setDoc, Timestamp, onSnapshot, collection, query, orderBy 
 const META_MISSOES = 5000;
 
 /**
+ * 🔄 SALDO ROTATIVO: Calcula o saldo líquido do mês anterior
+ * Regra: (Entradas Locais do Mês Anterior) - (Despesas do Mês Anterior) = Saldo Rotativo
+ * Este saldo é transferido 100% para o mês seguinte (NÃO sofre rateio novamente)
+ */
+export const calcularSaldoRotativo = async (ano, mes) => {
+  try {
+    // Calcular mês anterior (considerando virada de ano)
+    let anoAnterior = ano;
+    let mesAnterior = mes - 1;
+    
+    if (mesAnterior < 0) {
+      mesAnterior = 11; // Dezembro do ano anterior
+      anoAnterior = ano - 1;
+    }
+
+    console.log(`🔄 Calculando saldo rotativo de ${mesAnterior + 1}/${anoAnterior} para ${mes + 1}/${ano}`);
+
+    // Buscar entradas do mês anterior
+    const entradas = await buscarEntradas();
+    const entradasMesAnterior = entradas.entradas ? entradas.entradas.filter(entrada => {
+      const dataEntrada = new Date(entrada.data);
+      return dataEntrada.getMonth() === mesAnterior && 
+             dataEntrada.getFullYear() === anoAnterior;
+    }) : [];
+
+    // Calcular total de entradas locais do mês anterior (após rateio)
+    let totalEntradasLocais = 0;
+    entradasMesAnterior.forEach(entrada => {
+      const rateio = calcularRateio(entrada.tipo, entrada.valor);
+      totalEntradasLocais += rateio.local;
+    });
+
+    // Buscar despesas do mês anterior
+    const despesas = await buscarDespesasPorPeriodo(anoAnterior, mesAnterior);
+    const totalDespesas = despesas.reduce((sum, despesa) => sum + despesa.valor, 0);
+
+    // Calcular saldo rotativo
+    const saldoRotativo = totalEntradasLocais - totalDespesas;
+
+    console.log(`💰 Saldo rotativo ${mesAnterior + 1}/${anoAnterior}:`);
+    console.log(`   Entradas locais: R$ ${totalEntradasLocais.toFixed(2)}`);
+    console.log(`   Despesas: R$ ${totalDespesas.toFixed(2)}`);
+    console.log(`   Saldo a transferir: R$ ${saldoRotativo.toFixed(2)}`);
+
+    return {
+      saldoRotativo,
+      detalhes: {
+        anoAnterior,
+        mesAnterior: mesAnterior + 1,
+        entradasLocais: totalEntradasLocais,
+        despesas: totalDespesas,
+        quantidadeEntradas: entradasMesAnterior.length,
+        quantidadeDespesas: despesas.length
+      }
+    };
+    
+  } catch (error) {
+    console.error('❌ Erro ao calcular saldo rotativo:', error);
+    return {
+      saldoRotativo: 0,
+      detalhes: null
+    };
+  }
+};
+
+/**
  * Calcula o rateio baseado no tipo de entrada
  */
 const calcularRateio = (tipo, valor) => {
@@ -264,7 +330,7 @@ export const buscarResumoFinanceiro = async (ano = null, mes = null) => {
       let rateio = entrada.rateio;
       if (!rateio) {
         rateio = calcularRateio(entrada.tipo, entrada.valor);
-        console.log(`🔧 Rateio calculado para entrada ${entrada.id}:`, rateio);
+        console.log(`🔧 DEBUG - Rateio calculado para entrada ${entrada.id}:`, rateio);
       }
       
       const formaRecebimento = entrada.formaRecebimento || 'pix';
@@ -321,8 +387,22 @@ export const buscarResumoFinanceiro = async (ano = null, mes = null) => {
 
     const totalDespesasPagas = despesasPagasMes.reduce((sum, d) => sum + (d.valor || 0), 0);
 
-    // Calcula saldo do mês (APENAS LOCAL - DESPESAS)
-    const saldoMes = totalLocal - totalDespesasPagas;
+    // 🔄 SALDO ROTATIVO: Buscar saldo do mês anterior (se não for mês atual)
+    let saldoRotativo = 0;
+    let detalhesSaldoRotativo = null;
+    
+    // Só calcular saldo rotativo se não for o primeiro mês que temos dados
+    // (evitar buscar dados de meses inexistentes)
+    if (ano !== null && mes !== null) {
+      const resultadoSaldoRotativo = await calcularSaldoRotativo(anoAlvo, mesAlvo);
+      saldoRotativo = resultadoSaldoRotativo.saldoRotativo;
+      detalhesSaldoRotativo = resultadoSaldoRotativo.detalhes;
+    }
+
+    // 🎯 NOVO CÁLCULO: Saldo do mês COM saldo rotativo
+    // Fórmula: (Entrada Local Atual) + (Saldo Anterior) - (Despesas)
+    const saldoMesSemRotativo = totalLocal - totalDespesasPagas; // Cálculo original
+    const saldoMesComRotativo = totalLocal + saldoRotativo - totalDespesasPagas; // Novo cálculo
 
     // Calcula percentuais de PIX e Dinheiro LOCAL
     const totalLocalRecebido = totalPixLocal + totalDinheiroLocal;
@@ -353,7 +433,13 @@ export const buscarResumoFinanceiro = async (ano = null, mes = null) => {
         percentualPixLocal: percentualPixLocal.toFixed(1),
         percentualDinheiroLocal: percentualDinheiroLocal.toFixed(1),
         totalDespesasPagas,
-        saldoMes,
+        // 🔄 NOVOS CAMPOS: Saldo rotativo
+        saldoMes: saldoMesComRotativo, // Novo saldo (com rotativo)
+        saldoMesSemRotativo: saldoMesSemRotativo, // Saldo original (sem rotativo)
+        saldoRotativo, // Saldo transferido do mês anterior
+        detalhesSaldoRotativo, // Detalhes do cálculo do saldo anterior
+        // Totais ajustados
+        totalLocalComRotativo: totalLocal + saldoRotativo, // Local + saldo anterior
         quantidadeEntradas: entradasMesAtual.length
       }
     };
@@ -379,6 +465,59 @@ export const buscarDespesasPendentes = async (ano = null, mes = null) => {
     const hoje = new Date(agora.toLocaleString("en-US", {timeZone: "America/Cuiaba"}));
     hoje.setHours(0, 0, 0, 0);
 
+    // 🎯 CORREÇÃO DO BUG: Se tem filtro de mês/ano, mostrar TODAS as despesas pendentes do período
+    if (ano !== null && mes !== null) {
+      console.log(`🔍 Filtrando despesas pendentes para ${mes + 1}/${ano}`);
+      console.log('📊 Total de despesas recebidas:', despesas.length);
+      
+      // Filtrar apenas por status (não por data, pois já está filtrado na consulta)
+      const despesasPendentes = despesas.filter(d => {
+        return d.status !== 'Paga';
+      });
+
+      // 🎯 LÓGICA SIMPLIFICADA PARA FILTRO: Apenas "Vencidas" vs "Pendentes do Mês"
+      const vencidas = [];
+      const pendentesDoMes = [];
+
+      despesasPendentes.forEach(d => {
+        const vencimentoOriginal = new Date(d.vencimento);
+        const vencimento = new Date(vencimentoOriginal.toLocaleString("en-US", {timeZone: "America/Cuiaba"}));
+        vencimento.setHours(0, 0, 0, 0);
+
+        // Se está vencida em relação à data atual (hoje real)
+        if (vencimento < hoje || d.status === 'Vencida') {
+          vencidas.push(d);
+        } else {
+          // Todas as outras são "pendentes do mês"
+          pendentesDoMes.push(d);
+        }
+      });
+
+      // Calcular totais do período
+      const totalVencidas = vencidas.reduce((sum, d) => sum + d.valor, 0);
+      const totalPendentes = pendentesDoMes.reduce((sum, d) => sum + d.valor, 0);
+
+      console.log(`✅ Dashboard filtrado ${mes + 1}/${ano}:`);
+      console.log(`   Vencidas: ${vencidas.length} (R$ ${totalVencidas.toFixed(2)})`);
+      console.log(`   Pendentes do mês: ${pendentesDoMes.length} (R$ ${totalPendentes.toFixed(2)})`);
+
+      return {
+        success: true,
+        despesas: {
+          vencidas,
+          proximos7Dias: pendentesDoMes, // Todas as pendentes ficam em "próximos 7 dias" para compatibilidade com UI
+          de8a15Dias: [],
+          totais: {
+            vencidas: totalVencidas,
+            proximos7: totalPendentes,
+            de8a15: 0,
+            geral: totalVencidas + totalPendentes
+          }
+        }
+      };
+    }
+
+    // 📅 Lógica ORIGINAL: Para visualização geral (sem filtro), usar regra dos 15 dias
     const data15Dias = new Date(hoje);
     data15Dias.setDate(data15Dias.getDate() + 15);
 
@@ -389,7 +528,6 @@ export const buscarDespesasPendentes = async (ano = null, mes = null) => {
     const despesasPendentes = despesas.filter(d => {
       if (d.status === 'Paga') return false;
       
-      // 🕐 CORREÇÃO: Usar fuso horário de Cuiabá-MT para filtragem
       const vencimentoOriginal = new Date(d.vencimento);
       const vencimento = new Date(vencimentoOriginal.toLocaleString("en-US", {timeZone: "America/Cuiaba"}));
       vencimento.setHours(0, 0, 0, 0);
@@ -403,7 +541,6 @@ export const buscarDespesasPendentes = async (ano = null, mes = null) => {
     const de8a15Dias = [];
 
     despesasPendentes.forEach(d => {
-      // 🕐 CORREÇÃO: Usar fuso horário de Cuiabá-MT para vencimento
       const vencimentoOriginal = new Date(d.vencimento);
       const vencimento = new Date(vencimentoOriginal.toLocaleString("en-US", {timeZone: "America/Cuiaba"}));
       vencimento.setHours(0, 0, 0, 0);

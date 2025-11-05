@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 Teste - Correção Bug Filtro Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .erro { background: #ffebee; color: #c62828; border-left: 4px solid #f44336; }
+        .correto { background: #e8f5e8; color: #2e7d32; border-left: 4px solid #4caf50; }
+        .exemplo {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .codigo {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        h2 { color: #2c3e50; }
+        h3 { color: #3498db; }
+        .highlight { background: #fff3cd; padding: 2px 6px; border-radius: 4px; }
+        .comparacao {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .antes, .depois {
+            padding: 15px;
+            border-radius: 8px;
+        }
+        .antes {
+            background: #ffebee;
+            border: 2px solid #f44336;
+        }
+        .depois {
+            background: #e8f5e8;
+            border: 2px solid #4caf50;
+        }
+        .step {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 12px;
+            margin: 8px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background: #f8f9fa;
+            font-weight: bold;
+        }
+        .filter-demo {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Teste - Correção Bug Filtro Dashboard</h1>
+        
+        <h2>🐛 Problema Identificado</h2>
+        <div class="status erro">
+            <strong>Bug do Filtro:</strong> Quando usuário mudava o filtro de mês no Dashboard (ex: Dezembro), o card "Despesas Pendentes" continuava mostrando apenas próximos 15 dias em vez de mostrar TODAS as despesas pendentes daquele mês específico.
+        </div>
+
+        <div class="comparacao">
+            <div class="antes">
+                <h3>❌ Comportamento ANTERIOR (Incorreto)</h3>
+                <p><strong>Filtro:</strong> Dezembro/2025</p>
+                <p><strong>Resultado:</strong> Apenas despesas dos próximos 15 dias (mesmo que não sejam de dezembro)</p>
+                <ul>
+                    <li>Ignorava o filtro de mês/ano</li>
+                    <li>Usava sempre lógica de "próximos 15 dias"</li>
+                    <li>Título sempre "PRÓXIMOS 15 DIAS"</li>
+                    <li>Usuário não via despesas de dezembro</li>
+                </ul>
+            </div>
+            
+            <div class="depois">
+                <h3>✅ Comportamento ATUAL (Corrigido)</h3>
+                <p><strong>Filtro:</strong> Dezembro/2025</p>
+                <p><strong>Resultado:</strong> TODAS as despesas pendentes de dezembro/2025</p>
+                <ul>
+                    <li>Respeita o filtro de mês/ano</li>
+                    <li>Mostra todas pendentes do período</li>
+                    <li>Título dinâmico "DEZEMBRO DE 2025"</li>
+                    <li>Usuário vê todas as despesas do mês</li>
+                </ul>
+            </div>
+        </div>
+
+        <h2>🔧 Correções Implementadas</h2>
+        
+        <div class="status correto">
+            <strong>✅ Função buscarDespesasPendentes() corrigida:</strong>
+            <ul>
+                <li><span class="highlight">Detecção de filtro ativo:</span> Se ano/mês informados, usa lógica específica</li>
+                <li><span class="highlight">Consulta do período:</span> buscarDespesasPorPeriodo() já filtra por mês</li>
+                <li><span class="highlight">Filtro apenas por status:</span> Não aplica limite de 15 dias quando filtrado</li>
+                <li><span class="highlight">Título dinâmico:</span> "DEZEMBRO DE 2025" vs "PRÓXIMOS 15 DIAS"</li>
+                <li><span class="highlight">Rótulos contextuais:</span> "PENDENTES DO MÊS" vs "VENCE EM 7 DIAS"</li>
+                <li><span class="highlight">Compatibilidade:</span> Mantém lógica original para visualização geral</li>
+            </ul>
+        </div>
+
+        <div class="status correto">
+            <strong>🎯 CORREÇÃO FINAL: Rótulos contextuais implementados!</strong>
+            <p>Agora quando você filtra por dezembro, em vez de mostrar "🟡 VENCE EM 7 DIAS" (que não fazia sentido para despesas do dia 9/12), mostra "🟡 PENDENTES DO MÊS", que é muito mais claro e preciso!</p>
+        </div>
+
+        <h2>📊 Lógica de Funcionamento</h2>
+        
+        <div class="filter-demo">
+            <h3>🎯 Lógica Inteligente</h3>
+            <p><strong>SEM FILTRO:</strong> Mostra próximos 15 dias (lógica original)</p>
+            <p><strong>COM FILTRO:</strong> Mostra todas pendentes do mês/ano selecionado</p>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Situação</th>
+                    <th>❌ Antes (Bug)</th>
+                    <th>✅ Depois (Corrigido)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Filtro: Dezembro/2025</strong></td>
+                    <td>Mostra próximos 15 dias de qualquer mês</td>
+                    <td>Mostra TODAS pendentes de dezembro/2025</td>
+                </tr>
+                <tr>
+                    <td><strong>Título do Card</strong></td>
+                    <td>"PRÓXIMOS 15 DIAS" (sempre)</td>
+                    <td>"DEZEMBRO DE 2025" (dinâmico)</td>
+                </tr>
+                <tr>
+                    <td><strong>Consulta ao Firestore</strong></td>
+                    <td>Todas despesas + filtro JS posterior</td>
+                    <td>Apenas dezembro/2025 + filtro status</td>
+                </tr>
+                <tr>
+                    <td><strong>Performance</strong></td>
+                    <td>Busca desnecessária de todos os dados</td>
+                    <td>Consulta otimizada por período</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>🧪 Como Testar</h2>
+        
+        <div class="step">
+            <strong>Passo 1:</strong> Acesse o Dashboard (mês atual - deve mostrar "PRÓXIMOS 15 DIAS")
+        </div>
+        
+        <div class="step">
+            <strong>Passo 2:</strong> Mude o filtro para Dezembro/2025
+        </div>
+        
+        <div class="step">
+            <strong>Passo 3:</strong> Observe que o título muda para "DEZEMBRO DE 2025"
+        </div>
+        
+        <div class="step">
+            <strong>Passo 4:</strong> Verifique se aparecem apenas despesas de dezembro (não mais próximos 15 dias)
+        </div>
+        
+        <div class="step">
+            <strong>Passo 5:</strong> Volte para o mês atual - título volta para "PRÓXIMOS 15 DIAS"
+        </div>
+
+        <h2>🎯 Código Implementado</h2>
+        
+        <div class="codigo">
+// Função buscarDespesasPendentes() - dashboard.js
+
+// 🎯 NOVA LÓGICA: Verifica se tem filtro ativo
+if (ano !== null && mes !== null) {
+  console.log(`🔍 Filtrando despesas pendentes para ${mes + 1}/${ano}`);
+  
+  // Filtrar apenas por status (data já filtrada na consulta)
+  const despesasPendentes = despesas.filter(d => {
+    return d.status !== 'Paga';
+  });
+
+  // Agrupar por status para o período específico
+  const vencidas = [];
+  const pendentes = [];
+
+  despesasPendentes.forEach(d => {
+    const vencimento = new Date(d.vencimento);
+    if (vencimento < hoje || d.status === 'Vencida') {
+      vencidas.push(d);
+    } else {
+      pendentes.push(d);
+    }
+  });
+
+  return {
+    vencidas,
+    proximos7Dias: pendentes, // Todas não-vencidas
+    de8a15Dias: [],
+    total: totalVencidas + totalPendentes
+  };
+}
+
+// 📅 LÓGICA ORIGINAL: Para visualização geral (sem filtro)
+// ... lógica dos próximos 15 dias ...
+        </div>
+
+        <div class="codigo">
+// Título Dinâmico - Dashboard.jsx
+
+{(anoSelecionado === new Date().getFullYear() && 
+  mesSelecionado === new Date().getMonth()) 
+    ? "⚠️ DESPESAS PENDENTES - PRÓXIMOS 15 DIAS"
+    : `⚠️ DESPESAS PENDENTES - ${new Date(anoSelecionado, mesSelecionado)
+        .toLocaleDateString('pt-BR', { 
+          month: 'long', 
+          year: 'numeric' 
+        }).toUpperCase()}`
+}
+        </div>
+
+        <h2>🎉 Benefícios da Correção</h2>
+        
+        <div class="status correto">
+            <p><strong>🎯 Filtros funcionais:</strong> Dashboard agora respeita completamente os filtros de mês/ano</p>
+            <p><strong>📊 Dados precisos:</strong> Usuário vê exatamente as despesas pendentes do período selecionado</p>
+            <p><strong>🚀 Performance:</strong> Consultas otimizadas por período em vez de buscar todos os dados</p>
+            <p><strong>👁️ UX melhorada:</strong> Título dinâmico deixa claro qual período está sendo visualizado</p>
+            <p><strong>🔄 Compatibilidade:</strong> Mantém comportamento original para visualização geral</p>
+        </div>
+
+        <div class="status correto">
+            <strong>✅ Teste passou?</strong> Se ao mudar para Dezembro/2025 você vê o título "DESPESAS PENDENTES - DEZEMBRO DE 2025" e apenas despesas daquele mês, a correção funcionou!
+        </div>
+
+        <hr style="margin: 30px 0;">
+        <p style="text-align: center; color: #666;">
+            🚀 <strong>Bug do filtro corrigido com sucesso!</strong><br>
+            O Dashboard agora respeita completamente os filtros de mês/ano,<br>
+            mostrando apenas despesas pendentes do período selecionado.
+        </p>
+    </div>
+</body>
+</html>

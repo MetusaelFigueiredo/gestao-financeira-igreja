@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Protótipo Final - Card Híbrido</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+            margin: 0;
+        }
+        
+        .container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .card {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+            border: 3px solid;
+        }
+        
+        /* Card Saldo Híbrido */
+        .saldo-premium {
+            background: linear-gradient(135deg, #2e7d32 0%, #66bb6a 100%);
+            border-radius: 16px;
+            padding: 2px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+        }
+        
+        .saldo-content {
+            background: #ffffff;
+            border-radius: 14px;
+            padding: 24px;
+        }
+        
+        .saldo-header {
+            font-size: 0.875rem;
+            color: #2e7d32;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+        
+        .saldo-value {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: #2e7d32;
+            margin-bottom: 12px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            line-height: 1;
+        }
+        
+        .composicao {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 8px;
+            padding: 12px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .composicao-header {
+            font-size: 0.75rem;
+            color: #495057;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+        
+        /* Grid Desktop */
+        .calculo-grid {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.7rem;
+            color: #6c757d;
+        }
+        
+        .item-calculo {
+            text-align: center;
+            cursor: help;
+        }
+        
+        .item-titulo {
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+        
+        .operador {
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-align: center;
+        }
+        
+        /* Versão Mobile Resumida */
+        .calculo-mobile {
+            display: none;
+            font-size: 0.75rem;
+            color: #6c757d;
+            text-align: center;
+            padding: 8px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            line-height: 1.4;
+        }
+        
+        .calculo-mobile .titulo-mobile {
+            margin-bottom: 4px;
+            font-size: 0.7rem;
+            color: #495057;
+            font-weight: 600;
+        }
+        
+        .valor-tooltip {
+            cursor: help;
+            font-weight: 600;
+        }
+        
+        .entradas { color: #28a745; }
+        .anterior { color: #007bff; }
+        .despesas { color: #dc3545; }
+        .total { color: #2e7d32; font-weight: 700; }
+        
+        /* Tooltip personalizado */
+        .tooltip {
+            position: relative;
+        }
+        
+        .tooltip:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.9);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.65rem;
+            white-space: nowrap;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        
+        .tooltip:hover::before {
+            content: '';
+            position: absolute;
+            bottom: 115%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 5px solid transparent;
+            border-top-color: rgba(0,0,0,0.9);
+            z-index: 1000;
+        }
+        
+        /* Responsivo */
+        @media (max-width: 767px) {
+            .calculo-grid {
+                display: none;
+            }
+            .calculo-mobile {
+                display: block;
+            }
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>💎 Card Híbrido Final - Desktop + Mobile</h1>
+    <p>🖥️ <strong>Desktop:</strong> Grid compacto com tooltips | 📱 <strong>Mobile:</strong> Formato resumido</p>
+    
+    <div class="container">
+        <!-- Card Normal (Referência) -->
+        <div class="card" style="border-color: #34a853;">
+            <div style="font-size: 0.875rem; color: #34a853; font-weight: 700; margin-bottom: 8px;">
+                💰 ENTRADAS LOCAIS
+            </div>
+            <div style="font-size: 2rem; font-weight: 700; color: #34a853; margin-bottom: 8px;">
+                R$ 2.800,00
+            </div>
+            <div style="font-size: 0.875rem; color: #5f6368;">
+                Receitas no período selecionado
+            </div>
+        </div>
+        
+        <!-- Card Saldo Híbrido -->
+        <div class="saldo-premium">
+            <div class="saldo-content">
+                <div class="saldo-header">
+                    💰 SALDO DO MÊS
+                </div>
+                <div class="saldo-value">
+                    R$ 2.350,00
+                </div>
+                <div class="composicao">
+                    <div class="composicao-header">
+                        📊 COMPOSIÇÃO DO SALDO
+                    </div>
+                    
+                    <!-- Versão Desktop: Grid com tooltips -->
+                    <div class="calculo-grid">
+                        <div class="item-calculo tooltip" data-tooltip="💰 Entradas Locais: Receitas obtidas pela igreja no mês">
+                            <div class="item-titulo entradas">Entradas</div>
+                            <div>R$ 0,00</div>
+                        </div>
+                        <div class="operador anterior">+</div>
+                        <div class="item-calculo tooltip" data-tooltip="🔄 Saldo Rotativo: Valor transferido do mês anterior">
+                            <div class="item-titulo anterior">Anterior</div>
+                            <div>R$ 2.800,00</div>
+                        </div>
+                        <div class="operador despesas">-</div>
+                        <div class="item-calculo tooltip" data-tooltip="💸 Despesas Pagas: Gastos já quitados no período">
+                            <div class="item-titulo despesas">Despesas</div>
+                            <div>R$ 1.200,00</div>
+                        </div>
+                        <div class="operador entradas">=</div>
+                        <div class="item-calculo tooltip" data-tooltip="📊 Saldo Final: Valor disponível para uso">
+                            <div class="item-titulo total">Total</div>
+                            <div class="total">R$ 2.350,00</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Versão Mobile: Resumido com tooltips -->
+                    <div class="calculo-mobile">
+                        <div class="titulo-mobile">📊 Cálculo do Saldo</div>
+                        <span class="valor-tooltip entradas tooltip" data-tooltip="💰 Entradas do mês">R$ 0,00</span>
+                        <span style="margin: 0 4px; color: #007bff;"> + </span>
+                        <span class="valor-tooltip anterior tooltip" data-tooltip="🔄 Saldo anterior">R$ 2.800,00</span>
+                        <span style="margin: 0 4px; color: #dc3545;"> - </span>
+                        <span class="valor-tooltip despesas tooltip" data-tooltip="💸 Despesas pagas">R$ 1.200,00</span>
+                        <span style="margin: 0 6px; color: #28a745; font-weight: 700;"> = </span>
+                        <strong class="total tooltip" style="font-size: 0.85rem;" data-tooltip="📊 Saldo disponível">R$ 2.350,00</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Card Normal (Referência) -->
+        <div class="card" style="border-color: #ea4335;">
+            <div style="font-size: 0.875rem; color: #ea4335; font-weight: 700; margin-bottom: 8px;">
+                💸 DESPESAS PAGAS
+            </div>
+            <div style="font-size: 2rem; font-weight: 700; color: #ea4335; margin-bottom: 8px;">
+                R$ 1.200,00
+            </div>
+            <div style="font-size: 0.875rem; color: #5f6368;">
+                Despesas pagas no período selecionado
+            </div>
+        </div>
+    </div>
+    
+    <div style="margin-top: 40px; padding: 20px; background: white; border-radius: 8px;">
+        <h3>✨ Solução Híbrida Implementada:</h3>
+        <ul>
+            <li>🖥️ <strong>Desktop (≥768px):</strong> Grid compacto com 7 colunas + tooltips explicativos</li>
+            <li>📱 <strong>Mobile (<768px):</strong> Formato resumido em linha única + tooltips</li>
+            <li>🎯 <strong>Tooltips:</strong> Explicações detalhadas ao passar o mouse em cada valor</li>
+            <li>📐 <strong>Responsivo:</strong> Adapta automaticamente ao tamanho da tela</li>
+            <li>🎨 <strong>Consistente:</strong> Mantém o padrão visual dos outros cards</li>
+        </ul>
+        
+        <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; margin-top: 15px;">
+            <strong>🎉 Resultado:</strong> O melhor dos dois mundos - compacto no desktop, resumido no mobile, sempre com explicações!
+        </div>
+        
+        <p style="margin-top: 15px; font-size: 0.9em; color: #666;">
+            💡 <strong>Teste:</strong> Redimensione a janela do navegador para ver a adaptação automática entre as versões.
+        </p>
+    </div>
+</body>
+</html>

@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔍 Verificar Dados</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .debug-card { background: white; border-radius: 8px; padding: 20px; margin: 20px 0; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin: 5px; }
+        button:hover { background: #0056b3; }
+        .highlight { background: #ffffcc; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .error { background: #ffeeee; color: #cc0000; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .success { background: #eeffee; color: #006600; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        pre { background: #f8f9fa; padding: 15px; border-radius: 4px; overflow-x: auto; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Verificar Dados Financeiros</h1>
+    
+    <div class="debug-card">
+        <h2>📋 Investigação</h2>
+        <div class="highlight">
+            <strong>SUSPEITA:</strong> Não há dados para novembro 2024<br>
+            <strong>PRECISO:</strong> Verificar quais meses têm dados<br>
+            <strong>OBJETIVO:</strong> Encontrar onde estão os R$ 4.000 + R$ 1.370
+        </div>
+        
+        <button onclick="verificarTodosOsDados()">📊 Verificar Todos os Meses</button>
+        <button onclick="listarEntradas()">💰 Listar Todas as Entradas</button>
+        <button onclick="listarDespesas()">💸 Listar Todas as Despesas</button>
+    </div>
+
+    <div class="debug-card">
+        <h3>📋 Resultados</h3>
+        <div id="logs"></div>
+    </div>
+
+    <script type="module">
+        import { buscarEntradas } from '/src/services/entradas.js';
+        import { buscarDespesas } from '/src/services/despesas.js';
+        import { buscarResumoFinanceiro } from '/src/services/dashboard.js';
+
+        function log(message, type = 'info') {
+            const logsDiv = document.getElementById('logs');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : '';
+            logsDiv.innerHTML += `
+                <div class="${className}">
+                    <strong>[${timestamp}]</strong> ${message}
+                </div>
+            `;
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+            console.log(`[${timestamp}] ${message}`);
+        }
+
+        window.verificarTodosOsDados = async function() {
+            log('🔍 Verificando dados de todos os meses de 2024...');
+            
+            const meses = [
+                'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+            ];
+            
+            for (let mes = 0; mes < 12; mes++) {
+                try {
+                    const resumo = await buscarResumoFinanceiro(2024, mes, false);
+                    if (resumo.success) {
+                        const local = resumo.resumo.totalLocal || 0;
+                        const despesas = resumo.resumo.totalDespesasPagas || 0;
+                        const saldo = resumo.resumo.saldoMesSemRotativo || 0;
+                        
+                        if (local > 0 || despesas > 0) {
+                            log(`✅ ${meses[mes]}: Local R$ ${local.toFixed(2)}, Despesas R$ ${despesas.toFixed(2)}, Saldo R$ ${saldo.toFixed(2)}`, 'success');
+                        } else {
+                            log(`⚪ ${meses[mes]}: Sem dados`);
+                        }
+                    } else {
+                        log(`❌ ${meses[mes]}: Erro - ${resumo.error}`, 'error');
+                    }
+                } catch (error) {
+                    log(`❌ ${meses[mes]}: Erro - ${error.message}`, 'error');
+                }
+            }
+            
+            log('🎯 Verificação completa!', 'success');
+        };
+
+        window.listarEntradas = async function() {
+            log('🔍 Listando todas as entradas...');
+            
+            try {
+                const resultado = await buscarEntradas();
+                if (resultado.success) {
+                    log(`✅ Total de entradas encontradas: ${resultado.entradas.length}`);
+                    
+                    // Agrupar por mês/ano
+                    const porMes = {};
+                    resultado.entradas.forEach(entrada => {
+                        const data = entrada.data instanceof Date ? entrada.data : new Date(entrada.data);
+                        const chave = `${data.getMonth() + 1}/${data.getFullYear()}`;
+                        
+                        if (!porMes[chave]) {
+                            porMes[chave] = { quantidade: 0, total: 0, entradas: [] };
+                        }
+                        
+                        porMes[chave].quantidade++;
+                        porMes[chave].total += (entrada.valor || 0);
+                        porMes[chave].entradas.push(entrada);
+                    });
+                    
+                    // Mostrar resumo
+                    Object.keys(porMes).sort().forEach(chave => {
+                        const dados = porMes[chave];
+                        log(`📅 ${chave}: ${dados.quantidade} entradas, Total R$ ${dados.total.toFixed(2)}`);
+                    });
+                    
+                } else {
+                    log(`❌ Erro ao buscar entradas: ${resultado.error}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Erro: ${error.message}`, 'error');
+            }
+        };
+
+        window.listarDespesas = async function() {
+            log('🔍 Listando todas as despesas...');
+            
+            try {
+                const despesas = await buscarDespesas();
+                log(`✅ Total de despesas encontradas: ${despesas.length}`);
+                
+                // Agrupar por mês/ano
+                const porMes = {};
+                despesas.forEach(despesa => {
+                    if (despesa.status === 'Paga') {
+                        const data = despesa.dataPagamento ? 
+                            (despesa.dataPagamento instanceof Date ? despesa.dataPagamento : new Date(despesa.dataPagamento)) :
+                            (new Date(despesa.vencimento));
+                        const chave = `${data.getMonth() + 1}/${data.getFullYear()}`;
+                        
+                        if (!porMes[chave]) {
+                            porMes[chave] = { quantidade: 0, total: 0 };
+                        }
+                        
+                        porMes[chave].quantidade++;
+                        porMes[chave].total += (despesa.valor || 0);
+                    }
+                });
+                
+                // Mostrar resumo
+                Object.keys(porMes).sort().forEach(chave => {
+                    const dados = porMes[chave];
+                    log(`📅 ${chave}: ${dados.quantidade} despesas pagas, Total R$ ${dados.total.toFixed(2)}`);
+                });
+                
+            } catch (error) {
+                log(`❌ Erro: ${error.message}`, 'error');
+            }
+        };
+
+        log('🚀 Verificador carregado. Clique para investigar!');
+    </script>
+</body>
+</html>

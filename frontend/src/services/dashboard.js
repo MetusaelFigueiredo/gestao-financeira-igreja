@@ -7,9 +7,9 @@ import { doc, getDoc, setDoc, Timestamp, onSnapshot, collection, query, orderBy 
 const META_MISSOES = 5000;
 
 /**
- * 🔄 SALDO ROTATIVO: Calcula o saldo líquido do mês anterior
- * Regra: (Entradas Locais do Mês Anterior) - (Despesas do Mês Anterior) = Saldo Rotativo
- * Este saldo é transferido 100% para o mês seguinte (NÃO sofre rateio novamente)
+ * 🔄 SALDO ROTATIVO: Calcula o saldo TOTAL disponível do mês anterior
+ * Regra: (Saldo TOTAL do Mês Anterior) - esse é o dinheiro físico disponível
+ * CORREÇÃO: Transfere o saldo COMPLETO, não apenas o líquido local
  */
 export const calcularSaldoRotativo = async (ano, mes) => {
   try {
@@ -22,44 +22,49 @@ export const calcularSaldoRotativo = async (ano, mes) => {
       anoAnterior = ano - 1;
     }
 
-    console.log(`🔄 Calculando saldo rotativo de ${mesAnterior + 1}/${anoAnterior} para ${mes + 1}/${ano}`);
+    console.log(`🔄 Calculando saldo TOTAL disponível de ${mesAnterior + 1}/${anoAnterior} para ${mes + 1}/${ano}`);
 
-    // Buscar entradas do mês anterior
-    const entradas = await buscarEntradas();
-    const entradasMesAnterior = entradas.entradas ? entradas.entradas.filter(entrada => {
-      const dataEntrada = new Date(entrada.data);
-      return dataEntrada.getMonth() === mesAnterior && 
-             dataEntrada.getFullYear() === anoAnterior;
-    }) : [];
+    // 🚨 PROBLEMA IDENTIFICADO: Estamos buscando o mês anterior SEM saldo rotativo!
+    // Isso significa que estamos pegando apenas o saldo LOCAL de novembro (1.370)
+    // ao invés do saldo TOTAL de novembro (que deveria incluir os 4.000 de outubro)
+    
+    // 🔧 SOLUÇÃO: Buscar o saldo COM rotativo do mês anterior (incluirSaldoRotativo = true)
+    console.log(`🔍 BUSCANDO saldo TOTAL do mês anterior (${mesAnterior + 1}/${anoAnterior}) COM saldo rotativo...`);
+    const resumoMesAnterior = await buscarResumoFinanceiro(anoAnterior, mesAnterior, true); // true = COM saldo rotativo
+    
+    console.log(`🔍 Resumo do mês anterior (${mesAnterior + 1}/${anoAnterior}):`, resumoMesAnterior.success ? 'SUCESSO' : 'ERRO');
+    
+    if (!resumoMesAnterior.success) {
+      console.log(`❌ Não foi possível obter resumo de ${mesAnterior + 1}/${anoAnterior}:`, resumoMesAnterior.error);
+      return {
+        saldoRotativo: 0,
+        detalhes: {
+          anoAnterior,
+          mesAnterior: mesAnterior + 1,
+          erro: 'Resumo do mês anterior não encontrado'
+        }
+      };
+    }
 
-    // Calcular total de entradas locais do mês anterior (após rateio)
-    let totalEntradasLocais = 0;
-    entradasMesAnterior.forEach(entrada => {
-      const rateio = calcularRateio(entrada.tipo, entrada.valor);
-      totalEntradasLocais += rateio.local;
-    });
+    // O saldo rotativo é o saldo TOTAL do mês anterior (com rotativo incluído)
+    // Isso garante que transferimos TODA a quantia física disponível
+    const saldoRotativo = resumoMesAnterior.resumo.saldoMes || 0;
 
-    // Buscar despesas do mês anterior
-    const despesas = await buscarDespesasPorPeriodo(anoAnterior, mesAnterior);
-    const totalDespesas = despesas.reduce((sum, despesa) => sum + despesa.valor, 0);
-
-    // Calcular saldo rotativo
-    const saldoRotativo = totalEntradasLocais - totalDespesas;
-
-    console.log(`💰 Saldo rotativo ${mesAnterior + 1}/${anoAnterior}:`);
-    console.log(`   Entradas locais: R$ ${totalEntradasLocais.toFixed(2)}`);
-    console.log(`   Despesas: R$ ${totalDespesas.toFixed(2)}`);
-    console.log(`   Saldo a transferir: R$ ${saldoRotativo.toFixed(2)}`);
+    console.log(`💰 ===== DADOS DO MÊS ANTERIOR (${mesAnterior + 1}/${anoAnterior}) =====`);
+    console.log(`   💵 Entradas locais: R$ ${resumoMesAnterior.resumo.totalLocal || 0}`);
+    console.log(`   🔄 Saldo anterior recebido: R$ ${resumoMesAnterior.resumo.saldoRotativo || 0}`);
+    console.log(`   💸 Despesas pagas: R$ ${resumoMesAnterior.resumo.totalDespesasPagas || 0}`);
+    console.log(`   💰 SALDO TOTAL: R$ ${saldoRotativo.toFixed(2)} ⭐ (Este valor será transferido)`);
+    console.log(`   📋 Fórmula: Local + Anterior - Despesas = ${resumoMesAnterior.resumo.totalLocal || 0} + ${resumoMesAnterior.resumo.saldoRotativo || 0} - ${resumoMesAnterior.resumo.totalDespesasPagas || 0} = ${saldoRotativo.toFixed(2)}`);
+    console.log(`============================================`);
 
     return {
       saldoRotativo,
       detalhes: {
         anoAnterior,
         mesAnterior: mesAnterior + 1,
-        entradasLocais: totalEntradasLocais,
-        despesas: totalDespesas,
-        quantidadeEntradas: entradasMesAnterior.length,
-        quantidadeDespesas: despesas.length
+        saldoTotalAnterior: saldoRotativo,
+        observacao: 'Saldo total transferido (dinheiro físico real)'
       }
     };
     
@@ -292,8 +297,11 @@ export const calcularEstatisticasMes = async () => {
 /**
  * Busca e calcula o resumo financeiro do mês especificado
  * Retorna: entrada local, despesas pagas, saldo do mês, detalhamento de entradas (central, local, missões, PIX, dinheiro)
+ * @param {number} ano - Ano para filtrar (null = ano atual)
+ * @param {number} mes - Mês para filtrar (null = mês atual)  
+ * @param {boolean} incluirSaldoRotativo - Se deve incluir saldo rotativo (evitar recursão)
  */
-export const buscarResumoFinanceiro = async (ano = null, mes = null) => {
+export const buscarResumoFinanceiro = async (ano = null, mes = null, incluirSaldoRotativo = true) => {
   try {
     const resultado = await buscarEntradas();
     
@@ -391,18 +399,85 @@ export const buscarResumoFinanceiro = async (ano = null, mes = null) => {
     let saldoRotativo = 0;
     let detalhesSaldoRotativo = null;
     
-    // Só calcular saldo rotativo se não for o primeiro mês que temos dados
-    // (evitar buscar dados de meses inexistentes)
-    if (ano !== null && mes !== null) {
-      const resultadoSaldoRotativo = await calcularSaldoRotativo(anoAlvo, mesAlvo);
-      saldoRotativo = resultadoSaldoRotativo.saldoRotativo;
-      detalhesSaldoRotativo = resultadoSaldoRotativo.detalhes;
+    // Só calcular saldo rotativo se solicitado e não for o primeiro mês que temos dados
+    // 🚨 CORREÇÃO: Evitar recursão infinita - calcular diretamente aqui
+    if (incluirSaldoRotativo && ano !== null && mes !== null) {
+      // Calcular o mês anterior
+      let anoAnterior = anoAlvo;
+      let mesAnterior = mesAlvo - 1;
+      
+      if (mesAnterior < 0) {
+        mesAnterior = 11;
+        anoAnterior = anoAlvo - 1;
+      }
+      
+      console.log(`� Calculando saldo rotativo: buscando ${mesAnterior + 1}/${anoAnterior} para transferir para ${mesAlvo + 1}/${anoAlvo}`);
+      
+      // Buscar o resumo do mês anterior SEM saldo rotativo para evitar recursão
+      const resumoMesAnterior = await buscarResumoFinanceiro(anoAnterior, mesAnterior, false);
+      
+      if (resumoMesAnterior.success) {
+        // O saldo rotativo é o saldo TOTAL do mês anterior
+        // Precisamos buscar também o saldo rotativo DELE para ter o valor correto
+        let saldoRotativoDoAnterior = 0;
+        let mesAntAnterior = 0; // Definir variável aqui
+        let anoAntAnterior = anoAnterior;
+        
+        // Se não for o primeiro mês, buscar o saldo rotativo do mês anterior
+        if (mesAnterior > 0 || anoAnterior > 2024) {
+          anoAntAnterior = anoAnterior;
+          mesAntAnterior = mesAnterior - 1;
+          
+          if (mesAntAnterior < 0) {
+            mesAntAnterior = 11;
+            anoAntAnterior = anoAnterior - 1;
+          }
+          
+          const resumoAntAnterior = await buscarResumoFinanceiro(anoAntAnterior, mesAntAnterior, false);
+          if (resumoAntAnterior.success) {
+            saldoRotativoDoAnterior = resumoAntAnterior.resumo.saldoMesSemRotativo || 0;
+          }
+        }
+        
+        // Saldo total do mês anterior = local + rotativo - despesas
+        const totalLocalAnterior = resumoMesAnterior.resumo.totalLocal || 0;
+        const despesasAnterior = resumoMesAnterior.resumo.totalDespesasPagas || 0;
+        
+        saldoRotativo = totalLocalAnterior + saldoRotativoDoAnterior - despesasAnterior;
+        
+        console.log(`💰 CÁLCULO SALDO ROTATIVO PARA ${mesAlvo + 1}/${anoAlvo}:`);
+        console.log(`   📈 Local de ${mesAnterior + 1}/${anoAnterior}: R$ ${totalLocalAnterior.toFixed(2)}`);
+        console.log(`   🔄 Rotativo de ${mesAntAnterior + 1}/${anoAntAnterior}: R$ ${saldoRotativoDoAnterior.toFixed(2)}`);
+        console.log(`   📉 Despesas de ${mesAnterior + 1}/${anoAnterior}: R$ ${despesasAnterior.toFixed(2)}`);
+        console.log(`   💰 TOTAL TRANSFERIDO: R$ ${saldoRotativo.toFixed(2)}`);
+        
+        detalhesSaldoRotativo = {
+          anoAnterior,
+          mesAnterior: mesAnterior + 1,
+          totalLocalAnterior,
+          saldoRotativoDoAnterior,
+          despesasAnterior,
+          saldoCalculado: saldoRotativo
+        };
+      } else {
+        console.log(`❌ Não foi possível calcular saldo rotativo: ${resumoMesAnterior.error}`);
+      }
     }
 
     // 🎯 NOVO CÁLCULO: Saldo do mês COM saldo rotativo
-    // Fórmula: (Entrada Local Atual) + (Saldo Anterior) - (Despesas)
+    // Fórmula: (Entrada Local Atual) + (Saldo Anterior) - (Despesas Atuais)
     const saldoMesSemRotativo = totalLocal - totalDespesasPagas; // Cálculo original
-    const saldoMesComRotativo = totalLocal + saldoRotativo - totalDespesasPagas; // Novo cálculo
+    const saldoMesComRotativo = incluirSaldoRotativo ? (totalLocal + saldoRotativo - totalDespesasPagas) : saldoMesSemRotativo; // Novo cálculo
+    
+    if (incluirSaldoRotativo) {
+      console.log(`📊 CÁLCULO DO SALDO PARA ${mesAlvo + 1}/${anoAlvo}:`);
+      console.log(`   💵 Entradas locais do mês: R$ ${totalLocal.toFixed(2)}`);
+      console.log(`   🔄 Saldo rotativo (TOTAL anterior): R$ ${saldoRotativo.toFixed(2)}`);
+      console.log(`   💸 Despesas pagas no mês: R$ ${totalDespesasPagas.toFixed(2)}`);
+      console.log(`   💰 SALDO FINAL: R$ ${totalLocal.toFixed(2)} + R$ ${saldoRotativo.toFixed(2)} - R$ ${totalDespesasPagas.toFixed(2)} = R$ ${saldoMesComRotativo.toFixed(2)}`);
+    } else {
+      console.log(`📊 CÁLCULO SEM ROTATIVO PARA ${mesAlvo + 1}/${anoAlvo}: R$ ${saldoMesSemRotativo.toFixed(2)}`);
+    }
 
     // Calcula percentuais de PIX e Dinheiro LOCAL
     const totalLocalRecebido = totalPixLocal + totalDinheiroLocal;
@@ -434,7 +509,7 @@ export const buscarResumoFinanceiro = async (ano = null, mes = null) => {
         percentualDinheiroLocal: percentualDinheiroLocal.toFixed(1),
         totalDespesasPagas,
         // 🔄 NOVOS CAMPOS: Saldo rotativo
-        saldoMes: saldoMesComRotativo, // Novo saldo (com rotativo)
+        saldoMes: saldoMesComRotativo, // Novo saldo (com rotativo se solicitado)
         saldoMesSemRotativo: saldoMesSemRotativo, // Saldo original (sem rotativo)
         saldoRotativo, // Saldo transferido do mês anterior
         detalhesSaldoRotativo, // Detalhes do cálculo do saldo anterior

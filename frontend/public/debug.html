@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🐛 Debug Saldo</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .debug-card { background: white; border-radius: 8px; padding: 20px; margin: 20px 0; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin: 5px; }
+        button:hover { background: #0056b3; }
+        .highlight { background: #ffffcc; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .error { background: #ffeeee; color: #cc0000; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .success { background: #eeffee; color: #006600; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        pre { background: #f8f9fa; padding: 15px; border-radius: 4px; overflow-x: auto; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <h1>🐛 Debug - Saldo Rotativo Dezembro 2024</h1>
+    
+    <div class="debug-card">
+        <h2>📋 Diagnóstico do Problema</h2>
+        <div class="highlight">
+            <strong>PROBLEMA:</strong> Dezembro mostra R$ 1.370 ao invés de R$ 5.370<br>
+            <strong>ESPERADO:</strong> R$ 4.000 (outubro) + R$ 1.370 (novembro) = R$ 5.370<br>
+            <strong>ATUAL:</strong> R$ 1.370 (apenas novembro)
+        </div>
+        
+        <button onclick="debugSaldoCompleto()">🔍 Debug Completo</button>
+        <button onclick="verificarNovembro()">📊 Verificar Novembro</button>
+        <button onclick="calcularDezembro()">💰 Calcular Dezembro</button>
+    </div>
+
+    <div class="debug-card">
+        <h3>📋 Logs de Debug</h3>
+        <div id="logs"></div>
+    </div>
+
+    <script type="module">
+        // Importar diretamente do caminho relativo
+        import { buscarResumoFinanceiro, calcularSaldoRotativo } from '/src/services/dashboard.js';
+
+        function log(message, type = 'info') {
+            const logsDiv = document.getElementById('logs');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : '';
+            logsDiv.innerHTML += `
+                <div class="${className}">
+                    <strong>[${timestamp}]</strong> ${message}
+                </div>
+            `;
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+            console.log(`[${timestamp}] ${message}`);
+        }
+
+        window.debugSaldoCompleto = async function() {
+            log('🔍 Iniciando debug completo do saldo rotativo...');
+            
+            try {
+                // 1. Verificar Novembro 2024 (sem saldo rotativo para evitar recursão)
+                log('📊 Verificando NOVEMBRO 2024 (sem rotativo)...');
+                const novembroSemRotativo = await buscarResumoFinanceiro(2024, 10, false);
+                if (novembroSemRotativo.success) {
+                    log(`✅ Novembro SEM rotativo: saldoMes = R$ ${novembroSemRotativo.resumo.saldoMes.toFixed(2)}`, 'success');
+                    log(`   Entradas locais: R$ ${novembroSemRotativo.resumo.totalLocal.toFixed(2)}`);
+                    log(`   Despesas pagas: R$ ${novembroSemRotativo.resumo.totalDespesasPagas.toFixed(2)}`);
+                } else {
+                    log(`❌ Erro ao buscar novembro sem rotativo: ${novembroSemRotativo.error}`, 'error');
+                }
+
+                // 2. Verificar Novembro 2024 (com saldo rotativo)
+                log('📊 Verificando NOVEMBRO 2024 (com rotativo)...');
+                const novembroComRotativo = await buscarResumoFinanceiro(2024, 10, true);
+                if (novembroComRotativo.success) {
+                    log(`✅ Novembro COM rotativo: saldoMes = R$ ${novembroComRotativo.resumo.saldoMes.toFixed(2)}`, 'success');
+                    log(`   Saldo rotativo recebido de outubro: R$ ${novembroComRotativo.resumo.saldoRotativo.toFixed(2)}`);
+                } else {
+                    log(`❌ Erro ao buscar novembro com rotativo: ${novembroComRotativo.error}`, 'error');
+                }
+
+                // 3. Calcular saldo rotativo para dezembro
+                log('🔄 Calculando saldo rotativo para DEZEMBRO 2024...');
+                const saldoRotativoDez = await calcularSaldoRotativo(2024, 11);
+                log(`💰 Resultado: R$ ${saldoRotativoDez.saldoRotativo.toFixed(2)}`, saldoRotativoDez.saldoRotativo === 5370 ? 'success' : 'error');
+                log(`   Detalhes: ${JSON.stringify(saldoRotativoDez.detalhes, null, 2)}`);
+
+                log('🎯 Debug completo finalizado!', 'success');
+
+            } catch (error) {
+                log(`❌ Erro durante debug: ${error.message}`, 'error');
+                console.error('Erro:', error);
+            }
+        };
+
+        window.verificarNovembro = async function() {
+            log('🔍 Verificando detalhes de NOVEMBRO 2024...');
+            
+            try {
+                const novembro = await buscarResumoFinanceiro(2024, 10, true);
+                if (novembro.success) {
+                    log(`<pre>${JSON.stringify(novembro.resumo, null, 2)}</pre>`);
+                } else {
+                    log(`❌ Erro: ${novembro.error}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Erro: ${error.message}`, 'error');
+            }
+        };
+
+        window.calcularDezembro = async function() {
+            log('🔍 Calculando saldo rotativo para DEZEMBRO...');
+            
+            try {
+                const saldo = await calcularSaldoRotativo(2024, 11);
+                log(`<pre>${JSON.stringify(saldo, null, 2)}</pre>`);
+            } catch (error) {
+                log(`❌ Erro: ${error.message}`, 'error');
+            }
+        };
+
+        // Auto-executar debug ao carregar a página
+        log('🚀 Página carregada. Clique em "Debug Completo" para iniciar.');
+    </script>
+</body>
+</html>

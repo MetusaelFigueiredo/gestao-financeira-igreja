@@ -101,7 +101,7 @@ const CardSaldoMes = ({ resumo, formatarMoeda }) => {
             </span>
           </div>
           
-          {resumo?.saldoRotativo > 0 && (
+          {(resumo?.saldoRotativo || 0) > 0 ? (
             <div style={{
               display: 'flex',
               justifyContent: 'space-between',
@@ -114,7 +114,7 @@ const CardSaldoMes = ({ resumo, formatarMoeda }) => {
                 {formatarMoeda(resumo?.saldoRotativo || 0)}
               </span>
             </div>
-          )}
+          ) : null}
           
           <div style={{
             display: 'flex',

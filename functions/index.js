@@ -1,8 +1,9 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
-const { SecretManagerServiceClient } = require('@google-cloud/secret-manager');
+const {GoogleGenerativeAI} = require('@google/generative-ai');
+const {SecretManagerServiceClient} = require('@google-cloud/secret-manager');
 const pdfParse = require('pdf-parse');
+const fetch = require('node-fetch');
 
 // Inicializar Firebase Admin
 admin.initializeApp();
@@ -36,10 +37,10 @@ exports.processarComprovantePIX = functions.storage.object().onFinalize(async (o
     // 3. Acessar chave da API do Gemini
     const geminiApiKey = await getGeminiApiKey();
     const genAI = new GoogleGenerativeAI(geminiApiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const model = genAI.getGenerativeModel({model: 'gemini-2.0-flash-exp'});
 
     // 4. Baixar o arquivo do Storage
-    const bucket = admin.storage().bucket(fileBucket);
+    const bucket = admin.storage().bucket();
     const file = bucket.file(filePath);
     const [fileBuffer] = await file.download();
     
@@ -106,15 +107,15 @@ JSON APENAS:`;
     }
 
     // 9. Buscar documento no Firestore
-    const comprovanteUrl = `https://firebasestorage.googleapis.com/v0/b/${fileBucket}/o/${encodeURIComponent(filePath)}`;
-    console.log('🔍 Procurando documento com comprovanteUrl:', comprovanteUrl);
+    const baseUrl = `https://firebasestorage.googleapis.com/v0/b/${fileBucket}/o/${encodeURIComponent(filePath)}`;
+    console.log('🔍 Procurando documento com comprovanteUrl:', baseUrl);
 
     const db = admin.firestore();
     const entradasRef = db.collection('entradas');
     
-    // Buscar por comprovanteUrl que contenha o nome do arquivo
-    const querySnapshot = await entradasRef.where('comprovanteUrl', '>=', comprovanteUrl.split('?')[0])
-                                           .where('comprovanteUrl', '<', comprovanteUrl.split('?')[0] + '\uf8ff')
+    // Buscar documentos que contenham o path do arquivo no comprovanteUrl
+    const querySnapshot = await entradasRef.where('comprovanteUrl', '>=', baseUrl)
+                                           .where('comprovanteUrl', '<=', baseUrl + '\uf8ff')
                                            .get();
 
     if (querySnapshot.empty) {
@@ -171,21 +172,48 @@ JSON APENAS:`;
       // Comparar nome (com membro selecionado)
       if (dadosExtraidos.nome) {
         const membroSelecionado = dadosAtuais.membro || '';
-        const nomeComprovante = dadosExtraidos.nome.toLowerCase();
-        const membroNormalizado = membroSelecionado.toLowerCase();
+        const nomeComprovante = dadosExtraidos.nome.toLowerCase().trim();
+        const membroNormalizado = membroSelecionado.toLowerCase().trim();
         
-        // Verificar se o nome do comprovante não coincide com o membro selecionado
-        const nomesCoincidentes = membroNormalizado.includes(nomeComprovante) || 
-                                 nomeComprovante.includes(membroNormalizado) ||
-                                 // Verificar nomes similares (pelo menos 3 caracteres em comum)
-                                 (nomeComprovante.length >= 3 && membroNormalizado.includes(nomeComprovante.substring(0, 3)));
+        // Função para calcular similaridade entre nomes
+        const calcularSimilaridade = (str1, str2) => {
+          if (!str1 || !str2) return 0;
+          
+          // Remover acentos e normalizar
+          const normalizar = (str) => str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+          const nome1 = normalizar(str1);
+          const nome2 = normalizar(str2);
+          
+          // Verificar se um nome contém o outro (pelo menos 50% do nome menor)
+          const menorNome = nome1.length < nome2.length ? nome1 : nome2;
+          const maiorNome = nome1.length >= nome2.length ? nome1 : nome2;
+          
+          if (menorNome.length >= 5 && maiorNome.includes(menorNome)) {
+            return 1.0; // 100% similar
+          }
+          
+          // Verificar palavras em comum (sobrenomes)
+          const palavras1 = nome1.split(' ').filter(p => p.length >= 3);
+          const palavras2 = nome2.split(' ').filter(p => p.length >= 3);
+          
+          if (palavras1.length === 0 || palavras2.length === 0) return 0;
+          
+          const palavrasComuns = palavras1.filter(p1 => 
+            palavras2.some(p2 => p1 === p2 || p1.includes(p2) || p2.includes(p1))
+          );
+          
+          return palavrasComuns.length / Math.min(palavras1.length, palavras2.length);
+        };
         
-        if (!nomesCoincidentes) {
+        const similaridade = calcularSimilaridade(nomeComprovante, membroNormalizado);
+        const nomesCoincidentes = similaridade >= 0.6; // 60% de similaridade mínima
+        
+        if (!nomesCoincidentes && membroSelecionado) {
           divergencias.push({
             campo: 'membro',
-            lançado: membroSelecionado || 'Não informado',
+            lançado: membroSelecionado,
             comprovante: dadosExtraidos.nome,
-            diferenca: 'Membro diferente do comprovante'
+            diferenca: `Similaridade: ${Math.round(similaridade * 100)}%`
           });
         }
       }
@@ -259,7 +287,7 @@ async function getGeminiApiKey() {
     const client = new SecretManagerServiceClient();
     const name = `projects/${projectId}/secrets/GEMINI_API_KEY/versions/latest`;
     
-    const [version] = await client.accessSecretVersion({ name });
+    const [version] = await client.accessSecretVersion({name});
     const payload = version.payload.data.toString();
     console.log('✅ API Key recuperada do Secret Manager');
     return payload;
@@ -477,22 +505,31 @@ function calcularRateio(valor, tipo) {
  * Função para listar modelos disponíveis (chamada via HTTP)
  */
 exports.listarModelos = functions.https.onRequest(async (req, res) => {
+  // Configurar CORS
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type');
+  
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+  
   try {
     const geminiApiKey = await getGeminiApiKey();
-    const genAI = new GoogleGenerativeAI(geminiApiKey);
     
-    // Fazer requisição direta para listar modelos
+    // Usar node-fetch para compatibilidade
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${geminiApiKey}`);
     const data = await response.json();
     
     res.json({
       sucesso: true,
-      modelos: data.models?.map(m => ({
+      modelos: data.models && data.models.map(m => ({
         name: m.name,
         displayName: m.displayName,
         supportedGenerationMethods: m.supportedGenerationMethods
       })) || [],
-      total: data.models?.length || 0
+      total: data.models && data.models.length || 0
     });
     
   } catch (error) {
@@ -525,7 +562,7 @@ exports.testarProcessamentoGemini = functions.https.onRequest(async (req, res) =
     // Preparar para Gemini
     const geminiApiKey = await getGeminiApiKey();
     const genAI = new GoogleGenerativeAI(geminiApiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const model = genAI.getGenerativeModel({model: 'gemini-2.0-flash-exp'});
     
     const mimeType = getMimeType(extensao);
     const fileData = {

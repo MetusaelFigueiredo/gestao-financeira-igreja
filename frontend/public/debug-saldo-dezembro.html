@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🐛 Debug - Saldo Dezembro</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        .debug-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .highlight {
+            background: #ffffcc;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .error {
+            background: #ffeeee;
+            color: #cc0000;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success {
+            background: #eeffee;
+            color: #006600;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>🐛 Debug - Saldo Rotativo Dezembro 2024</h1>
+    
+    <div class="debug-card">
+        <h2>📋 Diagnóstico do Problema</h2>
+        <div class="highlight">
+            <strong>PROBLEMA:</strong> Dezembro mostra R$ 1.370 ao invés de R$ 5.370<br>
+            <strong>ESPERADO:</strong> R$ 4.000 (outubro) + R$ 1.370 (novembro) = R$ 5.370<br>
+            <strong>ATUAL:</strong> R$ 1.370 (apenas novembro)
+        </div>
+        
+        <button onclick="debugSaldoCompleto()">🔍 Debug Completo</button>
+        <button onclick="verificarNovembro()">📊 Verificar Novembro</button>
+        <button onclick="verificarOutubro()">📊 Verificar Outubro</button>
+        <button onclick="calcularDezembro()">💰 Calcular Dezembro</button>
+    </div>
+
+    <div class="debug-card">
+        <h3>📋 Logs de Debug</h3>
+        <div id="logs"></div>
+    </div>
+
+    <script type="module">
+        import { buscarResumoFinanceiro, calcularSaldoRotativo } from './src/services/dashboard.js';
+
+        function log(message, type = 'info') {
+            const logsDiv = document.getElementById('logs');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : '';
+            logsDiv.innerHTML += `
+                <div class="${className}">
+                    <strong>[${timestamp}]</strong> ${message}
+                </div>
+            `;
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+        }
+
+        window.debugSaldoCompleto = async function() {
+            log('🔍 Iniciando debug completo do saldo rotativo...');
+            
+            try {
+                // 1. Verificar Outubro 2024
+                log('📊 Verificando OUTUBRO 2024...');
+                const outubro = await buscarResumoFinanceiro(2024, 9, true); // outubro = mês 9
+                if (outubro.success) {
+                    log(`✅ Outubro: saldoMes = R$ ${outubro.resumo.saldoMes}`, 'success');
+                    log(`   Entradas locais: R$ ${outubro.resumo.totalLocal}`);
+                    log(`   Despesas pagas: R$ ${outubro.resumo.totalDespesasPagas}`);
+                    log(`   Saldo rotativo recebido: R$ ${outubro.resumo.saldoRotativo}`);
+                } else {
+                    log(`❌ Erro ao buscar outubro: ${outubro.error}`, 'error');
+                }
+
+                // 2. Verificar Novembro 2024
+                log('📊 Verificando NOVEMBRO 2024...');
+                const novembro = await buscarResumoFinanceiro(2024, 10, true); // novembro = mês 10
+                if (novembro.success) {
+                    log(`✅ Novembro: saldoMes = R$ ${novembro.resumo.saldoMes}`, 'success');
+                    log(`   Entradas locais: R$ ${novembro.resumo.totalLocal}`);
+                    log(`   Despesas pagas: R$ ${novembro.resumo.totalDespesasPagas}`);
+                    log(`   Saldo rotativo recebido: R$ ${novembro.resumo.saldoRotativo}`);
+                } else {
+                    log(`❌ Erro ao buscar novembro: ${novembro.error}`, 'error');
+                }
+
+                // 3. Calcular saldo rotativo para dezembro
+                log('🔄 Calculando saldo rotativo para DEZEMBRO 2024...');
+                const saldoRotativo = await calcularSaldoRotativo(2024, 11); // dezembro = mês 11
+                log(`💰 Saldo rotativo calculado: R$ ${saldoRotativo.saldoRotativo}`, 'success');
+                log(`   Detalhes: ${JSON.stringify(saldoRotativo.detalhes, null, 2)}`);
+
+                // 4. Verificar Dezembro completo
+                log('📊 Verificando DEZEMBRO 2024 completo...');
+                const dezembro = await buscarResumoFinanceiro(2024, 11, true); // dezembro = mês 11
+                if (dezembro.success) {
+                    log(`✅ Dezembro: saldoMes = R$ ${dezembro.resumo.saldoMes}`, 'success');
+                    log(`   Entradas locais: R$ ${dezembro.resumo.totalLocal}`);
+                    log(`   Despesas pagas: R$ ${dezembro.resumo.totalDespesasPagas}`);
+                    log(`   Saldo rotativo recebido: R$ ${dezembro.resumo.saldoRotativo}`);
+                } else {
+                    log(`❌ Erro ao buscar dezembro: ${dezembro.error}`, 'error');
+                }
+
+                log('🎯 Debug completo finalizado!', 'success');
+
+            } catch (error) {
+                log(`❌ Erro durante debug: ${error.message}`, 'error');
+                console.error('Erro:', error);
+            }
+        };
+
+        window.verificarNovembro = async function() {
+            log('🔍 Verificando detalhes de NOVEMBRO 2024...');
+            
+            try {
+                const novembro = await buscarResumoFinanceiro(2024, 10, true);
+                if (novembro.success) {
+                    log(`<pre>${JSON.stringify(novembro.resumo, null, 2)}</pre>`);
+                } else {
+                    log(`❌ Erro: ${novembro.error}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Erro: ${error.message}`, 'error');
+            }
+        };
+
+        window.verificarOutubro = async function() {
+            log('🔍 Verificando detalhes de OUTUBRO 2024...');
+            
+            try {
+                const outubro = await buscarResumoFinanceiro(2024, 9, true);
+                if (outubro.success) {
+                    log(`<pre>${JSON.stringify(outubro.resumo, null, 2)}</pre>`);
+                } else {
+                    log(`❌ Erro: ${outubro.error}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Erro: ${error.message}`, 'error');
+            }
+        };
+
+        window.calcularDezembro = async function() {
+            log('🔍 Calculando saldo rotativo para DEZEMBRO...');
+            
+            try {
+                const saldo = await calcularSaldoRotativo(2024, 11);
+                log(`<pre>${JSON.stringify(saldo, null, 2)}</pre>`);
+            } catch (error) {
+                log(`❌ Erro: ${error.message}`, 'error');
+            }
+        };
+    </script>
+</body>
+</html>

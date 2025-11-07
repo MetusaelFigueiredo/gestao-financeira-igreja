@@ -1,0 +1,43 @@
+{
+  "hash": "af05f1eb",
+  "configHash": "4c95cd16",
+  "lockfileHash": "e3b0c442",
+  "browserHash": "36dfc41e",
+  "optimized": {
+    "browser-image-compression": {
+      "src": "../../frontend/node_modules/browser-image-compression/dist/browser-image-compression.mjs",
+      "file": "browser-image-compression.js",
+      "fileHash": "48c060a3",
+      "needsInterop": false
+    },
+    "firebase/app": {
+      "src": "../../frontend/node_modules/firebase/app/dist/esm/index.esm.js",
+      "file": "firebase_app.js",
+      "fileHash": "bb3f2119",
+      "needsInterop": false
+    },
+    "firebase/auth": {
+      "src": "../../frontend/node_modules/firebase/auth/dist/esm/index.esm.js",
+      "file": "firebase_auth.js",
+      "fileHash": "21edff40",
+      "needsInterop": false
+    },
+    "firebase/firestore": {
+      "src": "../../frontend/node_modules/firebase/firestore/dist/esm/index.esm.js",
+      "file": "firebase_firestore.js",
+      "fileHash": "1a87a66b",
+      "needsInterop": false
+    },
+    "firebase/storage": {
+      "src": "../../frontend/node_modules/firebase/storage/dist/esm/index.esm.js",
+      "file": "firebase_storage.js",
+      "fileHash": "1a28b257",
+      "needsInterop": false
+    }
+  },
+  "chunks": {
+    "chunk-V3Z2R6OM": {
+      "file": "chunk-V3Z2R6OM.js"
+    }
+  }
+}

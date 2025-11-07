@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { adicionarEntrada, atualizarEntrada } from '../services/entradas';
 import { buscarMembros } from '../services/membros';
+import { buscarEventosAbertos } from '../services/eventos';
 import { formatarMoeda, dataParaString } from '../utils/formatacao';
 import UploadComprovante from './UploadComprovante';
 
@@ -21,6 +22,10 @@ function FormEntrada({ onSucesso, usuarioEmail, entradaParaEdicao = null }) {
   const [membroId, setMembroId] = useState('');
   const [membros, setMembros] = useState([]);
   
+  // Estados para eventos
+  const [eventoId, setEventoId] = useState('');
+  const [eventos, setEventos] = useState([]);
+  
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState('');
   const [sucesso, setSucesso] = useState('');
@@ -35,7 +40,19 @@ function FormEntrada({ onSucesso, usuarioEmail, entradaParaEdicao = null }) {
 
   useEffect(() => {
     carregarMembros();
+    carregarEventos();
   }, []);
+
+  const carregarEventos = async () => {
+    const resultado = await buscarEventosAbertos();
+    if (resultado.success) {
+      setEventos(resultado.eventos);
+      // Se há apenas um evento aberto, selecioná-lo automaticamente
+      if (resultado.eventos.length === 1 && !eventoId) {
+        setEventoId(resultado.eventos[0].id);
+      }
+    }
+  };
 
   // Preencher formulário quando há entrada para edição
   useEffect(() => {
@@ -48,6 +65,7 @@ function FormEntrada({ onSucesso, usuarioEmail, entradaParaEdicao = null }) {
       setFormaRecebimento(entradaParaEdicao.formaRecebimento || 'pix');
       setDescricao(entradaParaEdicao.descricao || '');
       setMembroId(entradaParaEdicao.membroId || '');
+      setEventoId(entradaParaEdicao.eventoId || '');
     }
   }, [entradaParaEdicao]);
 
@@ -91,6 +109,11 @@ function FormEntrada({ onSucesso, usuarioEmail, entradaParaEdicao = null }) {
       setErro('Selecione o membro que dizimou');
       return;
     }
+
+    if (!eventoId && eventos.length > 0) {
+      setErro('Selecione o evento para esta entrada');
+      return;
+    }
     
     setCarregando(true);
     
@@ -99,7 +122,8 @@ function FormEntrada({ onSucesso, usuarioEmail, entradaParaEdicao = null }) {
       data,
       valor: valorNum,
       formaRecebimento,
-      descricao
+      descricao,
+      eventoId: eventoId || null
     };
 
     // Adicionar comprovante se for PIX e houver comprovante
@@ -161,6 +185,7 @@ function FormEntrada({ onSucesso, usuarioEmail, entradaParaEdicao = null }) {
     setFormaRecebimento('pix');
     setDescricao('');
     setMembroId('');
+    setEventoId('');
     setComprovante(null);
     setErro('');
     setSucesso('');
@@ -243,6 +268,50 @@ function FormEntrada({ onSucesso, usuarioEmail, entradaParaEdicao = null }) {
               <option value="promocao">Promoção/Evento</option>
               <option value="outros">Outros</option>
             </select>
+          </div>
+
+          {/* Evento */}
+          <div>
+            <label style={{
+              display: 'block',
+              marginBottom: '8px',
+              fontSize: '0.875rem',
+              fontWeight: '500',
+              color: '#5f6368'
+            }}>
+              🎯 Evento *
+            </label>
+            <select
+              value={eventoId}
+              onChange={(e) => setEventoId(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                border: '1px solid #dadce0',
+                borderRadius: '6px',
+                fontSize: '0.9375rem',
+                color: eventoId ? '#202124' : '#9aa0a6',
+                backgroundColor: '#ffffff',
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              <option value="">Selecione o evento</option>
+              {eventos.map((evento) => (
+                <option key={evento.id} value={evento.id}>
+                  {evento.nomeEvento} - {evento.dataEvento?.toLocaleDateString('pt-BR')}
+                </option>
+              ))}
+            </select>
+            {eventos.length === 0 && (
+              <div style={{
+                fontSize: '0.75rem',
+                color: '#ea4335',
+                marginTop: '4px'
+              }}>
+                ⚠️ Nenhum evento aberto. Crie um evento primeiro.
+              </div>
+            )}
           </div>
 
           {/* Data */}

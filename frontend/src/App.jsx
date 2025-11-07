@@ -3,11 +3,14 @@ import Login from './pages/Login';
 import Entradas from './pages/Entradas';
 import Membros from './pages/Membros';
 import { logout, observarAutenticacao } from './services/auth';
+import { ehPastor, podeGerenciarUsuarios } from './services/usuarios';
 import Dashboard from './pages/Dashboard';
 import Despesas from './pages/Despesas';
 import Relatorios from './pages/Relatorios';
 import Backup from './pages/Backup';
 import Reconciliacao from './pages/Reconciliacao'; // ✅ IMPLEMENTADA - FASE 3
+import Eventos from './pages/Eventos'; // 🎯 NOVA FUNCIONALIDADE
+import Usuarios from './pages/Usuarios'; // 👥 GERENCIAR USUÁRIOS
 import DiagnosticoFirebase from './components/DiagnosticoFirebase'; // 🔍 Diagnóstico
 import './styles/responsive.css'; // 📱 CSS Responsivo
 
@@ -30,16 +33,28 @@ function App() {
     setPaginaAtual('home');
   };
 
-  const menuItems = [
-    { id: 'entradas', label: 'Entradas', icon: '�' },
-    { id: 'despesas', label: 'Despesas', icon: '�' },
-    { id: 'dashboard', label: 'Dashboard', icon: '�' },
-    { id: 'membros', label: 'Membros', icon: '�' },
-    { id: 'reconciliacao', label: 'Reconciliação', icon: '⚖️' },
-    { id: 'backup', label: 'Backup', icon: '🗓️' },
-    { id: 'relatorios', label: 'Relatórios', icon: '📊' }
-    // { id: 'diagnostico', label: 'Diagnóstico', icon: '🔍' } // 🔍 Mantido no código mas oculto da UI
-  ];
+  // Menu items dinâmico baseado no perfil
+  const getMenuItems = () => {
+    const baseItems = [
+      { id: 'entradas', label: 'Entradas', icon: '💰' },
+      { id: 'eventos', label: 'Eventos', icon: '🎯' },
+      { id: 'despesas', label: 'Despesas', icon: '💸' },
+      { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+      { id: 'membros', label: 'Membros', icon: '👥' },
+      { id: 'reconciliacao', label: 'Reconciliação', icon: '⚖️' },
+      { id: 'backup', label: 'Backup', icon: '🗓️' },
+      { id: 'relatorios', label: 'Relatórios', icon: '📈' }
+    ];
+
+    // Adicionar item de usuários apenas para MASTER
+    if (usuario?.perfil && podeGerenciarUsuarios(usuario.perfil)) {
+      baseItems.push({ id: 'usuarios', label: 'Usuários', icon: '👑' });
+    }
+
+    return baseItems;
+  };
+
+  const menuItems = getMenuItems();
 
   const handleMenuClick = (pagina) => {
     setPaginaAtual(pagina);
@@ -366,6 +381,8 @@ function App() {
         {paginaAtual === 'despesas' && <Despesas usuarioEmail={usuario.email} />}
         {paginaAtual === 'dashboard' && <Dashboard onNavigate={setPaginaAtual} />}
         {paginaAtual === 'membros' && <Membros usuarioEmail={usuario.email} />}
+        {paginaAtual === 'eventos' && <Eventos usuarioEmail={usuario.email} usuarioPerfil={usuario} />}
+        {paginaAtual === 'usuarios' && <Usuarios usuarioPerfil={usuario} />}
         {paginaAtual === 'reconciliacao' && <Reconciliacao />}
         {paginaAtual === 'backup' && <Backup />}
         {paginaAtual === 'relatorios' && <Relatorios />}

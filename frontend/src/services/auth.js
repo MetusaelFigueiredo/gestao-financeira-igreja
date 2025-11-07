@@ -4,6 +4,7 @@ import {
   onAuthStateChanged 
 } from 'firebase/auth';
 import { auth } from './firebase';
+import { buscarPerfilUsuario, criarPerfilUsuario } from './usuarios';
 
 /**
  * Faz login com email e senha
@@ -50,8 +51,42 @@ export const logout = async () => {
 };
 
 /**
- * Observa mudanças no estado de autenticação
+ * Observa mudanças no estado de autenticação e carrega perfil
  */
 export const observarAutenticacao = (callback) => {
-  return onAuthStateChanged(auth, callback);
+  return onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      // Usuario logado - buscar/criar perfil
+      try {
+        let resultado = await buscarPerfilUsuario(user.uid);
+        
+        if (!resultado.success) {
+          // Perfil não existe - criar um novo
+          console.log('🆕 Criando perfil para novo usuário:', user.email);
+          resultado = await criarPerfilUsuario(user.uid, {
+            email: user.email,
+            nome: user.displayName || user.email.split('@')[0]
+          });
+        }
+        
+        if (resultado.success) {
+          // Retornar user com perfil integrado
+          const userComPerfil = {
+            ...user,
+            perfil: resultado.perfil
+          };
+          callback(userComPerfil);
+        } else {
+          console.error('Erro ao carregar perfil:', resultado.error);
+          callback(user); // Retorna sem perfil em caso de erro
+        }
+      } catch (error) {
+        console.error('Erro ao processar perfil:', error);
+        callback(user); // Retorna sem perfil em caso de erro
+      }
+    } else {
+      // Usuario não logado
+      callback(null);
+    }
+  });
 };

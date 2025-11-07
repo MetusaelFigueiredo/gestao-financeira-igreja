@@ -12,6 +12,39 @@ import {
   onSnapshot
 } from 'firebase/firestore';
 import { db, auth } from './firebase';
+import { atualizarEstatisticasEvento } from './eventos';
+
+/**
+ * Atualizar estatísticas do evento baseado nas entradas vinculadas
+ */
+const atualizarEstatisticasDoEvento = async (eventoId) => {
+  try {
+    // Buscar todas as entradas do evento
+    const q = query(
+      collection(db, 'entradas'),
+      where('eventoId', '==', eventoId)
+    );
+    
+    const querySnapshot = await getDocs(q);
+    
+    let totalEntradas = 0;
+    let valorTotal = 0;
+    
+    querySnapshot.forEach((doc) => {
+      const entrada = doc.data();
+      totalEntradas++;
+      valorTotal += entrada.valor || 0;
+    });
+    
+    // Atualizar o evento com as estatísticas
+    await atualizarEstatisticasEvento(eventoId, totalEntradas, valorTotal);
+    
+    console.log(`📊 Estatísticas do evento ${eventoId} atualizadas: ${totalEntradas} entradas, R$ ${valorTotal}`);
+  } catch (error) {
+    console.error('Erro ao atualizar estatísticas do evento:', error);
+    throw error;
+  }
+};
 
 /**
  * Calcula o rateio baseado no tipo de entrada
@@ -70,6 +103,9 @@ export const adicionarEntrada = async (dados, usuarioEmail) => {
       formaRecebimento: dados.formaRecebimento,
       rateio: rateio, // SEMPRE vai ter rateio calculado
       
+      // Vincular ao evento se fornecido
+      ...(dados.eventoId && { eventoId: dados.eventoId }),
+      
       // Se for dízimo, guarda o membro
       ...(dados.tipo === 'dizimo' && dados.membroId && {
         membroId: dados.membroId,
@@ -96,6 +132,16 @@ export const adicionarEntrada = async (dados, usuarioEmail) => {
     };
     
     const docRef = await addDoc(entradasRef, documento);
+    
+    // Atualizar estatísticas do evento se vinculado
+    if (dados.eventoId) {
+      try {
+        await atualizarEstatisticasDoEvento(dados.eventoId);
+      } catch (error) {
+        console.warn('⚠️ Erro ao atualizar estatísticas do evento:', error);
+        // Não falha a operação principal se houver erro nas estatísticas
+      }
+    }
     
     console.log('✅ Entrada adicionada:', docRef.id);
     

@@ -14,10 +14,22 @@ service cloud.firestore {
              get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isAdmin == true;
     }
 
+    // Função auxiliar para verificar se é pastor
+    function ehPastor() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil == 'pastor';
+    }
+
     // Regras para coleção de usuários
     match /usuarios/{userId} {
-      allow read: if isAuthenticated();
-      allow create, update, delete: if isAdmin();
+      allow read: if isAuthenticated();  // Todos podem ler usuários
+      allow create: if isAuthenticated() && request.auth.uid == userId;  // Só pode criar próprio perfil
+      allow update: if isAuthenticated() && (
+        request.auth.uid == userId ||  // Próprio usuário pode atualizar
+        ehPastor()  // Pastor pode alterar qualquer perfil
+      );
+      allow delete: if ehPastor();  // Só pastor pode deletar
     }
 
     // Regras para coleção de entradas
@@ -53,6 +65,14 @@ service cloud.firestore {
     match /configuracoes/{configId} {
       allow read: if isAuthenticated();  // Todos podem ler configurações
       allow write: if isAuthenticated(); // Todos podem escrever configurações
+    }
+
+    // 🎯 Regras para coleção de eventos
+    match /eventos/{eventoId} {
+      allow read: if isAuthenticated();    // Permitir leitura para usuários logados
+      allow create: if isAuthenticated();  // Permitir criação para usuários logados
+      allow update: if isAuthenticated();  // Permitir atualização para usuários logados
+      allow delete: if isAuthenticated();  // Permitir exclusão para usuários logados
     }
 
     // Regra padrão: negar tudo que não foi especificado

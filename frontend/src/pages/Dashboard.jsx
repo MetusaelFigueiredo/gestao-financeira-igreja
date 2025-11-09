@@ -26,8 +26,8 @@ function Dashboard({ onNavigate }) {
   useEffect(() => {
     carregarDados();
     
-    // ✨ SOLUÇÃO DEFINITIVA: Recarregar a cada 30 segundos
-    const interval = setInterval(carregarDados, 30000);
+    // ✨ SOLUÇÃO DEFINITIVA: Recarregar a cada 180 segundos
+    const interval = setInterval(carregarDados, 180000);
     
     return () => clearInterval(interval);
   }, [anoSelecionado, mesSelecionado]);
@@ -407,6 +407,8 @@ function Dashboard({ onNavigate }) {
       {/* Reconciliação Financeira - NOVO COMPONENTE */}
       <ReconciliacaoFinanceira 
         entradas={entradas}
+        anoSelecionado={anoSelecionado}
+        mesSelecionado={mesSelecionado}
         formatarMoeda={formatarMoeda}
       />
 

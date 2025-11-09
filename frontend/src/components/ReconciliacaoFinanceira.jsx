@@ -1,6 +1,14 @@
 import React from 'react';
 
-const ReconciliacaoFinanceira = ({ entradas, formatarMoeda }) => {
+const ReconciliacaoFinanceira = ({ entradas, anoSelecionado, mesSelecionado, formatarMoeda }) => {
+  // Filtrar entradas pelo período selecionado
+  const entradasDoMes = (entradas || []).filter(entrada => {
+    if (!entrada.data) return false;
+    
+    const dataEntrada = entrada.data instanceof Date ? entrada.data : new Date(entrada.data);
+    return dataEntrada.getFullYear() === anoSelecionado && dataEntrada.getMonth() === mesSelecionado;
+  });
+
   // Cálculos da reconciliação baseados na lógica correta
   let totalPix = 0;
   let totalDinheiro = 0;
@@ -10,7 +18,7 @@ const ReconciliacaoFinanceira = ({ entradas, formatarMoeda }) => {
   let localDinheiro = 0;
 
   // Filtrar apenas Dízimo e Oferta para reconciliação
-  const entradasReconciliacao = (entradas || []).filter(entrada => {
+  const entradasReconciliacao = entradasDoMes.filter(entrada => {
     const tipo = entrada.tipo?.toLowerCase() || '';
     return tipo === 'dizimo' || tipo === 'oferta';
   });
@@ -37,6 +45,12 @@ const ReconciliacaoFinanceira = ({ entradas, formatarMoeda }) => {
   const saldoFinal = Math.round((centralDeveDevolver - localDeveRepassar) * 100) / 100;
   const favorecido = saldoFinal >= 0 ? 'local' : 'central';
 
+  // Nomes dos meses para exibição
+  const nomesMeses = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+  ];
+
   return (
     <div style={{
       backgroundColor: '#ffffff',
@@ -55,7 +69,7 @@ const ReconciliacaoFinanceira = ({ entradas, formatarMoeda }) => {
         alignItems: 'center',
         gap: '12px'
       }}>
-        ⚖️ Reconciliação Financeira
+        ⚖️ Reconciliação Financeira - {nomesMeses[mesSelecionado]} {anoSelecionado}
       </h2>
       
       <p style={{

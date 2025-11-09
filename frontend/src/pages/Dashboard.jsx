@@ -59,10 +59,12 @@ function Dashboard({ onNavigate }) {
         
         // 📊 Calcular totais para o novo card
         resumoCompleto.totalEntradas = (resumoCompleto.totalCentral || 0) + (resumoCompleto.totalLocal || 0) + (resumoCompleto.totalMissoes || 0);
-        resumoCompleto.totalDespesasPendentes = 0; // Será calculado quando buscarmos as despesas
         resumoCompleto.percentualGasto = resumoCompleto.totalEntradas > 0 
           ? (resumoCompleto.totalDespesasPagas / resumoCompleto.totalEntradas) * 100 
           : 0;
+
+        // 🔍 Debug: Verificar se totalDespesasPendentes foi calculado corretamente
+        console.log('🔍 DEBUG - totalDespesasPendentes no resumo:', resumoCompleto.totalDespesasPendentes);
         
         // 🎯 SALDO ROTATIVO JÁ INCLUÍDO nos cálculos!
         console.log('🔄 Saldo rotativo:', resumoCompleto.saldoRotativo);
@@ -84,15 +86,6 @@ function Dashboard({ onNavigate }) {
       
       if (resultadoDespesas.success) {
         setDespesas(resultadoDespesas.despesas);
-        
-        // 📊 Atualizar total de despesas pendentes no resumo
-        if (resumo) {
-          const totalPendentes = resultadoDespesas.despesas?.totais?.geral || 0;
-          setResumo(prevResumo => ({
-            ...prevResumo,
-            totalDespesasPendentes: totalPendentes
-          }));
-        }
         
         console.log('✅ Despesas carregadas com sucesso');
       } else {

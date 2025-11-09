@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import FormEntrada from '../components/FormEntrada';
 import AlertaDivergencia from '../components/AlertaDivergencia';
 import { buscarEntradas, excluirEntrada, atualizarEntrada, atualizarCamposControle } from '../services/entradas';
+import { buscarEventoPorId } from '../services/eventos';
 import { formatarMoeda } from '../utils/formatacao';
 import { calcularResumoMes } from '../utils/entradasUtils';
 import { calcularRateio } from '../utils/migracaoRateio';
@@ -160,7 +161,34 @@ function Entradas({ usuarioEmail }) {
     return dataB.getTime() - dataA.getTime(); // Mais recente primeiro
   });
 
-  const editarEntrada = (entrada) => {
+  // 🔒 Verificação de status do evento
+  const verificarStatusEvento = async (eventoId) => {
+    if (!eventoId) {
+      return true; // Se não tem evento vinculado, permite edição/exclusão
+    }
+    
+    try {
+      const resultado = await buscarEventoPorId(eventoId);
+      if (resultado.success) {
+        const status = resultado.evento.status;
+        // Permite apenas se evento estiver aberto ou em análise
+        return status === 'aberto' || status === 'analise';
+      }
+      return false;
+    } catch (error) {
+      console.error('Erro ao verificar status do evento:', error);
+      return false;
+    }
+  };
+
+  const editarEntrada = async (entrada) => {
+    // 🔒 Verificar se evento permite edição
+    const podeEditar = await verificarStatusEvento(entrada.eventoId);
+    if (!podeEditar) {
+      alert("❌ Não é possível editar uma entrada de um evento encerrado.");
+      return;
+    }
+    
     setEntradaParaEdicao(entrada);
     // Scroll para o formulário
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -172,7 +200,14 @@ function Entradas({ usuarioEmail }) {
     }
   };
 
-  const confirmarExclusao = async (entradaId, valorEntrada) => {
+  const confirmarExclusao = async (entradaId, valorEntrada, eventoId) => {
+    // 🔒 Verificar se evento permite exclusão
+    const podeExcluir = await verificarStatusEvento(eventoId);
+    if (!podeExcluir) {
+      alert("❌ Não é possível excluir uma entrada de um evento encerrado.");
+      return;
+    }
+    
     const confirmacao = window.confirm(
       `Você tem certeza que deseja excluir este lançamento de ${formatarMoeda(valorEntrada)}?\n\nEsta ação não pode ser desfeita.`
     );
@@ -727,7 +762,7 @@ function Entradas({ usuarioEmail }) {
                           
                           {/* Botão Excluir */}
                           <button
-                            onClick={() => confirmarExclusao(entrada.id, entrada.valor)}
+                            onClick={() => confirmarExclusao(entrada.id, entrada.valor, entrada.eventoId)}
                             title="Excluir"
                             style={{
                               padding: '6px 8px',

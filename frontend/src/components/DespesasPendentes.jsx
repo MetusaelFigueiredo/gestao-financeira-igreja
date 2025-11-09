@@ -1,7 +1,7 @@
 import React from 'react';
 
 const DespesasPendentes = ({ resumo, despesas, formatarMoeda, onPagarDespesa }) => {
-  const saldoSuficiente = (resumo?.saldoMes || 0) >= (despesas?.totais?.geral || 0);
+  const saldoSuficiente = (resumo?.saldoMes || 0) >= (resumo?.totalDespesasPendentes || 0);
 
   return (
     <div style={{
@@ -21,8 +21,36 @@ const DespesasPendentes = ({ resumo, despesas, formatarMoeda, onPagarDespesa }) 
         alignItems: 'center',
         gap: '12px'
       }}>
-        ⏰ Despesas Pendentes (Mês Inteiro)
+        ⏰ Gestão de Despesas
       </h2>
+
+      {/* 📊 ANÁLISE FINANCEIRA - Dados do período filtrado */}
+      <div style={{
+        backgroundColor: '#f8f9fa',
+        borderRadius: '8px',
+        padding: '16px',
+        marginBottom: '24px',
+        border: '1px solid #e8eaed'
+      }}>
+        <h3 style={{
+          fontSize: '1rem',
+          fontWeight: '600',
+          color: '#5f6368',
+          margin: '0 0 8px 0',
+          textAlign: 'center'
+        }}>
+          📊 ANÁLISE DO PERÍODO SELECIONADO
+        </h3>
+        <p style={{
+          fontSize: '0.875rem',
+          color: '#5f6368',
+          margin: 0,
+          textAlign: 'center',
+          fontStyle: 'italic'
+        }}>
+          Dados baseados no filtro de mês/ano do Dashboard
+        </p>
+      </div>
 
       {/* Análise de Saldo vs Despesas */}
       <div style={{
@@ -30,7 +58,7 @@ const DespesasPendentes = ({ resumo, despesas, formatarMoeda, onPagarDespesa }) 
         borderRadius: '12px',
         padding: '20px',
         marginBottom: '24px',
-        border: `2px solid ${saldoSuficiente ? '#3b82f6' : '#ef4444'}`
+        border: `3px solid ${saldoSuficiente ? '#3b82f6' : '#ef4444'}`
       }}>
         <div style={{
           fontSize: '1.125rem',
@@ -41,7 +69,7 @@ const DespesasPendentes = ({ resumo, despesas, formatarMoeda, onPagarDespesa }) 
           alignItems: 'center',
           gap: '8px'
         }}>
-          💰 ANÁLISE FINANCEIRA
+          💰 ANÁLISE FINANCEIRA DO PERÍODO
         </div>
         
         <div style={{
@@ -82,7 +110,7 @@ const DespesasPendentes = ({ resumo, despesas, formatarMoeda, onPagarDespesa }) 
               fontWeight: '700',
               color: '#f9ab00'
             }}>
-              {formatarMoeda(despesas?.totais?.geral || 0)}
+              {formatarMoeda(resumo?.totalDespesasPendentes || 0)}
             </div>
           </div>
           
@@ -101,12 +129,40 @@ const DespesasPendentes = ({ resumo, despesas, formatarMoeda, onPagarDespesa }) 
               color: saldoSuficiente ? '#34a853' : '#ea4335'
             }}>
               {saldoSuficiente 
-                ? formatarMoeda((resumo?.saldoMes || 0) - (despesas?.totais?.geral || 0))
-                : formatarMoeda((despesas?.totais?.geral || 0) - (resumo?.saldoMes || 0))
+                ? formatarMoeda((resumo?.saldoMes || 0) - (resumo?.totalDespesasPendentes || 0))
+                : formatarMoeda((resumo?.totalDespesasPendentes || 0) - (resumo?.saldoMes || 0))
               }
             </div>
           </div>
         </div>
+      </div>
+
+      {/* 🚨 DESPESAS URGENTES - Dados do mês vigente (próximos 15 dias) */}
+      <div style={{
+        backgroundColor: '#fef9e7',
+        borderRadius: '8px',
+        padding: '16px',
+        marginBottom: '24px',
+        border: '1px solid #facc15'
+      }}>
+        <h3 style={{
+          fontSize: '1rem',
+          fontWeight: '600',
+          color: '#92400e',
+          margin: '0 0 8px 0',
+          textAlign: 'center'
+        }}>
+          🚨 DESPESAS URGENTES (MÊS VIGENTE)
+        </h3>
+        <p style={{
+          fontSize: '0.875rem',
+          color: '#92400e',
+          margin: 0,
+          textAlign: 'center',
+          fontStyle: 'italic'
+        }}>
+          Vencimentos dos próximos 15 dias (independente do filtro)
+        </p>
       </div>
 
       {/* Grid de Despesas por Período */}
@@ -421,6 +477,34 @@ const DespesasPendentes = ({ resumo, despesas, formatarMoeda, onPagarDespesa }) 
         </div>
       </div>
 
+      {/* 📊 RESUMO CONSOLIDADO - Dados do mês vigente */}
+      <div style={{
+        backgroundColor: '#f0f9ff',
+        borderRadius: '8px',
+        padding: '16px',
+        marginBottom: '20px',
+        border: '1px solid #3b82f6'
+      }}>
+        <h3 style={{
+          fontSize: '1rem',
+          fontWeight: '600',
+          color: '#1d4ed8',
+          margin: '0 0 8px 0',
+          textAlign: 'center'
+        }}>
+          📊 CONSOLIDADO URGÊNCIAS
+        </h3>
+        <p style={{
+          fontSize: '0.875rem',
+          color: '#1d4ed8',
+          margin: 0,
+          textAlign: 'center',
+          fontStyle: 'italic'
+        }}>
+          Totais das despesas urgentes acima
+        </p>
+      </div>
+
       {/* Resumo Total das Despesas */}
       <div style={{
         backgroundColor: '#f8fafc',
@@ -437,7 +521,7 @@ const DespesasPendentes = ({ resumo, despesas, formatarMoeda, onPagarDespesa }) 
           alignItems: 'center',
           gap: '8px'
         }}>
-          📊 Resumo Consolidado
+          📊 Resumo das Urgências
         </h3>
         <div style={{
           display: 'grid',

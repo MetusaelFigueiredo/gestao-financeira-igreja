@@ -374,6 +374,10 @@ export const buscarResumoFinanceiro = async (ano = null, mes = null, incluirSald
     // - tem dataPagamento no mês/ano selecionado OR
     // - tem status 'Paga' e não tem dataPagamento, mas seu vencimento cai no mês/ano selecionado
     const despesas = await buscarDespesas();
+    
+    console.log(`🔍 DEBUG - Total de despesas carregadas: ${despesas.length}`);
+    console.log(`🔍 DEBUG - Filtrando para mês ${mesAlvo + 1}/${anoAlvo}`);
+    
     const despesasPagasMes = despesas.filter(d => {
       if (d.status !== 'Paga') return false;
 
@@ -394,6 +398,35 @@ export const buscarResumoFinanceiro = async (ano = null, mes = null, incluirSald
     });
 
     const totalDespesasPagas = despesasPagasMes.reduce((sum, d) => sum + (d.valor || 0), 0);
+
+    // 🎯 CÁLCULO DE DESPESAS PENDENTES: Buscar despesas pendentes do mês/ano especificado
+    const despesasPendentesMes = despesas.filter(d => {
+      // Filtrar despesas com status 'Pendente' ou 'Vencida'
+      if (d.status !== 'Pendente' && d.status !== 'Vencida') return false;
+
+      const vencimento = d.vencimento ? new Date(d.vencimento) : null;
+      
+      // Filtrar por vencimento no mês/ano especificado
+      if (vencimento) {
+        const venceNoMes = vencimento.getMonth() === mesAlvo && vencimento.getFullYear() === anoAlvo;
+        
+        // 🔍 Debug detalhado para cada despesa
+        if (d.status === 'Pendente' || d.status === 'Vencida') {
+          console.log(`🔍 DEBUG - Despesa: ${d.descricao}, Status: ${d.status}, Vencimento: ${vencimento.toLocaleDateString()}, Inclui: ${venceNoMes}`);
+        }
+        
+        return venceNoMes;
+      }
+
+      return false;
+    });
+
+    const totalDespesasPendentes = despesasPendentesMes.reduce((sum, d) => sum + (d.valor || 0), 0);
+
+    console.log(`💰 DESPESAS PENDENTES PARA ${mesAlvo + 1}/${anoAlvo}:`);
+    console.log(`   📊 Total de despesas pendentes: ${despesasPendentesMes.length}`);
+    console.log(`   💸 Valor total pendente: R$ ${totalDespesasPendentes.toFixed(2)}`);
+    console.log(`   📋 Lista de despesas pendentes:`, despesasPendentesMes.map(d => ({ descricao: d.descricao, valor: d.valor, status: d.status })));
 
     // 🔄 SALDO ROTATIVO: Buscar saldo do mês anterior (se não for mês atual)
     let saldoRotativo = 0;
@@ -508,6 +541,7 @@ export const buscarResumoFinanceiro = async (ano = null, mes = null, incluirSald
         percentualPixLocal: percentualPixLocal.toFixed(1),
         percentualDinheiroLocal: percentualDinheiroLocal.toFixed(1),
         totalDespesasPagas,
+        totalDespesasPendentes, // 🎯 NOVO CAMPO: Total de despesas pendentes do mês
         // 🔄 NOVOS CAMPOS: Saldo rotativo
         saldoMes: saldoMesComRotativo, // Novo saldo (com rotativo se solicitado)
         saldoMesSemRotativo: saldoMesSemRotativo, // Saldo original (sem rotativo)

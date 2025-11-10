@@ -54,11 +54,12 @@ function Dashboard({ onNavigate }) {
       if (resultadoResumo.success) {
         const resumoCompleto = resultadoResumo.resumo;
         
-        // 📻 Calcular 1% da Igreja Local para Rádio Nazareno
-        resumoCompleto.radioNazareno = Math.round((resumoCompleto.totalLocal || 0) * 0.01 * 100) / 100;
-        
-        // 📊 Calcular totais para o novo card
+        // � Calcular totais para o novo card
         resumoCompleto.totalEntradas = (resumoCompleto.totalCentral || 0) + (resumoCompleto.totalLocal || 0) + (resumoCompleto.totalMissoes || 0);
+        
+        // � Calcular 1% do TOTAL de entradas para Rádio Nazareno
+        resumoCompleto.radioNazareno = Math.round((resumoCompleto.totalEntradas || 0) * 0.01 * 100) / 100;
+        
         resumoCompleto.percentualGasto = resumoCompleto.totalEntradas > 0 
           ? (resumoCompleto.totalDespesasPagas / resumoCompleto.totalEntradas) * 100 
           : 0;

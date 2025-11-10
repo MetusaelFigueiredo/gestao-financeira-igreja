@@ -226,7 +226,7 @@ const CardResumoFinanceiro = ({ resumo, formatarMoeda }) => {
           color: '#5f6368',
           fontWeight: '500'
         }}>
-          1% do valor local
+          1% do total de entradas
         </div>
       </div>
     </div>

@@ -24,9 +24,15 @@ export const STATUS_EVENTO = {
  */
 export const criarEvento = async (dadosEvento) => {
   try {
+    // 🕒 Criar data local sem problemas de timezone
+    // Input date vem no formato YYYY-MM-DD, criar data no meio-dia local
+    const dataEventoString = dadosEvento.dataEvento; // Ex: "2025-11-09"
+    const [ano, mes, dia] = dataEventoString.split('-').map(Number);
+    const dataEventoLocal = new Date(ano, mes - 1, dia, 12, 0, 0); // Meio-dia para evitar timezone
+    
     const evento = {
       nomeEvento: dadosEvento.nomeEvento,
-      dataEvento: Timestamp.fromDate(new Date(dadosEvento.dataEvento)),
+      dataEvento: Timestamp.fromDate(dataEventoLocal),
       status: STATUS_EVENTO.ABERTO,
       criadoEm: Timestamp.now(),
       criadoPor: dadosEvento.usuarioEmail,

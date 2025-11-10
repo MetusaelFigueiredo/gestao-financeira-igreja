@@ -14,7 +14,46 @@ import { ehPastor, ehMaster } from '../services/usuarios';
 import ModalAprovacao from './ModalAprovacao';
 import ModalDetalhesEvento from './ModalDetalhesEvento';
 
-function ListaEventos({ onEventoSelecionado, eventoSelecionado, usuarioPerfil }) {
+// 🕒 Helper para formatação de data sem problemas de timezone
+const formatarDataEvento = (dataEvento) => {
+  if (!dataEvento) return '-';
+  
+  try {
+    let data;
+    
+    // Se for Timestamp do Firebase
+    if (dataEvento && typeof dataEvento.toDate === 'function') {
+      data = dataEvento.toDate();
+    } 
+    // Se for string no formato ISO ou timestamp
+    else if (typeof dataEvento === 'string' || typeof dataEvento === 'number') {
+      data = new Date(dataEvento);
+    }
+    // Se já for Date
+    else if (dataEvento instanceof Date) {
+      data = dataEvento;
+    } else {
+      return '-';
+    }
+    
+    // Verificar se a data é válida
+    if (isNaN(data.getTime())) {
+      return '-';
+    }
+    
+    // Formatação local (não UTC) para exibir a data correta
+    const dia = data.getDate().toString().padStart(2, '0');
+    const mes = (data.getMonth() + 1).toString().padStart(2, '0');
+    const ano = data.getFullYear();
+    
+    return `${dia}/${mes}/${ano}`;
+  } catch (error) {
+    console.error('Erro ao formatar data do evento:', error);
+    return '-';
+  }
+};
+
+function ListaEventos({ onEventoSelecionado, eventoSelecionado, usuarioPerfil, recarregarEventos = 0 }) {
   const [eventos, setEventos] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [processandoAcao, setProcessandoAcao] = useState(null);
@@ -30,7 +69,7 @@ function ListaEventos({ onEventoSelecionado, eventoSelecionado, usuarioPerfil })
 
   useEffect(() => {
     carregarEventos();
-  }, []);
+  }, [recarregarEventos]); // 🔄 Recarrega quando recarregarEventos muda
 
   const carregarEventos = async () => {
     setCarregando(true);
@@ -353,14 +392,14 @@ function ListaEventos({ onEventoSelecionado, eventoSelecionado, usuarioPerfil })
                   onClick={() => onEventoSelecionado && onEventoSelecionado(evento)}
                 >
                   <td style={{ padding: '12px', borderBottom: '1px solid #e8eaed' }}>
-                    {evento.dataEvento ? evento.dataEvento.toLocaleDateString('pt-BR') : '-'}
+                    {formatarDataEvento(evento.dataEvento)}
                   </td>
                   <td style={{ padding: '12px', borderBottom: '1px solid #e8eaed' }}>
                     <div style={{ fontWeight: '500' }}>
                       {evento.nomeEvento}
                     </div>
                     <div style={{ fontSize: '0.75rem', color: '#5f6368', marginTop: '2px' }}>
-                      Criado em {evento.criadoEm ? evento.criadoEm.toLocaleDateString('pt-BR') : '-'}
+                      Criado em {formatarDataEvento(evento.criadoEm)}
                     </div>
                   </td>
                   <td style={{ padding: '12px', borderBottom: '1px solid #e8eaed', textAlign: 'center' }}>

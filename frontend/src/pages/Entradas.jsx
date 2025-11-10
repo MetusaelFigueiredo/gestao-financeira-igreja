@@ -9,6 +9,44 @@ import { calcularRateio } from '../utils/migracaoRateio';
 import { Timestamp } from 'firebase/firestore';
 
 function Entradas({ usuarioEmail }) {
+  // 🕒 Helper para formatação de data sem problemas de timezone
+  const formatarDataEntrada = (dataEntrada) => {
+    if (!dataEntrada) return '-';
+    
+    try {
+      let data;
+      
+      // Se for Timestamp do Firebase
+      if (dataEntrada && typeof dataEntrada.toDate === 'function') {
+        data = dataEntrada.toDate();
+      } 
+      // Se for string no formato ISO ou timestamp
+      else if (typeof dataEntrada === 'string' || typeof dataEntrada === 'number') {
+        data = new Date(dataEntrada);
+      }
+      // Se já for Date
+      else if (dataEntrada instanceof Date) {
+        data = dataEntrada;
+      } else {
+        return '-';
+      }
+      
+      // Verificar se a data é válida
+      if (isNaN(data.getTime())) {
+        return '-';
+      }
+      
+      // Formatação local sem problemas de timezone
+      const dia = data.getDate().toString().padStart(2, '0');
+      const mes = (data.getMonth() + 1).toString().padStart(2, '0');
+      const ano = data.getFullYear();
+      
+      return `${dia}/${mes}/${ano}`;
+    } catch (error) {
+      console.error('Erro ao formatar data:', error);
+      return '-';
+    }
+  };
   const [entradas, setEntradas] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [entradaParaEdicao, setEntradaParaEdicao] = useState(null);
@@ -642,7 +680,7 @@ function Entradas({ usuarioEmail }) {
                       backgroundColor: index % 2 === 0 ? '#ffffff' : '#f8f9fa'
                     }}>
                       <td style={{ padding: '12px', borderBottom: '1px solid #e8eaed' }}>
-                        {entrada.data ? new Date(entrada.data).toLocaleDateString('pt-BR') : '-'}
+                        {formatarDataEntrada(entrada.data)}
                       </td>
                       <td style={{ padding: '12px', borderBottom: '1px solid #e8eaed', maxWidth: '200px' }}>
                         <div style={{ 

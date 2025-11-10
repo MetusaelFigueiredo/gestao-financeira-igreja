@@ -78,7 +78,7 @@ export const adicionarDespesa = async (despesaData, usuarioEmail) => {
     const numeroParcelas = despesaData.parcelado ? parseInt(despesaData.numeroParcelas) : 1;
     const valorTotal = parseFloat(despesaData.valor);
     const valorParcela = numeroParcelas > 1 ? valorTotal / numeroParcelas : valorTotal;
-    const dataVencimento = new Date(despesaData.vencimento);
+    const dataVencimento = stringParaDataLocal(despesaData.vencimento);
 
     console.log(`💰 Valor total: R$ ${valorTotal.toFixed(2)}, Parcelas: ${numeroParcelas}, Valor por parcela: R$ ${valorParcela.toFixed(2)}`);
 
@@ -151,6 +151,34 @@ export const adicionarDespesa = async (despesaData, usuarioEmail) => {
 /**
  * Busca todas as despesas
  */
+/**
+ * Converte string de data (YYYY-MM-DD) para Date local sem problemas de timezone
+ */
+const stringParaDataLocal = (dataString) => {
+  if (!dataString) return new Date();
+  
+  // Dividir a string "2025-12-05" em partes
+  const [ano, mes, dia] = dataString.split('-').map(Number);
+  
+  // Criar Date no fuso horário local (mês é 0-indexed)
+  return new Date(ano, mes - 1, dia);
+};
+
+/**
+ * Converte Timestamp do Firebase para string de data local (YYYY-MM-DD)
+ * sem problemas de fuso horário
+ */
+const timestampParaDataLocal = (timestamp) => {
+  if (!timestamp) return null;
+  
+  const data = timestamp.toDate();
+  const ano = data.getFullYear();
+  const mes = String(data.getMonth() + 1).padStart(2, '0');
+  const dia = String(data.getDate()).padStart(2, '0');
+  
+  return `${ano}-${mes}-${dia}`;
+};
+
 export const buscarDespesas = async () => {
   try {
     const q = query(
@@ -165,7 +193,7 @@ export const buscarDespesas = async () => {
       return {
         id: docSnap.id,
         ...data,
-        vencimento: data.vencimento?.toDate().toISOString().split('T')[0],
+        vencimento: timestampParaDataLocal(data.vencimento),
         createdAt: data.createdAt?.toDate(),
         updatedAt: data.updatedAt?.toDate(),
         dataPagamento: data.dataPagamento?.toDate()
@@ -203,7 +231,7 @@ export const buscarDespesasPorPeriodo = async (ano, mes) => {
       return {
         id: docSnap.id,
         ...data,
-        vencimento: data.vencimento?.toDate().toISOString().split('T')[0],
+        vencimento: timestampParaDataLocal(data.vencimento),
         createdAt: data.createdAt?.toDate(),
         updatedAt: data.updatedAt?.toDate(),
         dataPagamento: data.dataPagamento?.toDate()
@@ -242,7 +270,7 @@ export const buscarDespesasMesAtual = async () => {
       return {
         id: docSnap.id,
         ...data,
-        vencimento: data.vencimento?.toDate().toISOString().split('T')[0],
+        vencimento: timestampParaDataLocal(data.vencimento),
         createdAt: data.createdAt?.toDate(),
         updatedAt: data.updatedAt?.toDate(),
         dataPagamento: data.dataPagamento?.toDate()
@@ -279,7 +307,7 @@ export const atualizarDespesa = async (id, dados, novoComprovante = null, usuari
     };
 
     if (dados.vencimento) {
-      dadosAtualizados.vencimento = Timestamp.fromDate(new Date(dados.vencimento));
+      dadosAtualizados.vencimento = Timestamp.fromDate(stringParaDataLocal(dados.vencimento));
     }
 
     // Upload de novo comprovante se existir

@@ -5,6 +5,45 @@ import ConferenciaEvento from '../components/ConferenciaEvento';
 import { buscarEventosAbertos, buscarEventosEmAnalise } from '../services/eventos';
 import { ehPastor } from '../services/usuarios';
 
+// Função helper para formatar datas sem problemas de timezone
+const formatarDataEvento = (dataEvento) => {
+  if (!dataEvento) return '';
+  
+  try {
+    let data;
+    
+    // Se for Timestamp do Firebase
+    if (dataEvento && typeof dataEvento.toDate === 'function') {
+      data = dataEvento.toDate();
+    } 
+    // Se for string no formato ISO ou timestamp
+    else if (typeof dataEvento === 'string' || typeof dataEvento === 'number') {
+      data = new Date(dataEvento);
+    }
+    // Se já for Date
+    else if (dataEvento instanceof Date) {
+      data = dataEvento;
+    } else {
+      return '';
+    }
+    
+    // Verificar se a data é válida
+    if (isNaN(data.getTime())) {
+      return '';
+    }
+    
+    // Formatação local (não UTC) para exibir a data correta
+    const dia = data.getDate().toString().padStart(2, '0');
+    const mes = (data.getMonth() + 1).toString().padStart(2, '0');
+    const ano = data.getFullYear();
+    
+    return `${dia}/${mes}/${ano}`;
+  } catch (error) {
+    console.error('Erro ao formatar data do evento:', error);
+    return '';
+  }
+};
+
 function Eventos({ usuarioEmail, usuarioPerfil }) {
   const [eventosAbertos, setEventosAbertos] = useState([]);
   const [eventosEmAnalise, setEventosEmAnalise] = useState([]);
@@ -12,6 +51,9 @@ function Eventos({ usuarioEmail, usuarioPerfil }) {
   const [eventoConferencia, setEventoConferencia] = useState(null);
   const [carregandoAbertos, setCarregandoAbertos] = useState(true);
   const [carregandoAnalise, setCarregandoAnalise] = useState(false);
+  
+  // 🔄 Contador para forçar recarregamento da lista de eventos
+  const [recarregarContador, setRecarregarContador] = useState(0);
 
   useEffect(() => {
     carregarEventosAbertos();
@@ -44,6 +86,8 @@ function Eventos({ usuarioEmail, usuarioPerfil }) {
 
   const handleEventoCriado = (novoEvento) => {
     carregarEventosAbertos();
+    // 🔄 Incrementa contador para forçar recarregamento da lista completa
+    setRecarregarContador(prev => prev + 1);
   };
 
   const handleEventoSelecionado = (evento) => {
@@ -62,6 +106,8 @@ function Eventos({ usuarioEmail, usuarioPerfil }) {
     carregarEventosAbertos();
     carregarEventosEmAnalise();
     setEventoConferencia(null);
+    // 🔄 Incrementa contador para forçar recarregamento da lista completa
+    setRecarregarContador(prev => prev + 1);
   };
 
   return (
@@ -138,7 +184,7 @@ function Eventos({ usuarioEmail, usuarioPerfil }) {
           </div>
           <div style={{ fontSize: '0.875rem', color: '#9aa0a6', marginTop: '6px' }}>
             {eventoSelecionado 
-              ? eventoSelecionado.dataEvento?.toLocaleDateString('pt-BR') 
+              ? formatarDataEvento(eventoSelecionado.dataEvento)
               : 'Selecione um evento'
             }
           </div>
@@ -261,7 +307,7 @@ function Eventos({ usuarioEmail, usuarioPerfil }) {
                       {evento.nomeEvento}
                     </div>
                     <div style={{ fontSize: '0.875rem', color: '#5f6368' }}>
-                      {evento.dataEvento?.toDate?.()?.toLocaleDateString('pt-BR')} • 
+                      {formatarDataEvento(evento.dataEvento)} • 
                       {evento.totalEntradas || 0} entradas • 
                       R$ {(evento.valorTotal || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </div>
@@ -296,6 +342,7 @@ function Eventos({ usuarioEmail, usuarioPerfil }) {
         onEventoSelecionado={handleEventoSelecionado}
         eventoSelecionado={eventoSelecionado}
         usuarioPerfil={usuarioPerfil}
+        recarregarEventos={recarregarContador}
       />
 
       {/* Informações sobre o fluxo */}

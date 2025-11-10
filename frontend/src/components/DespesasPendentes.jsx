@@ -1,5 +1,19 @@
 import React from 'react';
 
+// Função helper para formatar data sem problemas de timezone
+const formatarDataVencimento = (vencimento) => {
+  if (!vencimento) return '-';
+  
+  // Se vencimento já é uma string "YYYY-MM-DD", converter para formato brasileiro
+  if (typeof vencimento === 'string' && vencimento.includes('-')) {
+    const [ano, mes, dia] = vencimento.split('-');
+    return `${dia}/${mes}/${ano}`;
+  }
+  
+  // Fallback para casos onde ainda é Date object
+  return new Date(vencimento).toLocaleDateString('pt-BR');
+};
+
 const DespesasPendentes = ({ resumo, despesas, formatarMoeda, onPagarDespesa }) => {
   const saldoSuficiente = (resumo?.saldoMes || 0) >= (resumo?.totalDespesasPendentes || 0);
 
@@ -224,7 +238,7 @@ const DespesasPendentes = ({ resumo, despesas, formatarMoeda, onPagarDespesa }) 
                     color: '#5f6368',
                     marginBottom: '10px'
                   }}>
-                    Vencimento: {new Date(despesa.vencimento).toLocaleDateString('pt-BR')}
+                    Vencimento: {formatarDataVencimento(despesa.vencimento)}
                   </div>
                   <div style={{
                     display: 'flex',
@@ -325,7 +339,7 @@ const DespesasPendentes = ({ resumo, despesas, formatarMoeda, onPagarDespesa }) 
                     color: '#5f6368',
                     marginBottom: '10px'
                   }}>
-                    Vencimento: {new Date(despesa.vencimento).toLocaleDateString('pt-BR')}
+                    Vencimento: {formatarDataVencimento(despesa.vencimento)}
                   </div>
                   <div style={{
                     display: 'flex',
@@ -426,7 +440,7 @@ const DespesasPendentes = ({ resumo, despesas, formatarMoeda, onPagarDespesa }) 
                     color: '#5f6368',
                     marginBottom: '10px'
                   }}>
-                    Vencimento: {new Date(despesa.vencimento).toLocaleDateString('pt-BR')}
+                    Vencimento: {formatarDataVencimento(despesa.vencimento)}
                   </div>
                   <div style={{
                     display: 'flex',

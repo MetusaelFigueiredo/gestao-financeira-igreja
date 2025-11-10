@@ -11,6 +11,20 @@ import {
 import { formatarMoeda } from '../utils/formatacao';
 import { exportarParaCalendario } from '../services/calendario';
 
+// Função helper para formatar data sem problemas de timezone
+const formatarDataVencimento = (vencimento) => {
+  if (!vencimento) return '-';
+  
+  // Se vencimento já é uma string "YYYY-MM-DD", converter para formato brasileiro
+  if (typeof vencimento === 'string' && vencimento.includes('-')) {
+    const [ano, mes, dia] = vencimento.split('-');
+    return `${dia}/${mes}/${ano}`;
+  }
+  
+  // Fallback para casos onde ainda é Date object
+  return new Date(vencimento).toLocaleDateString('pt-BR');
+};
+
 function Despesas({ usuarioEmail }) {
   const [despesas, setDespesas] = useState([]);
   const [todasDespesas, setTodasDespesas] = useState([]);
@@ -626,7 +640,7 @@ function Despesas({ usuarioEmail }) {
                       backgroundColor: index % 2 === 0 ? '#ffffff' : '#f8f9fa'
                     }}>
                       <td style={{ padding: '12px', borderBottom: '1px solid #e8eaed' }}>
-                        {new Date(despesa.vencimento).toLocaleDateString('pt-BR')}
+                        {formatarDataVencimento(despesa.vencimento)}
                       </td>
                       <td style={{ padding: '12px', borderBottom: '1px solid #e8eaed', maxWidth: '250px' }}>
                         <div style={{ 

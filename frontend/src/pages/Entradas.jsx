@@ -365,6 +365,35 @@ function Entradas({ usuarioEmail }) {
     setMesSelecionado(hoje.getMonth());
   }, []);
 
+  // 🚨 Função para limpar estado de processamento no banco (correção definitiva)
+  const limparProcessamentoPendente = useCallback(async (entradaId) => {
+    try {
+      console.log('🧹 Limpando estado de processamento para:', entradaId);
+      
+      const dadosLimpos = {
+        statusValidacao: 'MANUAL',
+        processadoPorGeminiAI: true, // Marca como processado para não aparecer mais
+        divergenciaResolvida: true,
+        resolucaoEm: Timestamp.now(),
+        resolucaoTipo: 'LIMPEZA_EMERGENCIA',
+        observacaoLimpeza: 'Processamento interrompido pelo usuário - entrada mantida como original'
+      };
+
+      const resultado = await atualizarCamposControle(entradaId, dadosLimpos);
+      
+      if (resultado.success) {
+        console.log('✅ Estado de processamento limpo no banco');
+        alert('✅ Problema resolvido! O modal não aparecerá mais.');
+      } else {
+        console.error('❌ Erro ao limpar estado:', resultado.error);
+        alert('❌ Erro ao resolver no banco: ' + resultado.error);
+      }
+    } catch (error) {
+      console.error('❌ Erro ao limpar processamento:', error);
+      alert('❌ Erro ao processar solicitação');
+    }
+  }, []);
+
   return (
     <div style={{
       maxWidth: '1400px',
@@ -884,6 +913,20 @@ function Entradas({ usuarioEmail }) {
             </p>
             
             <div style={{
+              fontSize: '0.75rem',
+              color: '#ea4335',
+              backgroundColor: '#fef7f7',
+              padding: '8px 12px',
+              borderRadius: '6px',
+              marginBottom: '16px',
+              lineHeight: '1.3'
+            }}>
+              ⚠️ <strong>Travou?</strong><br/>
+              • <strong>Fechar</strong>: Oculta temporário (volta no reload)<br/>
+              • <strong>Resolver Definitivamente</strong>: Corrige no banco (não volta mais)
+            </div>
+            
+            <div style={{
               backgroundColor: '#f8f9fa',
               borderRadius: '8px',
               padding: '12px',
@@ -895,28 +938,53 @@ function Entradas({ usuarioEmail }) {
               💰 <strong>{formatarMoeda(entradaProcessando.valor)}</strong>
             </div>
             
-            {/* 🚨 BOTÃO DE EMERGÊNCIA */}
-            <button
-              onClick={() => {
-                console.log('🚨 EMERGÊNCIA: Forçando saída do modal');
-                setProcessandoIA(false);
-                setEntradaProcessando(null);
-              }}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: '#ea4335',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: '6px',
-                fontSize: '0.875rem',
-                cursor: 'pointer',
-                fontWeight: '500'
-              }}
-              onMouseEnter={(e) => e.target.style.backgroundColor = '#d33b2c'}
-              onMouseLeave={(e) => e.target.style.backgroundColor = '#ea4335'}
-            >
-              🚨 Fechar (Emergência)
-            </button>
+            {/* 🚨 BOTÕES DE EMERGÊNCIA */}
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button
+                onClick={() => {
+                  console.log('🚨 EMERGÊNCIA: Fechar temporário');
+                  setProcessandoIA(false);
+                  setEntradaProcessando(null);
+                }}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#5f6368',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '0.875rem',
+                  cursor: 'pointer',
+                  fontWeight: '500'
+                }}
+                onMouseEnter={(e) => e.target.style.backgroundColor = '#3c4043'}
+                onMouseLeave={(e) => e.target.style.backgroundColor = '#5f6368'}
+              >
+                ✖️ Fechar
+              </button>
+              
+              <button
+                onClick={() => {
+                  console.log('🔧 CORREÇÃO: Resolvendo definitivamente');
+                  limparProcessamentoPendente(entradaProcessando.id);
+                  setProcessandoIA(false);
+                  setEntradaProcessando(null);
+                }}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#ea4335',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '0.875rem',
+                  cursor: 'pointer',
+                  fontWeight: '500'
+                }}
+                onMouseEnter={(e) => e.target.style.backgroundColor = '#d33b2c'}
+                onMouseLeave={(e) => e.target.style.backgroundColor = '#ea4335'}
+              >
+                🔧 Resolver Definitivamente
+              </button>
+            </div>
             
             <style>{`
               @keyframes spin {

@@ -21,6 +21,12 @@ export default defineConfig({
       // Outras configurações (p.ex. runtimeCaching) podem ser adicionadas aqui
     })
   ],
+  
+  // 🚀 Configuração para History API (rotas amigáveis)
+  server: {
+    historyApiFallback: true
+  },
+  
   build: {
     // Se quiser remover o warning de tamanho de chunk na build, aumente este limite
     chunkSizeWarningLimit: 2000, // em KB (ex: 2000KB = 2MB)

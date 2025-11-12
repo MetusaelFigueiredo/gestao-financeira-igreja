@@ -64,22 +64,31 @@ function Entradas({ usuarioEmail }) {
     console.log('🎯 Iniciando listener real-time de entradas...');
     setCarregando(true);
 
+    // 🚑 TIMEOUT DE SEGURANÇA: Se não carregar em 10s, força saída do loading
+    const timeoutCarregamento = setTimeout(() => {
+      console.warn('⚠️ Timeout de carregamento - forçando saída do loading');
+      setCarregando(false);
+    }, 10000);
+
     // Configurar listener do Firestore
     unsubscribeRef.current = escutarEntradas((resultado) => {
+      clearTimeout(timeoutCarregamento); // 🚑 Limpar timeout se sucesso
+      
       if (resultado.success) {
         console.log(`✅ Entradas atualizadas: ${resultado.entradas.length} documento(s)${resultado.metadata?.fromCache ? ' (cache)' : ''}`);
         setEntradas(resultado.entradas);
 
-        // 🆕 Processar divergências de forma assíncrona (não bloqueante)
+        // 🆕 Processar divergencias de forma assíncrona (não bloqueante)
         processarDivergenciasAsync(resultado.entradas);
       } else {
         console.error('❌ Erro ao escutar entradas:', resultado.error);
       }
-      setCarregando(false);
+      setCarregando(false); // 🎯 SEMPRE para o carregamento
     });
 
     // Cleanup: desinscrever quando componente desmontar
     return () => {
+      clearTimeout(timeoutCarregamento); // 🚑 Limpar timeout
       console.log('🧹 Limpando listener de entradas...');
       if (unsubscribeRef.current) {
         unsubscribeRef.current();
@@ -91,63 +100,71 @@ function Entradas({ usuarioEmail }) {
 
   // 🆕 Processar divergências de forma assíncrona (não bloqueia UI)
   const processarDivergenciasAsync = useCallback((entradasAtualizadas) => {
-    // Executar em microtask para não bloquear render
+    // 🚑 DEBOUNCE: Evita múltiplas execuções simultâneas
     Promise.resolve().then(() => {
-      // 🔧 CORREÇÃO: Verificar divergências primeiro (prioridade)
-      const entradaComDivergenciaNaoResolvida = entradasAtualizadas.find(entrada => 
-        entrada.divergenciasDetectadas && 
-        entrada.statusValidacao === 'DIVERGENTE' &&
-        !entrada.divergenciaResolvida
-      );
-      
-      if (entradaComDivergenciaNaoResolvida) {
-        console.log('⚠️ Divergência detectada:', entradaComDivergenciaNaoResolvida.id);
+      try {
+        // 🔧 CORREÇÃO: Verificar divergências primeiro (prioridade)
+        const entradaComDivergenciaNaoResolvida = entradasAtualizadas.find(entrada => 
+          entrada.divergenciasDetectadas && 
+          entrada.statusValidacao === 'DIVERGENTE' &&
+          !entrada.divergenciaResolvida
+        );
+        
+        if (entradaComDivergenciaNaoResolvida) {
+          console.log('⚠️ Divergência detectada:', entradaComDivergenciaNaoResolvida.id);
+          setProcessandoIA(false);
+          setEntradaProcessando(null);
+          setEntradaComDivergencia(entradaComDivergenciaNaoResolvida);
+          return; // 🚨 PARA AQUI - não continua processamento
+        }
+        
+        // 🔧 CORREÇÃO: Só verifica processamento se não há divergência
+        const entradaEmProcessamento = entradasAtualizadas.find(entrada => 
+          entrada.comprovanteUrl && 
+          !entrada.processadoPorGeminiAI &&
+          !entrada.divergenciasDetectadas &&
+          entrada.statusValidacao !== 'VALIDADO' &&
+          entrada.statusValidacao !== 'MANUAL' // 🔥 NOVA CONDIÇÃO
+        );
+        
+        // 🔧 CORREÇÃO: Só inicia processamento se mudou de entrada
+        if (entradaEmProcessamento) {
+          // Verificar se já está processando essa entrada
+          setEntradaProcessando(atual => {
+            if (!atual || atual.id !== entradaEmProcessamento.id) {
+              console.log('🤖 Detectada entrada em processamento:', entradaEmProcessamento.id);
+              setProcessandoIA(true);
+              return entradaEmProcessamento;
+            }
+            return atual;
+          });
+        } else {
+          // Nenhuma entrada em processamento encontrada
+          setProcessandoIA(false);
+          setEntradaProcessando(null);
+        }
+        
+      } catch (error) {
+        console.error('❌ Erro ao processar divergências:', error);
+        // 🔧 FALLBACK: Em caso de erro, limpar estados
         setProcessandoIA(false);
         setEntradaProcessando(null);
-        setEntradaComDivergencia(entradaComDivergenciaNaoResolvida);
-        return; // 🚨 PARA AQUI - não continua processamento
-      }
-      
-      // 🔧 CORREÇÃO: Só verifica processamento se não há divergência
-      const entradaEmProcessamento = entradasAtualizadas.find(entrada => 
-        entrada.comprovanteUrl && 
-        !entrada.processadoPorGeminiAI &&
-        !entrada.divergenciasDetectadas &&
-        entrada.statusValidacao !== 'VALIDADO' // 🔥 NOVA CONDIÇÃO
-      );
-      
-      // 🔧 CORREÇÃO: Só inicia processamento se mudou de entrada
-      if (entradaEmProcessamento && !processandoIA && 
-          (!entradaProcessando || entradaProcessando.id !== entradaEmProcessamento.id)) {
-        console.log('🤖 Detectada entrada em processamento:', entradaEmProcessamento.id);
-        setProcessandoIA(true);
-        setEntradaProcessando(entradaEmProcessamento);
-      }
-      
-      // 🔧 CORREÇÃO: Parar loading se processamento foi concluído ou há erro
-      if (processandoIA && entradaProcessando) {
-        const entradaAtualizada = entradasAtualizadas.find(e => e.id === entradaProcessando.id);
-        if (entradaAtualizada && 
-           (entradaAtualizada.processadoPorGeminiAI || 
-            entradaAtualizada.statusValidacao === 'VALIDADO' ||
-            entradaAtualizada.divergenciasDetectadas)) {
-          console.log('✅ Processamento concluído para:', entradaProcessando.id);
-          setProcessandoIA(false);
-          setEntradaProcessando(null);
-        }
-      }
-      
-      // 🔧 TIMEOUT DE SEGURANÇA: Se está processando há mais de 2 minutos, para
-      if (processandoIA && entradaProcessando) {
-        const agora = Date.now();
-        const tempoProcessamento = agora - (entradaProcessando._iniciadoEm || agora);
-        if (tempoProcessamento > 120000) { // 2 minutos
-          console.warn('⏰ Timeout de processamento - parando loading');
-          setProcessandoIA(false);
-          setEntradaProcessando(null);
-        }
       }
     });
+  }, []); // 🔥 CORREÇÃO CRÍTICA: Array vazio para evitar recriaçãozio para evitar recriação
+
+  // 🆕 useEffect separado para monitorar processamento (evita loops)
+  useEffect(() => {
+    if (!processandoIA || !entradaProcessando) return;
+
+    // Timeout de segurança para processamento individual
+    const timeoutProcessamento = setTimeout(() => {
+      console.warn('⏰ Timeout de processamento individual - limpando estado');
+      setProcessandoIA(false);
+      setEntradaProcessando(null);
+    }, 120000); // 2 minutos
+
+    return () => clearTimeout(timeoutProcessamento);
   }, [processandoIA, entradaProcessando]);
 
   // 🆕 Memoizar funções auxiliares

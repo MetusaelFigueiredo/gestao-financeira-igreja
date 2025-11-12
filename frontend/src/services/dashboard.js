@@ -540,6 +540,11 @@ export const buscarResumoFinanceiro = async (ano = null, mes = null, incluirSald
         totalDinheiroLocal,
         percentualPixLocal: percentualPixLocal.toFixed(1),
         percentualDinheiroLocal: percentualDinheiroLocal.toFixed(1),
+        // 🔧 CORREÇÃO: Adicionar aliases para compatibilidade com CardResumoFinanceiro
+        centralPix: totalPixCentral,
+        centralDinheiro: totalDinheiroCentral,
+        localPix: totalPixLocal,
+        localDinheiro: totalDinheiroLocal,
         totalDespesasPagas,
         totalDespesasPendentes, // 🎯 NOVO CAMPO: Total de despesas pendentes do mês
         // 🔄 NOVOS CAMPOS: Saldo rotativo

@@ -4,44 +4,38 @@ import {
   query, 
   orderBy, 
   getDocs,
+  getDoc, // 🔥 NOVO: Para buscar documento individual
   where,
   Timestamp,
   doc,
   updateDoc,
   deleteDoc,
-  onSnapshot
+  onSnapshot,
+  increment // 🔥 NOVO: Para atualização incremental otimizada
 } from 'firebase/firestore';
 import { db, auth } from './firebase';
 import { atualizarEstatisticasEvento } from './eventos';
 
 /**
- * Atualizar estatísticas do evento baseado nas entradas vinculadas
+ * 🚀 OTIMIZADO: Atualizar estatísticas do evento com increment (sem getDocs)
+ * Performance: O(1) ao invés de O(n) - não busca todas as entradas
  */
-const atualizarEstatisticasDoEvento = async (eventoId) => {
+const atualizarEstatisticasDoEvento = async (eventoId, valorEntrada, operacao = 'adicionar') => {
   try {
-    // Buscar todas as entradas do evento
-    const q = query(
-      collection(db, 'entradas'),
-      where('eventoId', '==', eventoId)
-    );
+    const eventoRef = doc(db, 'eventos', eventoId);
     
-    const querySnapshot = await getDocs(q);
+    // 🔥 MELHORIA: Usar increment() para atualização atômica e performática
+    const incrementoEntradas = operacao === 'adicionar' ? 1 : -1;
+    const incrementoValor = operacao === 'adicionar' ? valorEntrada : -valorEntrada;
     
-    let totalEntradas = 0;
-    let valorTotal = 0;
-    
-    querySnapshot.forEach((doc) => {
-      const entrada = doc.data();
-      totalEntradas++;
-      valorTotal += entrada.valor || 0;
+    await updateDoc(eventoRef, {
+      totalEntradas: increment(incrementoEntradas),
+      valorTotal: increment(incrementoValor)
     });
     
-    // Atualizar o evento com as estatísticas
-    await atualizarEstatisticasEvento(eventoId, totalEntradas, valorTotal);
-    
-    console.log(`📊 Estatísticas do evento ${eventoId} atualizadas: ${totalEntradas} entradas, R$ ${valorTotal}`);
+    console.log(`📊 Evento ${eventoId} atualizado incrementalmente: ${operacao === 'adicionar' ? '+' : '-'}${incrementoEntradas} entrada, ${operacao === 'adicionar' ? '+' : '-'}R$ ${Math.abs(incrementoValor)}`);
   } catch (error) {
-    console.error('Erro ao atualizar estatísticas do evento:', error);
+    console.error('❌ Erro ao atualizar estatísticas do evento:', error);
     throw error;
   }
 };
@@ -82,6 +76,7 @@ const calcularRateio = (tipo, valor) => {
  * Adiciona uma nova entrada
  * Observação: por definição atual, entradas lançadas via FormEntrada são consideradas recebidas.
  * Por isso gravamos pago: true e pagoEm: now.
+ * 🚀 OTIMIZADO: Com atualizações incrementais para melhor performance
  */
 export const adicionarEntrada = async (dados, usuarioEmail) => {
   try {
@@ -138,10 +133,10 @@ export const adicionarEntrada = async (dados, usuarioEmail) => {
     
     const docRef = await addDoc(entradasRef, documento);
     
-    // Atualizar estatísticas do evento se vinculado
+    // 🚀 PERFORMANCE: Atualizar estatísticas do evento incrementalmente
     if (dados.eventoId) {
       try {
-        await atualizarEstatisticasDoEvento(dados.eventoId);
+        await atualizarEstatisticasDoEvento(dados.eventoId, valorNum, 'adicionar');
       } catch (error) {
         console.warn('⚠️ Erro ao atualizar estatísticas do evento:', error);
         // Não falha a operação principal se houver erro nas estatísticas
@@ -348,16 +343,44 @@ export const atualizarCamposControle = async (id, dados) => {
 /**
  * Exclui uma entrada do Firestore
  */
+/**
+ * 🚀 ATUALIZADO: Excluir entrada com otimização de estatísticas
+ * Mantém compatibilidade com código existente
+ */
 export const excluirEntrada = async (entradaId) => {
   try {
     if (!auth.currentUser) {
       return { success: false, error: 'Usuário não autenticado' };
     }
 
+    // 🔍 Primeiro buscar dados da entrada para poder atualizar estatísticas
     const entradaRef = doc(db, 'entradas', entradaId);
+    const entradaDoc = await getDoc(entradaRef);
+    
+    if (!entradaDoc.exists()) {
+      return { success: false, error: 'Entrada não encontrada' };
+    }
+    
+    const entradaData = entradaDoc.data();
+    
+    // Deletar a entrada
     await deleteDoc(entradaRef);
     
-    console.log('✅ Entrada excluída:', entradaId);
+    // 🚀 PERFORMANCE: Atualizar estatísticas incrementalmente se aplicável
+    if (entradaData.eventoId && entradaData.valor) {
+      try {
+        await atualizarEstatisticasDoEvento(
+          entradaData.eventoId, 
+          entradaData.valor, 
+          'remover'
+        );
+      } catch (error) {
+        console.warn('⚠️ Erro ao atualizar estatísticas do evento:', error);
+        // Não falha a exclusão se houver erro nas estatísticas
+      }
+    }
+    
+    console.log('✅ Entrada excluída com estatísticas atualizadas:', entradaId);
     return { success: true };
   } catch (error) {
     console.error('❌ Erro ao excluir entrada:', error);
@@ -366,7 +389,8 @@ export const excluirEntrada = async (entradaId) => {
 };
 
 /**
- * Escuta mudanças nas entradas em tempo real
+ * 🚀 OTIMIZADO: Escuta mudanças nas entradas em tempo real com cache
+ * Performance: includeMetadataChanges para otimização de cache
  * Retorna uma função para cancelar o listener
  */
 export const escutarEntradas = (callback) => {
@@ -374,17 +398,41 @@ export const escutarEntradas = (callback) => {
     const entradasRef = collection(db, 'entradas');
     const q = query(entradasRef, orderBy('data', 'desc'));
     
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    // 🔥 MELHORIA: Configurar listener com otimização de cache
+    const unsubscribe = onSnapshot(q, {
+      includeMetadataChanges: true
+    }, (snapshot) => {
+      // 📊 CACHE: Verificar se os dados vêm do cache ou servidor
+      const source = snapshot.metadata.hasPendingWrites ? "Local" : "Server";
+      const fromCache = snapshot.metadata.fromCache;
+      
       const entradas = [];
       snapshot.forEach((doc) => {
+        const dataDoc = doc.data();
         entradas.push({
           id: doc.id,
-          ...doc.data()
+          ...dataDoc,
+          // Converter timestamps para Date com verificação de tipo
+          data: dataDoc.data ? (
+            typeof dataDoc.data.toDate === 'function' 
+              ? dataDoc.data.toDate() 
+              : new Date(dataDoc.data)
+          ) : null,
+          vencimento: dataDoc.vencimento ? (
+            typeof dataDoc.vencimento.toDate === 'function' 
+              ? dataDoc.vencimento.toDate() 
+              : new Date(dataDoc.vencimento)
+          ) : null,
+          pagoEm: dataDoc.pagoEm ? (
+            typeof dataDoc.pagoEm.toDate === 'function' 
+              ? dataDoc.pagoEm.toDate() 
+              : new Date(dataDoc.pagoEm)
+          ) : null
         });
       });
       
-      console.log('🔄 Entradas atualizadas em tempo real:', entradas.length);
-      callback({ success: true, entradas });
+      console.log(`🔄 Entradas atualizadas [${source}${fromCache ? ' - Cache' : ''}]:`, entradas.length);
+      callback({ success: true, entradas, metadata: { source, fromCache } });
     }, (error) => {
       console.error('❌ Erro no listener de entradas:', error);
       callback({ success: false, error: error.message });
@@ -394,5 +442,136 @@ export const escutarEntradas = (callback) => {
   } catch (error) {
     console.error('❌ Erro ao configurar listener de entradas:', error);
     return null;
+  }
+};
+
+/**
+ * 🚀 OTIMIZADO: Escuta entradas de um evento específico com cache
+ * Performance: Query específica + includeMetadataChanges
+ */
+export const escutarEntradasDoEvento = (eventoId, callback) => {
+  try {
+    if (!eventoId) {
+      throw new Error('ID do evento é obrigatório');
+    }
+    
+    const entradasRef = collection(db, 'entradas');
+    const q = query(
+      entradasRef, 
+      where('eventoId', '==', eventoId),
+      orderBy('data', 'desc')
+    );
+    
+    const unsubscribe = onSnapshot(q, {
+      includeMetadataChanges: true
+    }, (snapshot) => {
+      const source = snapshot.metadata.hasPendingWrites ? "Local" : "Server";
+      const fromCache = snapshot.metadata.fromCache;
+      
+      const entradas = [];
+      snapshot.forEach((doc) => {
+        const dataDoc = doc.data();
+        entradas.push({
+          id: doc.id,
+          ...dataDoc,
+          data: dataDoc.data ? (
+            typeof dataDoc.data.toDate === 'function' 
+              ? dataDoc.data.toDate() 
+              : new Date(dataDoc.data)
+          ) : null,
+          vencimento: dataDoc.vencimento ? (
+            typeof dataDoc.vencimento.toDate === 'function' 
+              ? dataDoc.vencimento.toDate() 
+              : new Date(dataDoc.vencimento)
+          ) : null,
+          pagoEm: dataDoc.pagoEm ? (
+            typeof dataDoc.pagoEm.toDate === 'function' 
+              ? dataDoc.pagoEm.toDate() 
+              : new Date(dataDoc.pagoEm)
+          ) : null
+        });
+      });
+      
+      console.log(`🔄 Entradas do evento ${eventoId} [${source}${fromCache ? ' - Cache' : ''}]:`, entradas.length);
+      callback({ success: true, entradas, metadata: { source, fromCache } });
+    }, (error) => {
+      console.error(`❌ Erro no listener de entradas do evento ${eventoId}:`, error);
+      callback({ success: false, error: error.message });
+    });
+    
+    return unsubscribe;
+  } catch (error) {
+    console.error('❌ Erro ao configurar listener de entradas do evento:', error);
+    return null;
+  }
+};
+
+/**
+ * 🚀 FUNÇÃO DE REMOÇÃO OTIMIZADA: Remove entrada com atualização incremental
+ */
+export const removerEntrada = async (entradaId, valorEntrada, eventoId, usuarioEmail) => {
+  try {
+    if (!entradaId) {
+      throw new Error('ID da entrada é obrigatório');
+    }
+
+    // 1. Remover a entrada
+    const entradaRef = doc(db, 'entradas', entradaId);
+    await deleteDoc(entradaRef);
+
+    // 2. 🚀 PERFORMANCE: Atualizar estatísticas do evento incrementalmente
+    if (eventoId && valorEntrada) {
+      try {
+        await atualizarEstatisticasDoEvento(eventoId, parseFloat(valorEntrada), 'remover');
+      } catch (error) {
+        console.warn('⚠️ Erro ao atualizar estatísticas do evento após remoção:', error);
+      }
+    }
+    
+    console.log('✅ Entrada removida e estatísticas atualizadas:', entradaId);
+    return { success: true };
+  } catch (error) {
+    console.error('❌ Erro ao remover entrada:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * 🚀 FUNÇÃO DE MIGRAÇÃO: Recalcular estatísticas de evento (usar apenas quando necessário)
+ * Nota: Esta função usa getDocs para recalcular dados existentes - não usar em operações rotineiras
+ */
+export const recalcularEstatisticasEvento = async (eventoId) => {
+  try {
+    console.warn('⚠️ Executando recálculo completo de estatísticas - operação custosa');
+    
+    // Buscar todas as entradas do evento
+    const q = query(
+      collection(db, 'entradas'),
+      where('eventoId', '==', eventoId)
+    );
+    
+    const querySnapshot = await getDocs(q);
+    
+    let totalEntradas = 0;
+    let valorTotal = 0;
+    
+    querySnapshot.forEach((doc) => {
+      const entrada = doc.data();
+      totalEntradas++;
+      valorTotal += entrada.valor || 0;
+    });
+    
+    // Atualizar o evento com as estatísticas recalculadas
+    const eventoRef = doc(db, 'eventos', eventoId);
+    await updateDoc(eventoRef, {
+      totalEntradas: totalEntradas,
+      valorTotal: valorTotal
+    });
+    
+    console.log(`📊 Estatísticas recalculadas para evento ${eventoId}: ${totalEntradas} entradas, R$ ${valorTotal}`);
+    return { success: true, totalEntradas, valorTotal };
+  } catch (error) {
+    console.error('❌ Erro ao recalcular estatísticas do evento:', error);
+    return { success: false, error: error.message };
   }
 };

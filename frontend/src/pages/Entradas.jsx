@@ -93,18 +93,7 @@ function Entradas({ usuarioEmail }) {
   const processarDivergenciasAsync = useCallback((entradasAtualizadas) => {
     // Executar em microtask para não bloquear render
     Promise.resolve().then(() => {
-      const entradaEmProcessamento = entradasAtualizadas.find(entrada => 
-        entrada.comprovanteUrl && 
-        !entrada.processadoPorGeminiAI &&
-        !entrada.divergenciasDetectadas
-      );
-      
-      if (entradaEmProcessamento && !processandoIA) {
-        console.log('🤖 Detectada entrada em processamento:', entradaEmProcessamento.id);
-        setProcessandoIA(true);
-        setEntradaProcessando(entradaEmProcessamento);
-      }
-      
+      // 🔧 CORREÇÃO: Verificar divergências primeiro (prioridade)
       const entradaComDivergenciaNaoResolvida = entradasAtualizadas.find(entrada => 
         entrada.divergenciasDetectadas && 
         entrada.statusValidacao === 'DIVERGENTE' &&
@@ -114,13 +103,46 @@ function Entradas({ usuarioEmail }) {
       if (entradaComDivergenciaNaoResolvida) {
         console.log('⚠️ Divergência detectada:', entradaComDivergenciaNaoResolvida.id);
         setProcessandoIA(false);
+        setEntradaProcessando(null);
         setEntradaComDivergencia(entradaComDivergenciaNaoResolvida);
+        return; // 🚨 PARA AQUI - não continua processamento
       }
       
-      // Parar loading se processamento foi concluído
+      // 🔧 CORREÇÃO: Só verifica processamento se não há divergência
+      const entradaEmProcessamento = entradasAtualizadas.find(entrada => 
+        entrada.comprovanteUrl && 
+        !entrada.processadoPorGeminiAI &&
+        !entrada.divergenciasDetectadas &&
+        entrada.statusValidacao !== 'VALIDADO' // 🔥 NOVA CONDIÇÃO
+      );
+      
+      // 🔧 CORREÇÃO: Só inicia processamento se mudou de entrada
+      if (entradaEmProcessamento && !processandoIA && 
+          (!entradaProcessando || entradaProcessando.id !== entradaEmProcessamento.id)) {
+        console.log('🤖 Detectada entrada em processamento:', entradaEmProcessamento.id);
+        setProcessandoIA(true);
+        setEntradaProcessando(entradaEmProcessamento);
+      }
+      
+      // 🔧 CORREÇÃO: Parar loading se processamento foi concluído ou há erro
       if (processandoIA && entradaProcessando) {
         const entradaAtualizada = entradasAtualizadas.find(e => e.id === entradaProcessando.id);
-        if (entradaAtualizada && entradaAtualizada.processadoPorGeminiAI) {
+        if (entradaAtualizada && 
+           (entradaAtualizada.processadoPorGeminiAI || 
+            entradaAtualizada.statusValidacao === 'VALIDADO' ||
+            entradaAtualizada.divergenciasDetectadas)) {
+          console.log('✅ Processamento concluído para:', entradaProcessando.id);
+          setProcessandoIA(false);
+          setEntradaProcessando(null);
+        }
+      }
+      
+      // 🔧 TIMEOUT DE SEGURANÇA: Se está processando há mais de 2 minutos, para
+      if (processandoIA && entradaProcessando) {
+        const agora = Date.now();
+        const tempoProcessamento = agora - (entradaProcessando._iniciadoEm || agora);
+        if (tempoProcessamento > 120000) { // 2 minutos
+          console.warn('⏰ Timeout de processamento - parando loading');
           setProcessandoIA(false);
           setEntradaProcessando(null);
         }
@@ -866,11 +888,35 @@ function Entradas({ usuarioEmail }) {
               borderRadius: '8px',
               padding: '12px',
               fontSize: '0.75rem',
-              color: '#5f6368'
+              color: '#5f6368',
+              marginBottom: '20px'
             }}>
               📄 <strong>{entradaProcessando.descricao}</strong><br/>
               💰 <strong>{formatarMoeda(entradaProcessando.valor)}</strong>
             </div>
+            
+            {/* 🚨 BOTÃO DE EMERGÊNCIA */}
+            <button
+              onClick={() => {
+                console.log('🚨 EMERGÊNCIA: Forçando saída do modal');
+                setProcessandoIA(false);
+                setEntradaProcessando(null);
+              }}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: '#ea4335',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '0.875rem',
+                cursor: 'pointer',
+                fontWeight: '500'
+              }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = '#d33b2c'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = '#ea4335'}
+            >
+              🚨 Fechar (Emergência)
+            </button>
             
             <style>{`
               @keyframes spin {

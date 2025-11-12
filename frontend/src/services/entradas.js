@@ -85,6 +85,11 @@ const calcularRateio = (tipo, valor) => {
  */
 export const adicionarEntrada = async (dados, usuarioEmail) => {
   try {
+    // ✅ VALIDAÇÃO: Toda entrada DEVE ter um evento vinculado
+    if (!dados.eventoId) {
+      throw new Error('Entrada deve estar vinculada a um evento');
+    }
+
     const entradasRef = collection(db, 'entradas');
     
     const rateio = dados.rateio || calcularRateio(dados.tipo, dados.valor);
@@ -261,6 +266,11 @@ export const buscarEntradasPorMembro = async (membroId) => {
  */
 export const atualizarEntrada = async (id, dados, usuarioEmail) => {
   try {
+    // ✅ VALIDAÇÃO: Toda entrada DEVE ter um evento vinculado
+    if (!dados.eventoId) {
+      throw new Error('Entrada deve estar vinculada a um evento');
+    }
+
     const entradaRef = doc(db, 'entradas', id);
     
     const rateio = dados.rateio || calcularRateio(dados.tipo, dados.valor);
@@ -276,6 +286,7 @@ export const atualizarEntrada = async (id, dados, usuarioEmail) => {
       data: Timestamp.fromDate(dataCorreta),
       formaRecebimento: dados.formaRecebimento,
       rateio: rateio,
+      eventoId: dados.eventoId, // ✅ Sempre inclui o evento
       
       // Se for dízimo, guarda o membro
       ...(dados.tipo === 'dizimo' && dados.membroId && {

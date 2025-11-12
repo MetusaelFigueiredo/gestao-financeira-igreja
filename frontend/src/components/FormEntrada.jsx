@@ -110,8 +110,13 @@ function FormEntrada({ onSucesso, usuarioEmail, entradaParaEdicao = null }) {
       return;
     }
 
-    if (!eventoId && eventos.length > 0) {
-      setErro('Selecione o evento para esta entrada');
+    // ⚠️ SEMPRE exige evento - toda entrada deve estar vinculada a um evento
+    if (!eventoId) {
+      if (eventos.length === 0) {
+        setErro('Nenhum evento aberto encontrado. Crie um evento primeiro para registrar entradas.');
+      } else {
+        setErro('Selecione o evento para esta entrada');
+      }
       return;
     }
     

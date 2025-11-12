@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import FormEntrada from '../components/FormEntrada';
 import AlertaDivergencia from '../components/AlertaDivergencia';
-import { buscarEntradas, excluirEntrada, atualizarEntrada, atualizarCamposControle } from '../services/entradas';
+import { escutarEntradas, excluirEntrada, atualizarCamposControle } from '../services/entradas';
 import { buscarEventoPorId } from '../services/eventos';
 import { formatarMoeda } from '../utils/formatacao';
 import { calcularResumoMes } from '../utils/entradasUtils';
@@ -9,34 +9,25 @@ import { calcularRateio } from '../utils/migracaoRateio';
 import { Timestamp } from 'firebase/firestore';
 
 function Entradas({ usuarioEmail }) {
-  // 🕒 Helper para formatação de data sem problemas de timezone
-  const formatarDataEntrada = (dataEntrada) => {
+  // 🕒 Helper para formatação de data sem problemas de timezone (memoizado)
+  const formatarDataEntrada = useCallback((dataEntrada) => {
     if (!dataEntrada) return '-';
     
     try {
       let data;
       
-      // Se for Timestamp do Firebase
       if (dataEntrada && typeof dataEntrada.toDate === 'function') {
         data = dataEntrada.toDate();
-      } 
-      // Se for string no formato ISO ou timestamp
-      else if (typeof dataEntrada === 'string' || typeof dataEntrada === 'number') {
+      } else if (typeof dataEntrada === 'string' || typeof dataEntrada === 'number') {
         data = new Date(dataEntrada);
-      }
-      // Se já for Date
-      else if (dataEntrada instanceof Date) {
+      } else if (dataEntrada instanceof Date) {
         data = dataEntrada;
       } else {
         return '-';
       }
       
-      // Verificar se a data é válida
-      if (isNaN(data.getTime())) {
-        return '-';
-      }
+      if (isNaN(data.getTime())) return '-';
       
-      // Formatação local sem problemas de timezone
       const dia = data.getDate().toString().padStart(2, '0');
       const mes = (data.getMonth() + 1).toString().padStart(2, '0');
       const ano = data.getFullYear();
@@ -46,7 +37,8 @@ function Entradas({ usuarioEmail }) {
       console.error('Erro ao formatar data:', error);
       return '-';
     }
-  };
+  }, []);
+
   const [entradas, setEntradas] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [entradaParaEdicao, setEntradaParaEdicao] = useState(null);
@@ -59,62 +51,85 @@ function Entradas({ usuarioEmail }) {
   const [anoSelecionado, setAnoSelecionado] = useState(dataAtual.getFullYear());
   const [mesSelecionado, setMesSelecionado] = useState(dataAtual.getMonth());
 
-  useEffect(() => {
-    carregarEntradas();
-    
-    // Recarregar a cada 30 segundos para pegar atualizações da Cloud Function
-    const interval = setInterval(carregarEntradas, 30000);
-    
-    return () => clearInterval(interval);
-  }, []);
+  // 🆕 Ref para controlar listener único
+  const unsubscribeRef = useRef(null);
+  const isInitializedRef = useRef(false);
 
-  const carregarEntradas = async () => {
+  // 🆕 useEffect para escutar entradas em real-time (APENAS UMA VEZ)
+  useEffect(() => {
+    // Evitar múltiplas inicializações
+    if (isInitializedRef.current) return;
+    isInitializedRef.current = true;
+
+    console.log('🎯 Iniciando listener real-time de entradas...');
     setCarregando(true);
-    const resultado = await buscarEntradas();
-    
-    if (resultado.success) {
-      setEntradas(resultado.entradas);
-      
-      // 🆕 Verificar se há entradas sendo processadas pela IA
-      const entradaEmProcessamento = resultado.entradas.find(entrada => 
+
+    // Configurar listener do Firestore
+    unsubscribeRef.current = escutarEntradas((resultado) => {
+      if (resultado.success) {
+        console.log(`✅ Entradas atualizadas: ${resultado.entradas.length} documento(s)${resultado.metadata?.fromCache ? ' (cache)' : ''}`);
+        setEntradas(resultado.entradas);
+
+        // 🆕 Processar divergências de forma assíncrona (não bloqueante)
+        processarDivergenciasAsync(resultado.entradas);
+      } else {
+        console.error('❌ Erro ao escutar entradas:', resultado.error);
+      }
+      setCarregando(false);
+    });
+
+    // Cleanup: desinscrever quando componente desmontar
+    return () => {
+      console.log('🧹 Limpando listener de entradas...');
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
+      isInitializedRef.current = false;
+    };
+  }, []); // ⚠️ Array vazio = executa APENAS na montagem
+
+  // 🆕 Processar divergências de forma assíncrona (não bloqueia UI)
+  const processarDivergenciasAsync = useCallback((entradasAtualizadas) => {
+    // Executar em microtask para não bloquear render
+    Promise.resolve().then(() => {
+      const entradaEmProcessamento = entradasAtualizadas.find(entrada => 
         entrada.comprovanteUrl && 
         !entrada.processadoPorGeminiAI &&
         !entrada.divergenciasDetectadas
       );
       
       if (entradaEmProcessamento && !processandoIA) {
-        console.log('🤖 Detectada entrada em processamento:', entradaEmProcessamento);
+        console.log('🤖 Detectada entrada em processamento:', entradaEmProcessamento.id);
         setProcessandoIA(true);
         setEntradaProcessando(entradaEmProcessamento);
       }
       
-      // 🆕 Verificar se há entradas com divergências não resolvidas
-      const entradaComDivergenciaNaoResolvida = resultado.entradas.find(entrada => 
+      const entradaComDivergenciaNaoResolvida = entradasAtualizadas.find(entrada => 
         entrada.divergenciasDetectadas && 
         entrada.statusValidacao === 'DIVERGENTE' &&
         !entrada.divergenciaResolvida
       );
       
       if (entradaComDivergenciaNaoResolvida) {
-        console.log('⚠️ Divergência detectada:', entradaComDivergenciaNaoResolvida);
-        setProcessandoIA(false); // Parar loading se houver divergência
+        console.log('⚠️ Divergência detectada:', entradaComDivergenciaNaoResolvida.id);
+        setProcessandoIA(false);
         setEntradaComDivergencia(entradaComDivergenciaNaoResolvida);
       }
       
-      // Se estava processando e agora tem resultado, parar loading
+      // Parar loading se processamento foi concluído
       if (processandoIA && entradaProcessando) {
-        const entradaAtualizada = resultado.entradas.find(e => e.id === entradaProcessando.id);
+        const entradaAtualizada = entradasAtualizadas.find(e => e.id === entradaProcessando.id);
         if (entradaAtualizada && entradaAtualizada.processadoPorGeminiAI) {
           setProcessandoIA(false);
           setEntradaProcessando(null);
         }
       }
-    }
-    
-    setCarregando(false);
-  };
+    });
+  }, [processandoIA, entradaProcessando]);
 
-  const obterNomeTipo = (tipo) => {
+  // 🆕 Memoizar funções auxiliares
+  const obterNomeTipo = useCallback((tipo) => {
     const tipos = {
       dizimo: 'Dízimo',
       oferta: 'Oferta',
@@ -124,9 +139,9 @@ function Entradas({ usuarioEmail }) {
       outros: 'Outros'
     };
     return tipos[tipo] || tipo;
-  };
+  }, []);
 
-  const obterCorTipo = (tipo) => {
+  const obterCorTipo = useCallback((tipo) => {
     const cores = {
       dizimo: '#1a73e8',
       oferta: '#34a853',
@@ -136,80 +151,62 @@ function Entradas({ usuarioEmail }) {
       outros: '#5f6368'
     };
     return cores[tipo] || '#5f6368';
-  };
+  }, []);
 
-  // Filtrar entradas pelo mês/ano selecionado
-  const entradasFiltradas = entradas.filter(entrada => {
-    if (!entrada.data) return false;
-    const dataEntrada = new Date(entrada.data);
-    return dataEntrada.getMonth() === mesSelecionado && 
-           dataEntrada.getFullYear() === anoSelecionado;
-  });
+  // 🆕 Memoizar entradas filtradas (evita recalcular a cada render)
+  const entradasFiltradas = useMemo(() => {
+    return entradas.filter(entrada => {
+      if (!entrada.data) return false;
+      const dataEntrada = new Date(entrada.data);
+      return dataEntrada.getMonth() === mesSelecionado && 
+             dataEntrada.getFullYear() === anoSelecionado;
+    });
+  }, [entradas, mesSelecionado, anoSelecionado]);
 
-  // Calcula resumo baseado no período filtrado
-  const dataFiltro = new Date(anoSelecionado, mesSelecionado, 1);
-  const resumo = calcularResumoMes(entradasFiltradas, dataFiltro);
+  // 🆕 Memoizar resumo (cálculo pesado)
+  const resumo = useMemo(() => {
+    const dataFiltro = new Date(anoSelecionado, mesSelecionado, 1);
+    return calcularResumoMes(entradasFiltradas, dataFiltro);
+  }, [entradasFiltradas, anoSelecionado, mesSelecionado]);
 
-  // Arrays para os seletores
-  const meses = [
+  // 🆕 Memoizar entradas ordenadas
+  const entradasOrdenadas = useMemo(() => {
+    return [...entradasFiltradas].sort((a, b) => {
+      const dataA = new Date(a.data);
+      const dataB = new Date(b.data);
+      return dataB.getTime() - dataA.getTime();
+    });
+  }, [entradasFiltradas]);
+
+  // Memoizar arrays estáticos
+  const meses = useMemo(() => [
     'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
     'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-  ];
+  ], []);
   
-  const anosDisponiveis = [];
-  for (let ano = 2020; ano <= new Date().getFullYear() + 1; ano++) {
-    anosDisponiveis.push(ano);
-  }
-
-  // Nome do período atual
-  const nomePeriodo = dataFiltro.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-  const nomePeriodoCapitalizado = nomePeriodo.charAt(0).toUpperCase() + nomePeriodo.slice(1);
-
-  // Agrupar entradas por mês/ano
-  const agruparPorMes = (entradas) => {
-    const grupos = {};
-    
-    entradas.forEach(entrada => {
-      if (entrada.data) {
-        const data = new Date(entrada.data);
-        const chave = `${data.getFullYear()}-${data.getMonth()}`;
-        const nomeGrupo = data.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-        
-        if (!grupos[chave]) {
-          grupos[chave] = {
-            nome: nomeGrupo.charAt(0).toUpperCase() + nomeGrupo.slice(1),
-            entradas: []
-          };
-        }
-        
-        grupos[chave].entradas.push(entrada);
-      }
-    });
-    
-    // Ordenar grupos por data (mais recente primeiro)
-    return Object.keys(grupos)
-      .sort((a, b) => b.localeCompare(a))
-      .map(chave => grupos[chave]);
-  };
-
-  // Para o histórico, usar apenas as entradas filtradas (sem agrupamento por mês, já que são do mesmo período)
-  const entradasOrdenadas = entradasFiltradas.sort((a, b) => {
-    const dataA = new Date(a.data);
-    const dataB = new Date(b.data);
-    return dataB.getTime() - dataA.getTime(); // Mais recente primeiro
-  });
-
-  // 🔒 Verificação de status do evento
-  const verificarStatusEvento = async (eventoId) => {
-    if (!eventoId) {
-      return true; // Se não tem evento vinculado, permite edição/exclusão
+  const anosDisponiveis = useMemo(() => {
+    const anos = [];
+    for (let ano = 2020; ano <= new Date().getFullYear() + 1; ano++) {
+      anos.push(ano);
     }
+    return anos;
+  }, []);
+
+  // Memoizar nome do período
+  const nomePeriodoCapitalizado = useMemo(() => {
+    const dataFiltro = new Date(anoSelecionado, mesSelecionado, 1);
+    const nomePeriodo = dataFiltro.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    return nomePeriodo.charAt(0).toUpperCase() + nomePeriodo.slice(1);
+  }, [anoSelecionado, mesSelecionado]);
+
+  // 🔒 Verificação de status do evento (memoizada)
+  const verificarStatusEvento = useCallback(async (eventoId) => {
+    if (!eventoId) return true;
     
     try {
       const resultado = await buscarEventoPorId(eventoId);
       if (resultado.success) {
         const status = resultado.evento.status;
-        // Permite apenas se evento estiver aberto ou em análise
         return status === 'aberto' || status === 'analise';
       }
       return false;
@@ -217,10 +214,9 @@ function Entradas({ usuarioEmail }) {
       console.error('Erro ao verificar status do evento:', error);
       return false;
     }
-  };
+  }, []);
 
-  const editarEntrada = async (entrada) => {
-    // 🔒 Verificar se evento permite edição
+  const editarEntrada = useCallback(async (entrada) => {
     const podeEditar = await verificarStatusEvento(entrada.eventoId);
     if (!podeEditar) {
       alert("❌ Não é possível editar uma entrada de um evento encerrado.");
@@ -228,18 +224,16 @@ function Entradas({ usuarioEmail }) {
     }
     
     setEntradaParaEdicao(entrada);
-    // Scroll para o formulário
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  }, [verificarStatusEvento]);
 
-  const verComprovante = (comprovanteUrl) => {
+  const verComprovante = useCallback((comprovanteUrl) => {
     if (comprovanteUrl) {
       window.open(comprovanteUrl, '_blank');
     }
-  };
+  }, []);
 
-  const confirmarExclusao = async (entradaId, valorEntrada, eventoId) => {
-    // 🔒 Verificar se evento permite exclusão
+  const confirmarExclusao = useCallback(async (entradaId, valorEntrada, eventoId) => {
     const podeExcluir = await verificarStatusEvento(eventoId);
     if (!podeExcluir) {
       alert("❌ Não é possível excluir uma entrada de um evento encerrado.");
@@ -253,72 +247,55 @@ function Entradas({ usuarioEmail }) {
     if (confirmacao) {
       const resultado = await excluirEntrada(entradaId);
       
-      if (resultado.success) {
-        // Atualizar lista após exclusão
-        carregarEntradas();
-      } else {
+      if (!resultado.success) {
         alert('Erro ao excluir entrada: ' + resultado.error);
       }
+      // ✅ Não precisa recarregar - onSnapshot já atualiza automaticamente
     }
-  };
+  }, [verificarStatusEvento]);
 
-  // 🆕 Função para aceitar dados do comprovante
-  const aceitarDadosComprovante = async (entrada) => {
+  // 🆕 Função para aceitar dados do comprovante (otimizada)
+  const aceitarDadosComprovante = useCallback(async (entrada) => {
     try {
-      
-      // Validar dados obrigatórios
       if (!entrada.tipo) {
         throw new Error('Tipo da entrada não encontrado');
       }
 
       const novoValor = entrada.dadosComprovante.valor || entrada.valor;
       
-      // Processar a data corretamente
-      let dataProcessada = entrada.data; // usar data atual por padrão
+      let dataProcessada = entrada.data;
       if (entrada.dadosComprovante.data) {
-        // Converter string DD/MM/YYYY para Date e depois para Timestamp
         const dataString = entrada.dadosComprovante.data;
         console.log('📅 Processando data do comprovante:', dataString);
         
         if (dataString.includes('/')) {
           const [dia, mes, ano] = dataString.split('/');
-          // Criar data no meio-dia para evitar problemas de timezone
           const dataDate = new Date(parseInt(ano), parseInt(mes) - 1, parseInt(dia), 12, 0, 0);
           dataProcessada = Timestamp.fromDate(dataDate);
           
-          console.log('📅 Data original da entrada:', entrada.data instanceof Date ? entrada.data.toLocaleDateString('pt-BR') : entrada.data);
-          console.log('📅 Nova data do comprovante:', dataDate.toLocaleDateString('pt-BR'));
           console.log('📅 Timestamp gerado:', dataProcessada.toDate().toLocaleDateString('pt-BR'));
         }
       }
       
       const dadosAtualizados = {
-        // Usar dados do comprovante
         valor: novoValor,
         descricao: entrada.dadosComprovante.nome || entrada.descricao,
         data: dataProcessada,
-        
-        // Recalcular rateio com novo valor
         rateio: calcularRateio(entrada.tipo, novoValor),
-        
-        // Marcar como resolvido
         divergenciaResolvida: true,
         resolucaoEm: Timestamp.now(),
         resolucaoTipo: 'ACEITAR_COMPROVANTE',
         statusValidacao: 'VALIDADO'
       };
 
-      // Filtrar campos undefined para evitar erro do Firebase
       const dadosLimpos = Object.fromEntries(
         Object.entries(dadosAtualizados).filter(([_, v]) => v !== undefined)
       );
 
-      // Usar atualizarCamposControle para evitar problemas com processamento de data
       const resultado = await atualizarCamposControle(entrada.id, dadosLimpos);
       
       if (resultado.success) {
         setEntradaComDivergencia(null);
-        carregarEntradas();
         alert('✅ Dados do comprovante aceitos com sucesso!');
       } else {
         alert('❌ Erro ao atualizar entrada: ' + resultado.error);
@@ -327,15 +304,14 @@ function Entradas({ usuarioEmail }) {
       console.error('Erro ao aceitar comprovante:', error);
       alert('❌ Erro ao processar solicitação');
     }
-  };
+  }, []);
 
-  // 🆕 Função para manter dados originais
-  const manterDadosOriginais = async (entrada) => {
+  // 🆕 Função para manter dados originais (otimizada)
+  const manterDadosOriginais = useCallback(async (entrada) => {
     try {
       const dadosAtualizados = {
-        // Marcar como resolvido mantendo dados originais
         divergenciaResolvida: true,
-        resolucaoEm: new Date(),
+        resolucaoEm: Timestamp.now(),
         resolucaoTipo: 'MANTER_ORIGINAL',
         statusValidacao: 'MANUAL'
       };
@@ -344,7 +320,6 @@ function Entradas({ usuarioEmail }) {
       
       if (resultado.success) {
         setEntradaComDivergencia(null);
-        carregarEntradas();
         alert('✅ Dados originais mantidos!');
       } else {
         alert('❌ Erro ao atualizar entrada: ' + resultado.error);
@@ -353,7 +328,20 @@ function Entradas({ usuarioEmail }) {
       console.error('Erro ao manter dados originais:', error);
       alert('❌ Erro ao processar solicitação');
     }
-  };
+  }, []);
+
+  // 🆕 Callback otimizado para sucesso do form
+  const handleFormSucesso = useCallback(() => {
+    setEntradaParaEdicao(null);
+    // ✅ Não precisa recarregar - onSnapshot já atualiza automaticamente
+  }, []);
+
+  // 🆕 Callback otimizado para reset de filtros
+  const resetarFiltros = useCallback(() => {
+    const hoje = new Date();
+    setAnoSelecionado(hoje.getFullYear());
+    setMesSelecionado(hoje.getMonth());
+  }, []);
 
   return (
     <div style={{
@@ -421,11 +409,7 @@ function Entradas({ usuarioEmail }) {
             </select>
             
             <button
-              onClick={() => {
-                const hoje = new Date();
-                setAnoSelecionado(hoje.getFullYear());
-                setMesSelecionado(hoje.getMonth());
-              }}
+              onClick={resetarFiltros}
               style={{
                 padding: '8px 12px',
                 backgroundColor: '#1a73e8',
@@ -465,10 +449,7 @@ function Entradas({ usuarioEmail }) {
       {/* Formulário de Lançamento */}
       <div style={{ marginBottom: '32px' }}>
         <FormEntrada 
-          onSucesso={() => {
-            carregarEntradas();
-            setEntradaParaEdicao(null); // Limpar edição após sucesso
-          }} 
+          onSucesso={handleFormSucesso}
           usuarioEmail={usuarioEmail}
           entradaParaEdicao={entradaParaEdicao}
         />

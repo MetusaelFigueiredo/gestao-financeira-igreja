@@ -244,6 +244,7 @@ function FormMembro({ onSucesso, usuarioEmail, membroEditando, onCancelarEdicao 
             <option value="Diácono">Diácono</option>
             <option value="Presbítero">Presbítero</option>
             <option value="Pastor">Pastor</option>
+            <option value="Evangelista">Evangelista</option>
           </select>
         </div>
 

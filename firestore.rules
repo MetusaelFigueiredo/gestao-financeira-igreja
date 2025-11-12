@@ -21,13 +21,25 @@ service cloud.firestore {
              get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil == 'pastor';
     }
 
+    // 💰 Função auxiliar para verificar se é tesoureiro
+    function ehTesoureiro() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil == 'tesoureiro';
+    }
+
+    // 🔑 Função auxiliar para verificar se é pastor ou tesoureiro
+    function ehPastorOuTesoureiro() {
+      return ehPastor() || ehTesoureiro();
+    }
+
     // Regras para coleção de usuários
     match /usuarios/{userId} {
       allow read: if isAuthenticated();  // Todos podem ler usuários
       allow create: if isAuthenticated() && request.auth.uid == userId;  // Só pode criar próprio perfil
       allow update: if isAuthenticated() && (
         request.auth.uid == userId ||  // Próprio usuário pode atualizar
-        ehPastor()  // Pastor pode alterar qualquer perfil
+        ehPastorOuTesoureiro()  // 🔑 Pastor ou tesoureiro podem alterar qualquer perfil
       );
       allow delete: if ehPastor();  // Só pastor pode deletar
     }
@@ -52,13 +64,14 @@ service cloud.firestore {
     match /membros/{membroId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated();  // Qualquer usuário logado pode criar membro
-      allow update, delete: if isAdmin();  // Apenas admin pode editar/excluir
+      allow update: if isAuthenticated();  // Permitir edição para usuários logados
+      allow delete: if isAdmin() || ehPastorOuTesoureiro();  // 🔑 Admin, pastor ou tesoureiro podem excluir
     }
 
     // Regras para coleção de backup
     match /backup/{backupId} {
       allow read: if isAuthenticated();
-      allow write: if isAdmin();
+      allow write: if isAdmin() || ehPastorOuTesoureiro();  // 🔑 Admin, pastor ou tesoureiro podem fazer backup
     }
 
     // 🆕 Regras para coleção de configurações (meta de missões, etc.)

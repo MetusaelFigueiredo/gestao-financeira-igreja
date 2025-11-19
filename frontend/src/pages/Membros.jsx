@@ -1,26 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import FormMembro from '../components/FormMembro';
-import { buscarMembros, excluirMembro } from '../services/membros';
+import { escutarMembros, excluirMembro } from '../services/membros';
 
 function Membros({ usuarioEmail }) {
   const [membros, setMembros] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [membroEditando, setMembroEditando] = useState(null);
 
+  // 🚀 OTIMIZAÇÃO: Usar listener em tempo real ao invés de polling
   useEffect(() => {
-    carregarMembros();
-  }, []);
-
-  const carregarMembros = async () => {
     setCarregando(true);
-    const resultado = await buscarMembros();
     
-    if (resultado.success) {
-      setMembros(resultado.membros);
-    }
+    // Configurar listener
+    const unsubscribe = escutarMembros((resultado) => {
+      if (resultado.success) {
+        setMembros(resultado.membros);
+        setCarregando(false);
+      } else {
+        console.error('Erro ao escutar membros:', resultado.error);
+        setCarregando(false);
+      }
+    });
     
-    setCarregando(false);
-  };
+    // Cleanup: remover listener quando componente desmontar
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, []); // ✅ Executa apenas uma vez ao montar
 
   const handleEditar = (membro) => {
     setMembroEditando(membro);
@@ -30,7 +38,7 @@ function Membros({ usuarioEmail }) {
     if (window.confirm(`Tem certeza que deseja excluir o membro "${membro.nome}"?`)) {
       const resultado = await excluirMembro(membro.id);
       if (resultado.success) {
-        await carregarMembros();
+        // ✅ Não precisa recarregar - listener atualiza automaticamente
         alert('Membro excluído com sucesso!');
       } else {
         alert('Erro ao excluir membro: ' + resultado.error);
@@ -67,7 +75,7 @@ function Membros({ usuarioEmail }) {
       <div style={{ marginBottom: '32px' }}>
         <FormMembro 
           onSucesso={() => {
-            carregarMembros();
+            // ✅ Não precisa recarregar - listener atualiza automaticamente
             setMembroEditando(null);
           }} 
           usuarioEmail={usuarioEmail}

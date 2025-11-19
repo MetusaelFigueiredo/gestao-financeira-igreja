@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import FormDespesa from '../components/FormDespesa';
 import { 
-  buscarDespesas, 
+  escutarDespesas,
   buscarDespesasMesAtual,
   calcularResumoDespesas,
   marcarComoPago,
@@ -26,57 +26,43 @@ const formatarDataVencimento = (vencimento) => {
 };
 
 function Despesas({ usuarioEmail }) {
-  const [despesas, setDespesas] = useState([]);
   const [todasDespesas, setTodasDespesas] = useState([]);
-  const [resumo, setResumo] = useState(null);
   const [carregando, setCarregando] = useState(true);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [despesaEditando, setDespesaEditando] = useState(null);
   
-  // Estados para filtros de data (removendo filtroAtivo)
+  // Estados para filtros de data
   const dataAtual = new Date();
   const [anoSelecionado, setAnoSelecionado] = useState(dataAtual.getFullYear());
   const [mesSelecionado, setMesSelecionado] = useState(dataAtual.getMonth());
 
+  // 🚀 OTIMIZAÇÃO: Usar listener em tempo real para todas as despesas
   useEffect(() => {
-    carregarDados();
-  }, []);
-
-  const carregarDados = async () => {
     setCarregando(true);
     
-    try {
-      await atualizarStatusVencidas();
-      
-      const [despesasMesAtual, todasAsDespesas, resumoCarregado] = await Promise.all([
-        buscarDespesasMesAtual(),
-        buscarDespesas(),
-        calcularResumoDespesas()
-      ]);
-      
-      console.log('✅ Despesas do mês carregadas:', despesasMesAtual.length);
-      console.log('✅ Todas as despesas carregadas:', todasAsDespesas.length);
-      
-      setDespesas(despesasMesAtual || []);
-      setTodasDespesas(todasAsDespesas || []);
-      setResumo(resumoCarregado || null);
-      
-    } catch (error) {
-      console.error('❌ Erro ao carregar dados:', error);
-      setDespesas([]);
-      setTodasDespesas([]);
-      setResumo(null);
-    } finally {
+    // Atualizar status vencidas uma vez no início
+    atualizarStatusVencidas().catch(console.error);
+    
+    // Configurar listener
+    const unsubscribe = escutarDespesas((despesas) => {
+      setTodasDespesas(despesas);
       setCarregando(false);
-    }
-  };
+    });
+    
+    // Cleanup
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, []); // ✅ Executa apenas uma vez
 
   const handleMarcarPago = async (despesaId, formaPagamento) => {
     const resultado = await marcarComoPago(despesaId, formaPagamento);
     
     if (resultado.success) {
       alert('✅ Despesa marcada como paga!');
-      carregarDados();
+      // ✅ Listener atualiza automaticamente
     } else {
       alert('❌ Erro ao marcar como paga!');
     }
@@ -98,7 +84,7 @@ function Despesas({ usuarioEmail }) {
       try {
         await deletarDespesa(despesaId);
         alert('✅ Despesa excluída com sucesso!');
-        carregarDados();
+        // ✅ Listener atualiza automaticamente
       } catch (error) {
         console.error('❌ Erro ao excluir despesa:', error);
         alert('❌ Erro ao excluir despesa: ' + error.message);
@@ -112,7 +98,7 @@ function Despesas({ usuarioEmail }) {
   };
 
   const handleSucessoFormulario = () => {
-    carregarDados();
+    // ✅ Listener atualiza automaticamente
     handleFecharFormulario();
   };
 
@@ -138,16 +124,18 @@ function Despesas({ usuarioEmail }) {
     return icones[forma] || '💰';
   };
 
-  // Filtrar despesas pelo mês/ano selecionado
-  const despesasFiltradas = todasDespesas.filter(despesa => {
-    if (!despesa.vencimento) return false;
-    const dataVencimento = new Date(despesa.vencimento);
-    return dataVencimento.getMonth() === mesSelecionado && 
-           dataVencimento.getFullYear() === anoSelecionado;
-  });
+  // 🚀 OTIMIZAÇÃO: useMemo para filtrar despesas (só recalcula se dependências mudarem)
+  const despesasFiltradas = useMemo(() => {
+    return todasDespesas.filter(despesa => {
+      if (!despesa.vencimento) return false;
+      const dataVencimento = new Date(despesa.vencimento);
+      return dataVencimento.getMonth() === mesSelecionado && 
+             dataVencimento.getFullYear() === anoSelecionado;
+    });
+  }, [todasDespesas, mesSelecionado, anoSelecionado]);
 
-  // Calcular resumo baseado no período filtrado
-  const calcularResumoFiltrado = () => {
+  // 🚀 OTIMIZAÇÃO: useMemo para calcular resumo (só recalcula se despesas filtr adas mudarem)
+  const resumoFiltrado = useMemo(() => {
     const total = despesasFiltradas.reduce((sum, d) => sum + d.valor, 0);
     const pagas = despesasFiltradas.filter(d => d.status === 'Paga');
     const totalPagas = pagas.reduce((sum, d) => sum + d.valor, 0);
@@ -166,9 +154,7 @@ function Despesas({ usuarioEmail }) {
       quantidadeVencidas: vencidas.length,
       quantidadeTotal: despesasFiltradas.length
     };
-  };
-
-  const resumoFiltrado = calcularResumoFiltrado();
+  }, [despesasFiltradas]);
 
   // Arrays para os seletores
   const meses = [

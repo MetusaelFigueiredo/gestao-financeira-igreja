@@ -8,7 +8,8 @@ import {
   updateDoc,
   deleteDoc,
   where,
-  Timestamp 
+  Timestamp,
+  onSnapshot
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from './firebase';
@@ -24,6 +25,21 @@ export const categoriasDespesas = {
   'Manutenção': ['Reparos', 'Conservação', 'Pintura'],
   'Eventos': ['Cultos Especiais', 'Conferências', 'Eventos'],
   'Outros': ['Diversos']
+};
+
+// 🚀 OTIMIZAÇÃO: Cache local para despesas
+let cacheDespesas = null;
+let cacheDespesasMesAtual = null;
+let cacheTimestamp = null;
+const CACHE_DURACAO = 2 * 60 * 1000; // 2 minutos (despesas mudam frequentemente)
+
+/**
+ * Invalidar cache de despesas
+ */
+const invalidarCacheDespesas = () => {
+  cacheDespesas = null;
+  cacheDespesasMesAtual = null;
+  cacheTimestamp = null;
 };
 
 /**
@@ -140,6 +156,10 @@ export const adicionarDespesa = async (despesaData, usuarioEmail) => {
     }
 
     console.log(`🎯 ${numeroParcelas} parcela(s) criada(s) com sucesso!`);
+    
+    // 🚀 OTIMIZAÇÃO: Invalidar cache após adição
+    invalidarCacheDespesas();
+    
     return documentosIds; // Retorna array com IDs de todas as parcelas criadas
     
   } catch (error) {
@@ -179,8 +199,60 @@ const timestampParaDataLocal = (timestamp) => {
   return `${ano}-${mes}-${dia}`;
 };
 
+/**
+ * 🚀 OTIMIZAÇÃO: Escutar despesas em tempo real (onSnapshot)
+ */
+export const escutarDespesas = (callback) => {
+  try {
+    const q = query(
+      collection(db, 'despesas'),
+      orderBy('vencimento', 'desc')
+    );
+    
+    const unsubscribe = onSnapshot(q,
+      { includeMetadataChanges: true },
+      (snapshot) => {
+        if (!snapshot.metadata.hasPendingWrites && !snapshot.metadata.fromCache) {
+          const despesas = snapshot.docs.map(docSnap => {
+            const data = docSnap.data();
+            return {
+              id: docSnap.id,
+              ...data,
+              vencimento: timestampParaDataLocal(data.vencimento),
+              createdAt: data.createdAt?.toDate(),
+              updatedAt: data.updatedAt?.toDate(),
+              dataPagamento: data.dataPagamento?.toDate()
+            };
+          });
+          
+          cacheDespesas = despesas;
+          cacheTimestamp = Date.now();
+          
+          callback(despesas);
+          console.log(`✅ Despesas atualizadas (tempo real): ${despesas.length}`);
+        }
+      },
+      (error) => {
+        console.error('❌ Erro ao escutar despesas:', error);
+        callback([]);
+      }
+    );
+    
+    return unsubscribe;
+  } catch (error) {
+    console.error('❌ Erro ao configurar listener:', error);
+    return () => {};
+  }
+};
+
 export const buscarDespesas = async () => {
   try {
+    // 🚀 OTIMIZAÇÃO: Retornar cache se válido
+    if (cacheDespesas && cacheTimestamp && (Date.now() - cacheTimestamp < CACHE_DURACAO)) {
+      console.log('✅ Despesas retornadas do cache (0 leituras)');
+      return cacheDespesas;
+    }
+    
     const q = query(
       collection(db, 'despesas'),
       orderBy('vencimento', 'desc')
@@ -200,7 +272,10 @@ export const buscarDespesas = async () => {
       };
     });
     
-    console.log('✅ Despesas carregadas:', despesas.length);
+    cacheDespesas = despesas;
+    cacheTimestamp = Date.now();
+    
+    console.log(`✅ Despesas carregadas: ${despesas.length} (${snapshot.size} leituras)`);
     return despesas;
     
   } catch (error) {
@@ -248,10 +323,17 @@ export const buscarDespesasPorPeriodo = async (ano, mes) => {
 };
 
 /**
- * Busca despesas do mês atual
+ * Busca despesas do mês atual (com cache)
+ * 🚀 OTIMIZAÇÃO: Cache dedicado para mês atual
  */
 export const buscarDespesasMesAtual = async () => {
   try {
+    // 🚀 Retornar cache se válido
+    if (cacheDespesasMesAtual && cacheTimestamp && (Date.now() - cacheTimestamp < CACHE_DURACAO)) {
+      console.log('✅ Despesas do mês retornadas do cache (0 leituras)');
+      return cacheDespesasMesAtual;
+    }
+    
     const agora = new Date();
     const primeiroDiaMes = new Date(agora.getFullYear(), agora.getMonth(), 1);
     const ultimoDiaMes = new Date(agora.getFullYear(), agora.getMonth() + 1, 0);
@@ -277,7 +359,10 @@ export const buscarDespesasMesAtual = async () => {
       };
     });
     
-    console.log('✅ Despesas do mês carregadas:', despesas.length);
+    cacheDespesasMesAtual = despesas;
+    cacheTimestamp = Date.now();
+    
+    console.log(`✅ Despesas do mês carregadas: ${despesas.length} (${snapshot.size} leituras)`);
     return despesas;
     
   } catch (error) {
@@ -288,6 +373,7 @@ export const buscarDespesasMesAtual = async () => {
 
 /**
  * Atualizar despesa
+ * 🚀 OTIMIZAÇÃO: Invalidar cache após atualização
  */
 export const atualizarDespesa = async (id, dados, novoComprovante = null, usuarioEmail) => {
   try {
@@ -320,6 +406,10 @@ export const atualizarDespesa = async (id, dados, novoComprovante = null, usuari
     }
 
     await updateDoc(doc(db, 'despesas', id), dadosAtualizados);
+    
+    // 🚀 Invalidar cache
+    invalidarCacheDespesas();
+    
     console.log('✅ Despesa atualizada:', id);
     
   } catch (error) {
@@ -330,10 +420,15 @@ export const atualizarDespesa = async (id, dados, novoComprovante = null, usuari
 
 /**
  * Deletar despesa
+ * 🚀 OTIMIZAÇÃO: Invalidar cache após deleção
  */
 export const deletarDespesa = async (id) => {
   try {
     await deleteDoc(doc(db, 'despesas', id));
+    
+    // 🚀 Invalidar cache
+    invalidarCacheDespesas();
+    
     console.log('✅ Despesa deletada:', id);
     
   } catch (error) {
@@ -344,6 +439,7 @@ export const deletarDespesa = async (id) => {
 
 /**
  * Atualizar status da despesa
+ * 🚀 OTIMIZAÇÃO: Invalidar cache após atualização
  */
 export const atualizarStatusDespesa = async (id, novoStatus) => {
   try {
@@ -351,6 +447,10 @@ export const atualizarStatusDespesa = async (id, novoStatus) => {
       status: novoStatus,
       updatedAt: Timestamp.now()
     });
+    
+    // 🚀 Invalidar cache
+    invalidarCacheDespesas();
+    
     console.log('✅ Status atualizado:', id, novoStatus);
     
   } catch (error) {

@@ -1,21 +1,46 @@
 import { buscarEntradas } from './entradas';
 import { buscarDespesas } from './despesas';
 
+// 🚀 OTIMIZAÇÃO: Cache para relatórios
+let cacheRelatorios = {};
+const CACHE_DURACAO = 5 * 60 * 1000; // 5 minutos
+
+/**
+ * Gerar chave de cache para período
+ */
+const gerarChaveCache = (dataInicio, dataFim) => {
+  return `${dataInicio.getTime()}-${dataFim.getTime()}`;
+};
+
 /**
  * Busca dados para relatório de um período específico
+ * 🚀 OTIMIZAÇÃO: Usa cache de entradas/despesas já carregados
  * @param {Date} dataInicio 
  * @param {Date} dataFim 
  */
 export const buscarDadosRelatorio = async (dataInicio, dataFim) => {
   try {
-    // Busca todas as entradas
-    const resultadoEntradas = await buscarEntradas();
+    // 🚀 Verificar cache de relatório
+    const chaveCache = gerarChaveCache(dataInicio, dataFim);
+    const cache = cacheRelatorios[chaveCache];
+    
+    if (cache && (Date.now() - cache.timestamp < CACHE_DURACAO)) {
+      console.log('✅ Relatório retornado do cache (0 leituras)');
+      return cache.relatorio;
+    }
+    
+    // 🚀 OTIMIZAÇÃO: Busca entradas e despesas em paralelo (não sequencial)
+    // Além disso, essas funções já usam cache interno, evitando leituras redundantes
+    const [resultadoEntradas, despesas] = await Promise.all([
+      buscarEntradas(),
+      buscarDespesas()
+    ]);
+    
     if (!resultadoEntradas.success) {
       return { success: false, error: resultadoEntradas.error };
     }
 
-    // Busca todas as despesas
-    const despesas = await buscarDespesas();
+    console.log(`✅ Dados carregados para relatório (podem ter vindo do cache)`);
 
     // Filtra entradas do período
     const entradasPeriodo = resultadoEntradas.entradas.filter(entrada => {
@@ -106,7 +131,7 @@ export const buscarDadosRelatorio = async (dataInicio, dataFim) => {
     // Calcula saldo
     const saldoMes = totalLocal - totalDespesas;
 
-    return {
+    const relatorio = {
       success: true,
       relatorio: {
         periodo: {
@@ -148,6 +173,14 @@ export const buscarDadosRelatorio = async (dataInicio, dataFim) => {
         }
       }
     };
+    
+    // 🚀 Armazenar no cache
+    cacheRelatorios[chaveCache] = {
+      relatorio,
+      timestamp: Date.now()
+    };
+    
+    return relatorio;
   } catch (error) {
     console.error('Erro ao buscar dados do relatório:', error);
     return { success: false, error: error.message };

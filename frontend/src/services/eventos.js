@@ -8,7 +8,8 @@ import {
   orderBy, 
   where,
   getDoc,
-  Timestamp 
+  Timestamp,
+  onSnapshot
 } from 'firebase/firestore';
 import { db } from './firebase';
 
@@ -19,8 +20,26 @@ export const STATUS_EVENTO = {
   FECHADO: 'fechado'
 };
 
+// 🚀 OTIMIZAÇÃO: Cache local para eventos
+let cacheEventos = null;
+let cacheEventosAbertos = null;
+let cacheEventosEmAnalise = null;
+let cacheTimestamp = null;
+const CACHE_DURACAO = 3 * 60 * 1000; // 3 minutos
+
+/**
+ * Invalidar todos os caches de eventos
+ */
+const invalidarCacheEventos = () => {
+  cacheEventos = null;
+  cacheEventosAbertos = null;
+  cacheEventosEmAnalise = null;
+  cacheTimestamp = null;
+};
+
 /**
  * Criar novo evento
+ * 🚀 OTIMIZAÇÃO: Invalidar cache após criação
  */
 export const criarEvento = async (dadosEvento) => {
   try {
@@ -42,6 +61,9 @@ export const criarEvento = async (dadosEvento) => {
 
     const docRef = await addDoc(collection(db, 'eventos'), evento);
     
+    // 🚀 Invalidar cache
+    invalidarCacheEventos();
+    
     return {
       success: true,
       eventoId: docRef.id,
@@ -57,10 +79,62 @@ export const criarEvento = async (dadosEvento) => {
 };
 
 /**
- * Buscar todos os eventos
+ * 🚀 OTIMIZAÇÃO: Escutar eventos em tempo real (onSnapshot)
+ */
+export const escutarEventos = (callback) => {
+  try {
+    const q = query(
+      collection(db, 'eventos'),
+      orderBy('dataEvento', 'desc')
+    );
+    
+    const unsubscribe = onSnapshot(q,
+      { includeMetadataChanges: true },
+      (snapshot) => {
+        if (!snapshot.metadata.hasPendingWrites && !snapshot.metadata.fromCache) {
+          const eventos = [];
+          snapshot.forEach((doc) => {
+            const data = doc.data();
+            eventos.push({
+              id: doc.id,
+              ...data,
+              dataEvento: data.dataEvento?.toDate(),
+              criadoEm: data.criadoEm?.toDate()
+            });
+          });
+          
+          cacheEventos = eventos;
+          cacheTimestamp = Date.now();
+          
+          callback({ success: true, eventos });
+          console.log(`✅ Eventos atualizados (tempo real): ${eventos.length}`);
+        }
+      },
+      (error) => {
+        console.error('❌ Erro ao escutar eventos:', error);
+        callback({ success: false, error: error.message, eventos: [] });
+      }
+    );
+    
+    return unsubscribe;
+  } catch (error) {
+    console.error('❌ Erro ao configurar listener:', error);
+    return () => {};
+  }
+};
+
+/**
+ * Buscar todos os eventos (com cache)
+ * 🚀 OTIMIZAÇÃO: Retorna cache se válido
  */
 export const buscarEventos = async () => {
   try {
+    // ✅ Retornar cache se válido
+    if (cacheEventos && cacheTimestamp && (Date.now() - cacheTimestamp < CACHE_DURACAO)) {
+      console.log('✅ Eventos retornados do cache (0 leituras)');
+      return { success: true, eventos: cacheEventos };
+    }
+    
     const q = query(
       collection(db, 'eventos'),
       orderBy('dataEvento', 'desc')
@@ -79,10 +153,11 @@ export const buscarEventos = async () => {
       });
     });
     
-    return {
-      success: true,
-      eventos
-    };
+    cacheEventos = eventos;
+    cacheTimestamp = Date.now();
+    
+    console.log(`✅ Eventos carregados: ${eventos.length} (${querySnapshot.size} leituras)`);
+    return { success: true, eventos };
   } catch (error) {
     console.error('Erro ao buscar eventos:', error);
     return {
@@ -95,13 +170,19 @@ export const buscarEventos = async () => {
 
 /**
  * Buscar eventos abertos (que podem receber entradas)
+ * 🚀 OTIMIZAÇÃO: Cache local para eventos abertos
  */
 export const buscarEventosAbertos = async () => {
   try {
+    // ✅ Retornar cache se válido
+    if (cacheEventosAbertos && cacheTimestamp && (Date.now() - cacheTimestamp < CACHE_DURACAO)) {
+      console.log('✅ Eventos abertos retornados do cache (0 leituras)');
+      return { success: true, eventos: cacheEventosAbertos };
+    }
+    
     const q = query(
       collection(db, 'eventos'),
       where('status', '==', STATUS_EVENTO.ABERTO)
-      // orderBy('dataEvento', 'desc') // Temporariamente removido até índice ser construído
     );
     
     const querySnapshot = await getDocs(q);
@@ -117,12 +198,57 @@ export const buscarEventosAbertos = async () => {
       });
     });
     
-    return {
-      success: true,
-      eventos
-    };
+    cacheEventosAbertos = eventos;
+    cacheTimestamp = Date.now();
+    
+    console.log(`✅ Eventos abertos: ${eventos.length} (${querySnapshot.size} leituras)`);
+    return { success: true, eventos };
   } catch (error) {
     console.error('Erro ao buscar eventos abertos:', error);
+    return {
+      success: false,
+      error: error.message,
+      eventos: []
+    };
+  }
+};
+
+/**
+ * 🚀 NOVO: Buscar eventos em análise
+ */
+export const buscarEventosEmAnalise = async () => {
+  try {
+    // ✅ Retornar cache se válido
+    if (cacheEventosEmAnalise && cacheTimestamp && (Date.now() - cacheTimestamp < CACHE_DURACAO)) {
+      console.log('✅ Eventos em análise retornados do cache (0 leituras)');
+      return { success: true, eventos: cacheEventosEmAnalise };
+    }
+    
+    const q = query(
+      collection(db, 'eventos'),
+      where('status', '==', STATUS_EVENTO.EM_ANALISE)
+    );
+    
+    const querySnapshot = await getDocs(q);
+    const eventos = [];
+    
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      eventos.push({
+        id: doc.id,
+        ...data,
+        dataEvento: data.dataEvento?.toDate(),
+        criadoEm: data.criadoEm?.toDate()
+      });
+    });
+    
+    cacheEventosEmAnalise = eventos;
+    cacheTimestamp = Date.now();
+    
+    console.log(`✅ Eventos em análise: ${eventos.length} (${querySnapshot.size} leituras)`);
+    return { success: true, eventos };
+  } catch (error) {
+    console.error('Erro ao buscar eventos em análise:', error);
     return {
       success: false,
       error: error.message,
@@ -167,6 +293,7 @@ export const buscarEventoPorId = async (eventoId) => {
 
 /**
  * Atualizar status do evento
+ * 🚀 OTIMIZAÇÃO: Invalidar cache após atualização
  */
 export const atualizarStatusEvento = async (eventoId, novoStatus, dadosAdicionais = {}) => {
   try {
@@ -186,6 +313,9 @@ export const atualizarStatusEvento = async (eventoId, novoStatus, dadosAdicionai
     }
     
     await updateDoc(docRef, dadosAtualizacao);
+    
+    // 🚀 Invalidar cache
+    invalidarCacheEventos();
     
     return {
       success: true
@@ -329,48 +459,6 @@ export const reprovarEvento = async (eventoId, usuarioId, motivo = '') => {
     return {
       success: false,
       error: error.message
-    };
-  }
-};
-
-/**
- * Buscar eventos em análise (para pastores)
- */
-export const buscarEventosEmAnalise = async () => {
-  try {
-    // Query sem orderBy para funcionar sem índice (temporário)
-    const q = query(
-      collection(db, 'eventos'),
-      where('status', '==', STATUS_EVENTO.EM_ANALISE)
-    );
-    
-    const querySnapshot = await getDocs(q);
-    const eventos = [];
-    
-    querySnapshot.forEach((doc) => {
-      eventos.push({
-        id: doc.id,
-        ...doc.data()
-      });
-    });
-    
-    // Ordenar manualmente por data de envio para análise (mais recente primeiro)
-    eventos.sort((a, b) => {
-      const dataA = a.enviadoParaAnaliseEm?.toDate ? a.enviadoParaAnaliseEm.toDate() : new Date(a.enviadoParaAnaliseEm);
-      const dataB = b.enviadoParaAnaliseEm?.toDate ? b.enviadoParaAnaliseEm.toDate() : new Date(b.enviadoParaAnaliseEm);
-      return dataB - dataA;
-    });
-    
-    return {
-      success: true,
-      eventos
-    };
-  } catch (error) {
-    console.error('Erro ao buscar eventos em análise:', error);
-    return {
-      success: false,
-      error: error.message,
-      eventos: []
     };
   }
 };

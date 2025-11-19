@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import FormEvento from '../components/FormEvento';
 import ListaEventos from '../components/ListaEventos';
 import ConferenciaEvento from '../components/ConferenciaEvento';
@@ -51,43 +51,40 @@ function Eventos({ usuarioEmail, usuarioPerfil }) {
   const [eventoConferencia, setEventoConferencia] = useState(null);
   const [carregandoAbertos, setCarregandoAbertos] = useState(true);
   const [carregandoAnalise, setCarregandoAnalise] = useState(false);
-  
-  // 🔄 Contador para forçar recarregamento da lista de eventos
-  const [recarregarContador, setRecarregarContador] = useState(0);
 
-  useEffect(() => {
-    carregarEventosAbertos();
-    if (ehPastor(usuarioPerfil?.perfil)) {
-      carregarEventosEmAnalise();
-    }
-  }, [usuarioPerfil]);
-
-  const carregarEventosAbertos = async () => {
+  // 🚀 OTIMIZAÇÃO: useCallback para evitar recriação de funções
+  const carregarEventosAbertos = useCallback(async () => {
     setCarregandoAbertos(true);
-    const resultado = await buscarEventosAbertos();
+    const resultado = await buscarEventosAbertos(); // ✅ Usa cache interno
     
     if (resultado.success) {
       setEventosAbertos(resultado.eventos);
     }
     
     setCarregandoAbertos(false);
-  };
+  }, []);
 
-  const carregarEventosEmAnalise = async () => {
+  const carregarEventosEmAnalise = useCallback(async () => {
     setCarregandoAnalise(true);
-    const resultado = await buscarEventosEmAnalise();
+    const resultado = await buscarEventosEmAnalise(); // ✅ Usa cache interno
     
     if (resultado.success) {
       setEventosEmAnalise(resultado.eventos);
     }
     
     setCarregandoAnalise(false);
-  };
+  }, []);
+
+  useEffect(() => {
+    carregarEventosAbertos();
+    if (ehPastor(usuarioPerfil?.perfil)) {
+      carregarEventosEmAnalise();
+    }
+  }, [usuarioPerfil, carregarEventosAbertos, carregarEventosEmAnalise]); // ✅ Dependências estáveis
 
   const handleEventoCriado = (novoEvento) => {
+    // ✅ Cache é invalidado automaticamente, próxima leitura será atualizada
     carregarEventosAbertos();
-    // 🔄 Incrementa contador para forçar recarregamento da lista completa
-    setRecarregarContador(prev => prev + 1);
   };
 
   const handleEventoSelecionado = (evento) => {
@@ -106,8 +103,6 @@ function Eventos({ usuarioEmail, usuarioPerfil }) {
     carregarEventosAbertos();
     carregarEventosEmAnalise();
     setEventoConferencia(null);
-    // 🔄 Incrementa contador para forçar recarregamento da lista completa
-    setRecarregarContador(prev => prev + 1);
   };
 
   return (

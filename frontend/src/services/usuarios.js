@@ -7,7 +7,8 @@ import {
   query,
   where,
   getDocs,
-  Timestamp 
+  Timestamp,
+  onSnapshot
 } from 'firebase/firestore';
 import { db } from './firebase';
 
@@ -17,6 +18,12 @@ export const PERFIS = {
   PASTOR: 'pastor',     // Pastor - pode aprovar eventos
   USUARIO: 'usuario'    // Usuário comum
 };
+
+// 🚀 OTIMIZAÇÃO: Cache de perfis de usuários
+let cacheUsuarios = null;
+let cachePerfil = {}; // Cache por UID
+const CACHE_DURACAO = 10 * 60 * 1000; // 10 minutos (perfis mudam raramente)
+let cacheTimestamp = null;
 
 /**
  * Criar perfil de usuário (executado no primeiro login)
@@ -57,10 +64,17 @@ export const criarPerfilUsuario = async (uid, dadosUsuario) => {
 };
 
 /**
- * Buscar perfil do usuário
+ * Buscar perfil do usuário (com cache)
+ * 🚀 OTIMIZAÇÃO: Cache por UID para evitar leituras repetidas
  */
 export const buscarPerfilUsuario = async (uid) => {
   try {
+    // ✅ Retornar cache se válido
+    if (cachePerfil[uid] && cacheTimestamp && (Date.now() - cacheTimestamp < CACHE_DURACAO)) {
+      console.log(`✅ Perfil do usuário ${uid} retornado do cache (0 leituras)`);
+      return { success: true, perfil: cachePerfil[uid] };
+    }
+    
     const usuarioRef = doc(db, 'usuarios', uid);
     const usuarioDoc = await getDoc(usuarioRef);
     
@@ -70,13 +84,17 @@ export const buscarPerfilUsuario = async (uid) => {
         ultimoLogin: Timestamp.now()
       });
       
-      return {
-        success: true,
-        perfil: {
-          id: usuarioDoc.id,
-          ...usuarioDoc.data()
-        }
+      const perfil = {
+        id: usuarioDoc.id,
+        ...usuarioDoc.data()
       };
+      
+      // Atualizar cache
+      cachePerfil[uid] = perfil;
+      cacheTimestamp = Date.now();
+      
+      console.log(`✅ Perfil carregado: ${uid} (2 leituras: 1 getDoc + 1 updateDoc)`);
+      return { success: true, perfil };
     }
     
     return {
@@ -115,9 +133,16 @@ export const podeGerenciarUsuarios = (perfil) => {
 
 /**
  * Buscar todos os usuários (apenas para pastores)
+ * 🚀 OTIMIZAÇÃO: Cache de lista de usuários
  */
 export const buscarTodosUsuarios = async () => {
   try {
+    // ✅ Retornar cache se válido
+    if (cacheUsuarios && cacheTimestamp && (Date.now() - cacheTimestamp < CACHE_DURACAO)) {
+      console.log('✅ Usuários retornados do cache (0 leituras)');
+      return { success: true, usuarios: cacheUsuarios };
+    }
+    
     const q = query(collection(db, 'usuarios'));
     const querySnapshot = await getDocs(q);
     
@@ -129,10 +154,12 @@ export const buscarTodosUsuarios = async () => {
       });
     });
     
-    return {
-      success: true,
-      usuarios
-    };
+    // Atualizar cache
+    cacheUsuarios = usuarios;
+    cacheTimestamp = Date.now();
+    
+    console.log(`✅ Usuários carregados: ${usuarios.length} (${querySnapshot.size} leituras)`);
+    return { success: true, usuarios };
   } catch (error) {
     console.error('Erro ao buscar usuários:', error);
     return {

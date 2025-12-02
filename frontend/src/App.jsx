@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import Login from './pages/Login';
 import Entradas from './pages/Entradas';
@@ -8,6 +8,7 @@ import { ehPastor, podeGerenciarUsuarios } from './services/usuarios';
 import Dashboard from './pages/Dashboard';
 import Despesas from './pages/Despesas';
 import Relatorios from './pages/Relatorios';
+import RelatorioComprovantes from './pages/RelatorioComprovantes'; //  COMPROVANTES
 import Backup from './pages/Backup';
 import Reconciliacao from './pages/Reconciliacao'; // ✅ IMPLEMENTADA - FASE 3
 import Eventos from './pages/Eventos'; // 🎯 NOVA FUNCIONALIDADE
@@ -55,7 +56,8 @@ function AppContent() {
       { id: 'membros', label: 'Membros', icon: '👥', path: '/membros' },
       { id: 'reconciliacao', label: 'Reconciliação', icon: '⚖️', path: '/reconciliacao' },
       { id: 'backup', label: 'Backup', icon: '🗓️', path: '/backup' },
-      { id: 'relatorios', label: 'Relatórios', icon: '📈', path: '/relatorios' }
+      { id: 'relatorios', label: 'Relatórios', icon: '', path: '/relatorios' },
+      { id: 'comprovantes', label: 'Comprovantes', icon: '', path: '/comprovantes' }
     ];
 
     // Adicionar item de usuários apenas para MASTER
@@ -412,6 +414,7 @@ function AppContent() {
           <Route path="/reconciliacao" element={<Reconciliacao />} />
           <Route path="/backup" element={<Backup />} />
           <Route path="/relatorios" element={<Relatorios />} />
+          <Route path="/comprovantes" element={<RelatorioComprovantes />} />
           
           {/* 👤 Rota de usuários (apenas para MASTER) */}
           {usuario?.perfil && podeGerenciarUsuarios(usuario.perfil) && (
@@ -439,3 +442,4 @@ function App() {
 }
 
 export default App;
+
